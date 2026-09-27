@@ -14,7 +14,7 @@
     },
     "packages/playwright": {
       "name": "@nxgt/playwright",
-      "version": "0.0.0",
+      "version": "0.1.0",
       "devDependencies": {
         "@msw/playwright": "^0.6.7",
         "@playwright/test": "1.63.0",
@@ -29,7 +29,7 @@
         "@playwright/test": "^1.55.0",
         "@storybook/addon-vitest": ">=10.3.0 <11",
         "@vitest/browser-playwright": "^4.0.0",
-        "msw": "^2.12.0",
+        "msw": "^2.12.10",
         "typescript": "^6.0.3",
         "vitest": "^4.0.0",
       },
