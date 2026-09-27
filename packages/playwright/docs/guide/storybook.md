@@ -154,8 +154,10 @@ After each tagged story, in the browser:
    text of its own, is media (`svg`, `img`, `canvas`, `video`, `input`,
    `textarea`, `button`, `iframe`), or has a background colour or image, a
    box shadow, or a top or left border. Hidden, `display: none`,
-   `opacity: 0` and zero-sized elements are ignored. Portals — menus, dialogs,
-   toasts — are in `body` too, so an open menu is inside the crop;
+   `opacity: 0` and zero-sized elements are ignored. Each element counts only
+   for the part its scrolling ancestors show, so an editor's huge inner layer
+   (Monaco's is 16,777,216 px wide) does not stretch the crop. Portals — menus,
+   dialogs, toasts — are in `body` too, so an open menu is inside the crop;
 4. crops the screenshot to that box plus `padding`, converting CSS px to
    screenshot pixels against the body's own box (not the viewport, which a
    narrowed body no longer matches), and to the whole screenshot when nothing

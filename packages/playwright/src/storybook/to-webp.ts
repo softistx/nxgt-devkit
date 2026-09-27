@@ -1,5 +1,5 @@
+import type { Box } from './box';
 import { cropRect } from './crop-rect';
-import type { Box } from './painted-box';
 
 export type WebpOptions = {
 	padding: number;
