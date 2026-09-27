@@ -147,15 +147,21 @@ After each tagged story, in the browser:
 1. waits for `document.fonts.ready`, then `settle` ms more, for animations and
    lazily loaded content;
 2. screenshots `document.body` through Vitest's `page.screenshot`, keeping
-   the PNG in memory;
+   the PNG in memory. During the capture the body gets `padding` on every
+   side (and the story's `width`, if it sets one), so a story rendered at the
+   top-left corner still has room on all four sides;
 3. finds the **painted** box: the union of every visible element that has
    text of its own, is media (`svg`, `img`, `canvas`, `video`, `input`,
    `textarea`, `button`, `iframe`), or has a background colour or image, a
    box shadow, or a top or left border. Hidden, `display: none`,
-   `opacity: 0` and zero-sized elements are ignored. Portals — menus, dialogs,
-   toasts — are in `body` too, so an open menu is inside the crop;
-4. crops the screenshot to that box plus `padding` (converting CSS px to
-   device pixels), and to the whole screenshot when nothing is painted;
+   `opacity: 0` and zero-sized elements are ignored. Each element counts only
+   for the part its scrolling ancestors show, so an editor's huge inner layer
+   (Monaco's is 16,777,216 px wide) does not stretch the crop. Portals — menus,
+   dialogs, toasts — are in `body` too, so an open menu is inside the crop;
+4. crops the screenshot to that box plus `padding`, converting CSS px to
+   screenshot pixels against the body's own box (not the viewport, which a
+   narrowed body no longer matches), and to the whole screenshot when nothing
+   is painted;
 5. scales it down to `maxWidth` if wider, and encodes WebP at `quality`
    through a `<canvas>` — in the browser, so no native image library is
    installed;
@@ -191,6 +197,37 @@ type PreviewCaptureOptions = {
 storybookProject({
 	capture: { dir: 'public/previews', tag: 'docs', padding: 16, quality: 0.9 },
 });
+```
+
+### Per story: width, and overlays opened
+
+A component that stretches to its container — a field, a table, a toolbar —
+is captured as wide as the 1280px viewport, a thin strip on the page. Give
+its `preview` story a width under `parameters.previewCapture`
+(`StoryPreviewParameters`):
+
+```tsx
+export const Default: Story = {
+	tags: ['preview'],
+	parameters: { previewCapture: { width: 420 } },
+	args: { label: 'Email', placeholder: 'ada@example.com' },
+};
+```
+
+An overlay (dialog, popover, menu, toast) is captured **open** by opening it
+in the story's `play` function, which `@storybook/addon-vitest` runs before
+the capture. Portals render in `body`, so they are part of what is cropped:
+
+```tsx
+import { expect, userEvent, within } from 'storybook/test';
+
+export const Open: Story = {
+	tags: ['preview'],
+	play: async ({ canvasElement }) => {
+		await userEvent.click(within(canvasElement).getByRole('button'));
+		await expect(within(document.body).findByRole('dialog')).resolves.toBeVisible();
+	},
+};
 ```
 
 ## A realistic setup

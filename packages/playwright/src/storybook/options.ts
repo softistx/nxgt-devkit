@@ -14,6 +14,16 @@ export type PreviewCaptureOptions = {
 	settle?: number;
 };
 
+/**
+ * Per story, under `parameters.previewCapture`. A component that stretches to
+ * its container — a field, a table, a toolbar — is otherwise captured as wide
+ * as the 1280px viewport.
+ */
+export type StoryPreviewParameters = {
+	/** Lay the story out in a container this many CSS px wide. */
+	width?: number;
+};
+
 export const PREVIEW_CAPTURE_KEY = 'nxgtPreviewCapture';
 
 declare module 'vitest' {
