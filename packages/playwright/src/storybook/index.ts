@@ -5,7 +5,7 @@ import type { TestProjectInlineConfiguration } from 'vitest/config';
 import { PREVIEW_CAPTURE_KEY, type PreviewCaptureOptions } from './options';
 
 export { componentId, titleToComponentId } from './component-id';
-export type { PreviewCaptureOptions } from './options';
+export type { PreviewCaptureOptions, StoryPreviewParameters } from './options';
 
 export type StorybookProjectOptions = {
 	/** The Vitest project name. Default `storybook`, or `previews` with `capture`. */

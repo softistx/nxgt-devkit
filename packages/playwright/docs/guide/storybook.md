@@ -193,6 +193,37 @@ storybookProject({
 });
 ```
 
+### Per story: width, and overlays opened
+
+A component that stretches to its container — a field, a table, a toolbar —
+is captured as wide as the 1280px viewport, a thin strip on the page. Give
+its `preview` story a width under `parameters.previewCapture`
+(`StoryPreviewParameters`):
+
+```tsx
+export const Default: Story = {
+	tags: ['preview'],
+	parameters: { previewCapture: { width: 420 } },
+	args: { label: 'Email', placeholder: 'ada@example.com' },
+};
+```
+
+An overlay (dialog, popover, menu, toast) is captured **open** by opening it
+in the story's `play` function, which `@storybook/addon-vitest` runs before
+the capture. Portals render in `body`, so they are part of what is cropped:
+
+```tsx
+import { expect, userEvent, within } from 'storybook/test';
+
+export const Open: Story = {
+	tags: ['preview'],
+	play: async ({ canvasElement }) => {
+		await userEvent.click(within(canvasElement).getByRole('button'));
+		await expect(within(document.body).findByRole('dialog')).resolves.toBeVisible();
+	},
+};
+```
+
 ## A realistic setup
 
 Unit tests in Node, every story as a smoke test, and previews on demand:

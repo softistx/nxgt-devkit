@@ -1,14 +1,20 @@
 import { inject, type TestContext } from 'vitest';
 import { commands, page } from 'vitest/browser';
 import { componentId } from './component-id';
-import { PREVIEW_CAPTURE_KEY } from './options';
+import { PREVIEW_CAPTURE_KEY, type StoryPreviewParameters } from './options';
 import { paintedBox } from './painted-box';
 import { toWebp } from './to-webp';
 
 export { componentId, titleToComponentId } from './component-id';
-export type { PreviewCaptureOptions } from './options';
+export type { PreviewCaptureOptions, StoryPreviewParameters } from './options';
 
-type StoryContext = TestContext & { story?: { id: string; tags: string[] } };
+type StoryContext = TestContext & {
+	story?: {
+		id: string;
+		tags: string[];
+		parameters?: { previewCapture?: StoryPreviewParameters };
+	};
+};
 
 /**
  * An `afterEach` for `@storybook/addon-vitest`: screenshots the story, crops it
@@ -21,6 +27,9 @@ export async function capturePreview(context: TestContext): Promise<void> {
 	const { story } = context as StoryContext;
 	if (!options || !story?.tags.includes(options.tag ?? 'preview')) return;
 
+	const width = story.parameters?.previewCapture?.width;
+	if (width) document.body.style.width = `${width}px`;
+
 	await document.fonts.ready;
 	await new Promise((resolve) => setTimeout(resolve, options.settle ?? 600));
 
@@ -31,6 +40,7 @@ export async function capturePreview(context: TestContext): Promise<void> {
 		maxWidth: options.maxWidth ?? 960,
 		quality: options.quality ?? 0.82,
 	});
+	document.body.style.width = '';
 	// `commands.writeFile` resolves against the project root.
 	await commands.writeFile(
 		`${options.dir ?? 'docs/previews'}/${componentId(story.id)}.webp`,
