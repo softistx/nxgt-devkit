@@ -1,7 +1,6 @@
 {
 	"name": "@nxgt/playwright",
 	"version": "0.0.0",
-	"private": true,
 	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-safe fills, and Storybook stories as Vitest browser tests with preview capture",
 	"license": "MIT",
 	"type": "module",
