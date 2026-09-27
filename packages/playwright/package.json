@@ -1,0 +1,144 @@
+{
+	"name": "@nxgt/playwright",
+	"version": "0.0.0",
+	"private": true,
+	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-safe fills, and Storybook stories as Vitest browser tests with preview capture",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"CHANGELOG.md",
+		"package.json",
+		"LICENSE"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./config": {
+			"types": "./dist/config/index.d.ts",
+			"import": "./dist/config/index.js",
+			"default": "./dist/config/index.js"
+		},
+		"./pages": {
+			"types": "./dist/pages/index.d.ts",
+			"import": "./dist/pages/index.js",
+			"default": "./dist/pages/index.js"
+		},
+		"./auth": {
+			"types": "./dist/auth/index.d.ts",
+			"import": "./dist/auth/index.js",
+			"default": "./dist/auth/index.js"
+		},
+		"./helpers": {
+			"types": "./dist/helpers/index.d.ts",
+			"import": "./dist/helpers/index.js",
+			"default": "./dist/helpers/index.js"
+		},
+		"./msw": {
+			"types": "./dist/msw/index.d.ts",
+			"import": "./dist/msw/index.js",
+			"default": "./dist/msw/index.js"
+		},
+		"./storybook": {
+			"types": "./dist/storybook/index.d.ts",
+			"import": "./dist/storybook/index.js",
+			"default": "./dist/storybook/index.js"
+		},
+		"./storybook/capture": {
+			"types": "./dist/storybook/capture.d.ts",
+			"import": "./dist/storybook/capture.js",
+			"default": "./dist/storybook/capture.js"
+		},
+		"./storybook/setup": {
+			"types": "./dist/storybook/setup.d.ts",
+			"import": "./dist/storybook/setup.js",
+			"default": "./dist/storybook/setup.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"keywords": [
+		"playwright",
+		"e2e",
+		"page-object",
+		"msw",
+		"storybook",
+		"vitest",
+		"fixtures"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/softistx/nxgt-devkit.git",
+		"directory": "packages/playwright"
+	},
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org",
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun run ../../build.ts",
+		"test": "bun test src && playwright test -c test/playwright.config.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/config/index.ts",
+			"src/pages/index.ts",
+			"src/auth/index.ts",
+			"src/helpers/index.ts",
+			"src/msw/index.ts",
+			"src/storybook/index.ts",
+			"src/storybook/capture.ts",
+			"src/storybook/setup.ts"
+		],
+		"browserOnly": [
+			"./storybook/capture",
+			"./storybook/setup"
+		]
+	},
+	"devDependencies": {
+		"@msw/playwright": "^0.6.7",
+		"@playwright/test": "1.63.0",
+		"@storybook/addon-vitest": "10.6.0",
+		"@types/bun": "^1.4.0",
+		"@vitest/browser-playwright": "4.1.10",
+		"msw": "^2.15.0",
+		"vitest": "4.1.10"
+	},
+	"peerDependencies": {
+		"@msw/playwright": ">=0.6.7 <1",
+		"@playwright/test": "^1.55.0",
+		"@storybook/addon-vitest": ">=10.3.0 <11",
+		"@vitest/browser-playwright": "^4.0.0",
+		"msw": "^2.12.10",
+		"typescript": "^6.0.3",
+		"vitest": "^4.0.0"
+	},
+	"peerDependenciesMeta": {
+		"@msw/playwright": {
+			"optional": true
+		},
+		"@playwright/test": {
+			"optional": true
+		},
+		"@storybook/addon-vitest": {
+			"optional": true
+		},
+		"@vitest/browser-playwright": {
+			"optional": true
+		},
+		"msw": {
+			"optional": true
+		},
+		"vitest": {
+			"optional": true
+		}
+	}
+}

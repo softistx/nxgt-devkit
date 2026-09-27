@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+    # `feat/**` too: an effort built with large-feature-branch-workflow merges
+    # each slice into its integration branch `feat/<slug>` without waiting for
+    # a human, and those slices need CI as much as a pull request to develop.
+    branches: [develop, main, 'feat/**']
+  # On `develop` as well, so the Playwright browser cache is written under
+  # `refs/heads/develop`, the one scope every pull request can read. A cache
+  # written by a pull request is readable by that pull request only.
+  push:
+    branches: [develop]
+
+jobs:
+  ci:
+    name: CI
+    # GitHub-hosted: this repository is public, so the minutes are free.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # `changeset status --since=origin/develop` needs the base branch.
+          fetch-depth: 0
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Lint code
+        run: biome ci
+      # Build FIRST: every package's `exports` points at `./dist/*`, so on a
+      # clean checkout a sibling import resolves to nothing until it is built.
+      - name: Build packages
+        run: bun run build
+      - name: Type checking
+        run: bun run typecheck
+      # @nxgt/playwright's e2e specs drive a real Chromium. The browser is
+      # keyed on the installed playwright version, which the lockfile pins.
+      - name: Cache the Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium-headless-shell
+      - name: Run tests
+        run: bun run test
+      # The build exits 0 on packages that throw the instant they are imported.
+      # This packs them, installs them as a consumer does and imports every
+      # declared subpath but the browser-only ones.
+      - name: Verify the built artifacts load
+        run: bun run verify:artifacts
+      # A change to a package without a changeset never reaches a consumer.
+      # Not on the release branch, which consumes the changesets, and not on a
+      # push, where the diff against origin/develop is empty.
+      - name: Changeset present
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.head_ref != 'changeset-release/develop'
+        run: bun run changeset:status
