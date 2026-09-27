@@ -27,20 +27,31 @@ export async function capturePreview(context: TestContext): Promise<void> {
 	const { story } = context as StoryContext;
 	if (!options || !story?.tags.includes(options.tag ?? 'preview')) return;
 
+	const padding = options.padding ?? 24;
 	const width = story.parameters?.previewCapture?.width;
 	if (width) document.body.style.width = `${width}px`;
+	// A story renders at the body's top-left corner; without room there the
+	// padding is clamped away on two sides and kept on the other two.
+	document.body.style.padding = `${padding}px`;
 
-	await document.fonts.ready;
-	await new Promise((resolve) => setTimeout(resolve, options.settle ?? 600));
+	let webp: string;
+	try {
+		await document.fonts.ready;
+		await new Promise((resolve) => setTimeout(resolve, options.settle ?? 600));
 
-	// With `save: false` the screenshot comes back as the base64 string itself.
-	const png = await page.screenshot({ element: document.body, save: false });
-	const webp = await toWebp(png, paintedBox(), {
-		padding: options.padding ?? 24,
-		maxWidth: options.maxWidth ?? 960,
-		quality: options.quality ?? 0.82,
-	});
-	document.body.style.width = '';
+		// With `save: false` the screenshot comes back as the base64 string
+		// itself, and it covers the body's box — the frame the crop maps onto.
+		const png = await page.screenshot({ element: document.body, save: false });
+		const frame = document.body.getBoundingClientRect();
+		webp = await toWebp(png, paintedBox(), frame, {
+			padding,
+			maxWidth: options.maxWidth ?? 960,
+			quality: options.quality ?? 0.82,
+		});
+	} finally {
+		document.body.style.width = '';
+		document.body.style.padding = '';
+	}
 	// `commands.writeFile` resolves against the project root.
 	await commands.writeFile(
 		`${options.dir ?? 'docs/previews'}/${componentId(story.id)}.webp`,
