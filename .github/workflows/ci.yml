@@ -40,7 +40,10 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      # The package's own Playwright: a bare `bunx playwright` at the root finds
+      # no local bin and downloads the latest, whose browser build differs.
       - name: Install Chromium
+        working-directory: packages/playwright
         run: bunx playwright install --with-deps chromium-headless-shell
       - name: Run tests
         run: bun run test
