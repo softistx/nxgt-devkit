@@ -1,7 +1,7 @@
 {
 	"name": "@nxgt/playwright",
 	"version": "0.1.0",
-	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-safe fills, and Storybook stories as Vitest browser tests with preview capture",
+	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-safe fills, axe accessibility checks, phone projects, and Storybook stories as Vitest browser tests with preview capture",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -40,6 +40,11 @@
 			"import": "./dist/helpers/index.js",
 			"default": "./dist/helpers/index.js"
 		},
+		"./a11y": {
+			"types": "./dist/a11y/index.d.ts",
+			"import": "./dist/a11y/index.js",
+			"default": "./dist/a11y/index.js"
+		},
 		"./msw": {
 			"types": "./dist/msw/index.d.ts",
 			"import": "./dist/msw/index.js",
@@ -66,6 +71,8 @@
 		"playwright",
 		"e2e",
 		"page-object",
+		"accessibility",
+		"axe",
 		"msw",
 		"storybook",
 		"vitest",
@@ -92,6 +99,7 @@
 			"src/pages/index.ts",
 			"src/auth/index.ts",
 			"src/helpers/index.ts",
+			"src/a11y/index.ts",
 			"src/msw/index.ts",
 			"src/storybook/index.ts",
 			"src/storybook/capture.ts",
@@ -103,6 +111,7 @@
 		]
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "4.13.0",
 		"@msw/playwright": "^0.6.7",
 		"@playwright/test": "1.63.0",
 		"@storybook/addon-vitest": "10.6.0",
@@ -112,6 +121,7 @@
 		"vitest": "4.1.10"
 	},
 	"peerDependencies": {
+		"@axe-core/playwright": ">=4.10.0 <5",
 		"@msw/playwright": ">=0.6.7 <1",
 		"@playwright/test": "^1.55.0",
 		"@storybook/addon-vitest": ">=10.3.0 <11",
@@ -121,6 +131,9 @@
 		"vitest": "^4.0.0"
 	},
 	"peerDependenciesMeta": {
+		"@axe-core/playwright": {
+			"optional": true
+		},
 		"@msw/playwright": {
 			"optional": true
 		},
