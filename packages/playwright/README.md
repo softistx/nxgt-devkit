@@ -2,7 +2,8 @@
 
 The Playwright boilerplate every app ends up writing, written once: a shared
 `playwright.config.ts`, `BasePage` and `FormPage` page objects, sign-in and
-storage-state fixtures, msw network fixtures, hydration-safe fills, and
+storage-state fixtures, msw network fixtures, hydration-safe fills, axe
+accessibility checks, phone projects and a no-sideways-scroll check, and
 Storybook stories run as Vitest browser tests that can also capture WebP
 previews of your components.
 
@@ -18,10 +19,12 @@ subpaths you import:
 | Subpath | Peers to add |
 | --- | --- |
 | `.`, `/config`, `/pages`, `/auth`, `/helpers` | `@playwright/test` (`^1.55.0`) |
+| `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
 | `/msw` | `@playwright/test`, `msw` (`^2.12.10`), `@msw/playwright` (`>=0.6.7 <1`) |
 | `/storybook`, `/storybook/capture`, `/storybook/setup` | `vitest` (`^4.0.0`), `@vitest/browser-playwright` (`^4.0.0`), `@storybook/addon-vitest` (`>=10.3.0 <11`), and `playwright` itself (required by `@vitest/browser-playwright`) |
 
 ```bash
+bun add -d @axe-core/playwright                                       # for /a11y
 bun add -d msw @msw/playwright                                        # for /msw
 bun add -d vitest @vitest/browser-playwright @storybook/addon-vitest playwright  # for /storybook
 ```
@@ -35,17 +38,18 @@ imports, so the consumer's `tsconfig.json` needs
 | Subpath | Exports | Runs in |
 | --- | --- | --- |
 | `@nxgt/playwright` | everything from `/config`, `/pages`, `/auth`, `/helpers` | Node |
-| `@nxgt/playwright/config` | `defineAppConfig`, `AppConfigOptions`, `Browser` | Node |
+| `@nxgt/playwright/config` | `defineAppConfig`, `AppConfigOptions`, `Browser`, `DeviceName`, `MobileProject` | Node |
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
-| `@nxgt/playwright/helpers` | `fillSettled`, `fillUntilEnabled`, `screenshotName` | Node |
+| `@nxgt/playwright/helpers` | `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
+| `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
 | `@nxgt/playwright/storybook/capture` | `capturePreview` | **browser only** |
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
-The root barrel does not re-export `/msw` or `/storybook`, so an app without
-those peers can still import it.
+The root barrel does not re-export `/a11y`, `/msw` or `/storybook`, so an app
+without those peers can still import it.
 
 ## Usage
 
@@ -62,6 +66,19 @@ Specs in `./playwright/e2e`, Chromium, Firefox, Edge and Chrome, `data-pw` as
 the test id attribute, `bun dev -m test --port 5174` started for you (reused
 locally, fresh on CI), and an auth `setup` project every browser depends on.
 All of it is an option: [docs/guide/config.md](docs/guide/config.md).
+
+Add phones with `mobile`: `true` is a Pixel 7 on Chromium, named
+`mobile-chromium`, after the desktop browsers and depending on `setup` like
+them.
+
+```ts
+export default defineAppConfig({
+	port: 5174,
+	setup: true,
+	browsers: ['chromium'],
+	mobile: ['Pixel 7', 'iPhone 14'], // mobile-chromium, mobile-webkit (needs WebKit installed)
+});
+```
 
 ### Pages
 
@@ -171,6 +188,42 @@ test('creates a project', async ({ page }) => {
 });
 ```
 
+On a phone project, check the layout does not scroll sideways; the failure
+names the widest elements past the edge:
+
+```ts
+import { expectNoHorizontalScroll } from '@nxgt/playwright/helpers';
+
+test('fits a phone', async ({ page }) => {
+	await page.goto('/projects');
+	await expectNoHorizontalScroll(page);
+});
+```
+
+### Accessibility
+
+`expectAccessible` runs axe with the WCAG 2.2 A/AA tags and fails with each
+violated rule, its impact, help link and first nodes; the full report is
+attached to the test.
+
+```ts
+import { expect, test } from '@playwright/test';
+import { expectAccessible } from '@nxgt/playwright/a11y';
+
+test('projects page is accessible', async ({ page }) => {
+	await page.goto('/projects');
+	await expect(page.getByTestId('projects')).toBeVisible();
+	await expectAccessible(page, {
+		exclude: '#chat-widget',
+		disableRules: [{ rule: 'color-contrast', reason: 'brand palette, tracked in #42' }],
+	});
+});
+```
+
+A disabled rule without a `reason` is a type error. `accessibilityScan`
+returns the results without asserting; `withA11y(test)` adds an `a11y`
+fixture. See [docs/guide/a11y.md](docs/guide/a11y.md).
+
 ### msw
 
 ```ts
@@ -271,6 +324,15 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
   add it to `.gitignore`.
 - **`test.use({ handlers })` replaces the default handlers**; to add one, use
   `network.use(...)` or spread the defaults after it.
+- **`mobile` adds projects, it does not filter `browsers`**: `browsers: ['firefox'], mobile: true`
+  runs Firefox *and* a Chromium phone. Firefox has no phone emulation (no
+  `isMobile`); see [docs/guide/config.md](docs/guide/config.md#mobile).
+- **A page without `<meta name="viewport" content="width=device-width">` never
+  scrolls sideways on a phone**: it is laid out 980px wide and zoomed out, so
+  `expectNoHorizontalScroll` passes. Add the tag.
+- **`expectAccessible` scans the page as it is now**: wait for the content
+  (and for transitions to end) first, or `color-contrast` reports colours
+  mid-fade.
 - **Never import `/storybook/capture` or `/storybook/setup` from Node** — they
   touch `document`. `storybookProject()` already registers the setup file.
 - **Only one story per component should carry `preview`**: they share one file
@@ -278,6 +340,6 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 
 ## Documentation
 
-- [Guide](docs/README.md) — every option, default and the realistic setup, per area.
+- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [accessibility](docs/guide/a11y.md).
 - [Troubleshooting](docs/troubleshooting.md) — the error you are looking at, and its fix.
 - [Roadmap](docs/roadmap.md) — what is coming, and what is not planned.

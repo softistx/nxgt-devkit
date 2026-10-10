@@ -20,12 +20,15 @@ That is a complete config: specs in `./playwright/e2e`, four desktop browsers,
 import type { PlaywrightTestConfig } from '@playwright/test';
 
 type Browser = 'chromium' | 'firefox' | 'webkit' | 'msedge' | 'chrome';
+type DeviceName = 'Pixel 7' | 'iPhone 14' | … ; // every name in Playwright's `devices`
+type MobileProject = DeviceName | { device: DeviceName; name: string };
 
 type AppConfigOptions = {
 	port: number;
 	baseURL?: string;
 	browsers?: Browser[];
 	setup?: boolean | { testDir?: string; testMatch?: RegExp };
+	mobile?: boolean | MobileProject[];
 	webServer?: PlaywrightTestConfig['webServer'] | false;
 	env?: Record<string, string>;
 	testDir?: string;
@@ -46,6 +49,7 @@ function defineAppConfig(options: AppConfigOptions): PlaywrightTestConfig;
 | `baseURL` | `string` | `http://localhost:<port>` | `use.baseURL`, and the URL the web server is awaited on. `PW_BASE_URL` wins. |
 | `browsers` | `Browser[]` | `['chromium', 'firefox', 'msedge', 'chrome']` | One project per browser, named after it. |
 | `setup` | `boolean \| { testDir?, testMatch? }` | `false` | Adds a `setup` project every browser depends on. `true` = `./playwright/config`, `/auth\.setup\.ts$/`. |
+| `mobile` | `boolean \| MobileProject[]` | `false` | Phone projects after the desktop ones. `true` = `['Pixel 7']`, named `mobile-chromium`. |
 | `webServer` | `PlaywrightTestConfig['webServer'] \| false` | `bun dev -m test --port <port>` | The server Playwright starts. `false` for a stack already running. |
 | `env` | `Record<string, string>` | none | Extra environment for the **default** web server only. |
 | `testDir` | `string` | `./playwright/e2e` | Where the browser projects look for specs. |
@@ -84,6 +88,83 @@ export default defineAppConfig({ port: 5174, browsers: ['chromium'] });
 `msedge` and `chrome` are branded channels: `bunx playwright install` does not
 fetch them. Install them with `bunx playwright install chrome msedge`, or leave
 them out.
+
+### `mobile`
+
+```ts
+export default defineAppConfig({ port: 5174, browsers: ['chromium'], mobile: true });
+// projects: chromium, mobile-chromium
+```
+
+Each entry is a name from Playwright's
+[`devices`](https://playwright.dev/docs/emulation#devices) — its viewport,
+user agent, `isMobile`, `hasTouch` and scale factor — run in the browser that
+device names (`defaultBrowserType`). The project is called
+`mobile-<browser>`:
+
+```ts
+export default defineAppConfig({
+	port: 5174,
+	browsers: ['chromium', 'firefox'],
+	mobile: ['Pixel 7', 'iPhone 14'],
+});
+// projects: chromium, firefox, mobile-chromium, mobile-webkit
+```
+
+How it combines with `browsers`, so the project list is never a surprise:
+
+- Mobile projects are **added after** the desktop ones; `browsers` does not
+  filter them. `browsers: []` with `mobile: true` runs the phone only.
+- With `setup`, every mobile project gets `dependencies: ['setup']`, like the
+  desktop ones, so a spec on a phone uses the same
+  `test.use({ storageState: authFile('user') })` as on the desktop.
+- Two devices on the same browser would both be `mobile-chromium`: name one,
+  or `defineAppConfig` throws.
+
+  ```ts
+  mobile: ['Pixel 7', { device: 'Galaxy S9+', name: 'mobile-small' }];
+  ```
+
+- A name that is not in `devices` is a type error, and throws for a
+  JavaScript config; so does a desktop entry (`'Desktop Firefox'`).
+- `overrides.projects` amends a mobile project by name, as it does the others:
+  `{ name: 'mobile-chromium', use: { locale: 'fr-FR' } }`.
+
+What each browser can emulate:
+
+| Browser | Phone emulation | How to get it |
+| --- | --- | --- |
+| Chromium | full: viewport, `isMobile` (meta viewport, mobile layout), touch | `mobile: true`, or any Android device (`'Pixel 7'`, `'Galaxy S24'`) |
+| WebKit | full | an iPhone or iPad device (`'iPhone 14'`); needs `bunx playwright install webkit`, which is why it is never added by default |
+| Firefox | **no `isMobile`**: the meta viewport is ignored and the page lays out like a desktop page in a narrow window; `hasTouch` and the viewport work | not through `mobile` (no Firefox device exists); add the project yourself, below |
+
+A phone-sized Firefox, for layouts that only need the width and touch events:
+
+```ts
+import { devices } from '@playwright/test';
+
+export default defineAppConfig({
+	port: 5174,
+	setup: true,
+	mobile: true,
+	overrides: {
+		projects: [
+			{
+				name: 'mobile-firefox',
+				use: {
+					...devices['Desktop Firefox'],
+					viewport: { width: 412, height: 839 },
+					hasTouch: true,
+				},
+				dependencies: ['setup'], // overrides are not given it for you
+			},
+		],
+	},
+});
+```
+
+On a phone project, `expectNoHorizontalScroll` (from `/helpers`) checks the
+layout fits — see [helpers.md](helpers.md#expectnohorizontalscroll).
 
 ### `setup`
 

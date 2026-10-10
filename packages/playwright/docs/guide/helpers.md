@@ -1,6 +1,7 @@
 # Helpers
 
-Fills that survive hydration (`fillSettled`, `fillUntilEnabled`) and the
+Fills that survive hydration (`fillSettled`, `fillUntilEnabled`), a check
+that a layout does not scroll sideways (`expectNoHorizontalScroll`), and the
 screenshot file name `BasePage` uses (`screenshotName`), from
 `@nxgt/playwright/helpers` or the root.
 
@@ -95,6 +96,50 @@ test('signs up', async ({ page }) => {
 
 In a page object, pass `FormPage`'s `submitButton` — see
 [pages-and-fixtures.md](pages-and-fixtures.md#formpage).
+
+## `expectNoHorizontalScroll`
+
+Fails when the page is wider than its viewport — the phone layout that makes
+the reader scroll sideways. Meant for the phone projects `mobile` adds
+([config.md](config.md#mobile)), and useful at any viewport.
+
+```ts
+type NoHorizontalScrollOptions = { max?: number }; // default 5
+
+function expectNoHorizontalScroll(page: Page, options?: NoHorizontalScrollOptions): Promise<void>;
+function formatOverflow(overflow: HorizontalOverflow): string;
+```
+
+```ts
+import { test } from '@playwright/test';
+import { expectNoHorizontalScroll } from '@nxgt/playwright/helpers';
+
+test('projects fit a phone', async ({ page }) => {
+	await page.goto('/projects');
+	await expectNoHorizontalScroll(page);
+});
+```
+
+It compares `document.scrollingElement`'s `scrollWidth` with its
+`clientWidth`, tolerating one pixel of rounding. On failure it lists the
+widest elements whose right edge is past the viewport (at most `max`),
+leaving out those inside a box that scrolls or clips sideways (a table in an
+`overflow-x: auto` wrapper is fine):
+
+```
+The page scrolls horizontally: scrollWidth 640px > clientWidth 412px.
+Widest elements past the right edge:
+  - table#projects.grid  right 640px, width 624px
+  - div.toolbar  right 520px, width 504px
+```
+
+It checks once, as the page is now: wait for the content (and web fonts,
+which change widths) before calling it.
+
+**A page without the viewport meta tag always passes on a phone.** Without
+`<meta name="viewport" content="width=device-width, initial-scale=1">`, a
+phone lays the page out 980px wide and zooms it out to fit: nothing scrolls,
+however wide the content. Add the tag to the app's document.
 
 ## `screenshotName`
 
