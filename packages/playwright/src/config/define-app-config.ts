@@ -7,6 +7,21 @@ import {
 
 export type Browser = 'chromium' | 'firefox' | 'webkit' | 'msedge' | 'chrome';
 
+/**
+ * A name from Playwright's `devices` (`'Pixel 7'`, `'iPhone 14'`, …), without
+ * the index signature its type carries, so a typo is a type error.
+ */
+export type DeviceName = keyof {
+	[K in keyof typeof devices as string extends K
+		? never
+		: number extends K
+			? never
+			: K]: unknown;
+};
+
+/** One phone project: a device name, or a device under a name of your own. */
+export type MobileProject = DeviceName | { device: DeviceName; name: string };
+
 export type AppConfigOptions = {
 	/** The dev server's port. `PW_PORT` in the environment wins. */
 	port: number;
@@ -19,6 +34,14 @@ export type AppConfigOptions = {
 	 * `playwright/config/auth.setup.ts`. Default `false`.
 	 */
 	setup?: boolean | { testDir?: string; testMatch?: RegExp };
+	/**
+	 * Phone projects, added after the desktop ones whatever `browsers` holds.
+	 * `true` is `['Pixel 7']`, on Chromium. Each device runs in its own
+	 * browser (`iPhone 14` needs WebKit installed) and is named
+	 * `mobile-<browser>`; two devices on one browser need `{ device, name }`.
+	 * Default `false`.
+	 */
+	mobile?: boolean | MobileProject[];
 	/**
 	 * The server Playwright starts. Default `bun dev -m test --port <port>`,
 	 * reused locally, fresh on CI. `false` for a stack that is already up.
@@ -41,6 +64,43 @@ const BROWSERS: Record<Browser, Project['use']> = {
 	msedge: { ...devices['Desktop Edge'], channel: 'msedge' },
 	chrome: { ...devices['Desktop Chrome'], channel: 'chrome' },
 };
+
+/**
+ * The phone projects `mobile` asks for, each named `mobile-<browser>` unless
+ * it was given a name. Throws on a name that is not one of Playwright's
+ * devices, or a device that is not a phone or tablet.
+ */
+export function mobileProjects(
+	mobile: AppConfigOptions['mobile'],
+): { name: string; device: DeviceName }[] {
+	if (!mobile) return [];
+	const list: MobileProject[] = mobile === true ? ['Pixel 7'] : mobile;
+	return list.map((entry) => {
+		const device = typeof entry === 'string' ? entry : entry.device;
+		const descriptor = (devices as Record<string, (typeof devices)[string]>)[
+			device
+		];
+		if (!descriptor) {
+			throw new Error(
+				`defineAppConfig: "${device}" is not one of Playwright's devices. ` +
+					"See `devices` in @playwright/test for the names, such as 'Pixel 7' or 'iPhone 14'.",
+			);
+		}
+		if (!descriptor.isMobile) {
+			throw new Error(
+				`defineAppConfig: "${device}" is not a mobile device. Add a desktop ` +
+					'browser through `browsers`, or a custom project through `overrides`.',
+			);
+		}
+		return {
+			name:
+				typeof entry === 'string'
+					? `mobile-${descriptor.defaultBrowserType}`
+					: entry.name,
+			device,
+		};
+	});
+}
 
 /**
  * The configuration every app's `playwright.config.ts` used to spell out:
@@ -76,6 +136,21 @@ export function defineAppConfig(options: AppConfigOptions) {
 		projects.push({
 			name: browser,
 			use: BROWSERS[browser],
+			...(setup ? { dependencies: ['setup'] } : {}),
+		});
+	}
+	for (const { name, device } of mobileProjects(options.mobile)) {
+		// Only a mobile project's name is checked: a repeated desktop browser
+		// was accepted before `mobile` existed, and still is.
+		if (projects.some((project) => project.name === name)) {
+			throw new Error(
+				`defineAppConfig: two projects are named "${name}". ` +
+					"Give a mobile device a name of its own: { device: 'Pixel 5', name: 'mobile-pixel-5' }.",
+			);
+		}
+		projects.push({
+			name,
+			use: { ...devices[device] },
 			...(setup ? { dependencies: ['setup'] } : {}),
 		});
 	}
