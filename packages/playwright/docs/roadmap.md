@@ -21,7 +21,6 @@ Nothing in progress.
 - **Idempotent `setupServer` start** — start msw in an SSR app's server
   process once, however many times the entry module is evaluated, so its
   server-side requests are mocked too.
-
 - **More responsive checks** — tap targets large enough on a phone, and text
   that does not overflow its box, beside `expectNoHorizontalScroll`.
 

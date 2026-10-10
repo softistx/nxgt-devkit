@@ -8,6 +8,7 @@ throws itself are quoted exactly.
 
 - [Install](#install)
   - [`Cannot find package '@msw/playwright'`](#cannot-find-package-mswplaywright)
+  - [`Cannot find package 'msw'`](#cannot-find-package-msw)
   - [`Running mixed versions is not supported and may lead into bugs`](#running-mixed-versions-is-not-supported-and-may-lead-into-bugs)
   - [`@nxgt/playwright/a11y needs @axe-core/playwright, an optional peer that is not installed`](#nxgtplaywrighta11y-needs-axe-coreplaywright-an-optional-peer-that-is-not-installed)
 - [Browsers](#browsers)
@@ -60,6 +61,20 @@ you import needs a peer you have not installed.
 
 ```sh
 bun add -d @playwright/test msw @msw/playwright
+```
+
+### `Cannot find package 'msw'`
+
+The message continues `imported from …/node_modules/@msw/playwright/…`.
+
+**When:** importing `@nxgt/playwright/msw`, with `msw` 2 installed.
+**Why:** `@msw/playwright` 0.7.x requires msw 3. Installed beside msw 2, it
+cannot load msw at all. `@nxgt/playwright` supports `@msw/playwright`
+`>=0.6.7 <0.7`, the versions that work with msw 2.
+**Fix:** keep `@msw/playwright` within that range.
+
+```sh
+bun add -d @msw/playwright@~0.6.7
 ```
 
 ### `Running mixed versions is not supported and may lead into bugs`
