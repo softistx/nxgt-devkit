@@ -21,6 +21,8 @@ Nothing in progress.
 - **Idempotent `setupServer` start** — start msw in an SSR app's server
   process once, however many times the entry module is evaluated, so its
   server-side requests are mocked too.
+- **More responsive checks** — tap targets large enough on a phone, and text
+  that does not overflow its box, beside `expectNoHorizontalScroll`.
 
 ## Later
 
@@ -43,6 +45,13 @@ Nothing in progress.
 
 ## Shipped
 
+- **Accessibility checks** — `expectAccessible` runs axe with the WCAG 2.2
+  A/AA rules and fails with each rule, its impact, help link and first nodes,
+  the full report attached; `accessibilityScan` and the `a11y` fixture for
+  custom checks. 0.2.0.
+- **Phone projects** — `defineAppConfig({ mobile: true })` adds a Pixel 7 on
+  Chromium (or any Playwright device), depending on the setup project like the
+  desktop browsers; `expectNoHorizontalScroll` checks a layout fits. 0.2.0.
 - **Storybook stories as Vitest browser tests** — `storybookProject` renders
   every story in Chromium as a smoke test, and with `capture` writes WebP
   previews of the stories tagged `preview`. 0.1.0.

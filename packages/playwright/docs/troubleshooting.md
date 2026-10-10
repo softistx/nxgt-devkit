@@ -1,14 +1,16 @@
 # Troubleshooting
 
 Each heading is the text you will see in the terminal or the test report,
-without the stack or your local paths. `@nxgt/playwright` throws nothing of
-its own: every entry is an error from one of its peers (Playwright, Vitest,
-Vite, Storybook) that this package's defaults, or its setup, make you likely
-to hit.
+without the stack or your local paths. Most entries are errors from one of
+the package's peers (Playwright, Vitest, Vite, Storybook, axe) that its
+defaults, or its setup, make you likely to hit; the few `@nxgt/playwright`
+throws itself are quoted exactly.
 
 - [Install](#install)
   - [`Cannot find package '@msw/playwright'`](#cannot-find-package-mswplaywright)
+  - [`Cannot find package 'msw'`](#cannot-find-package-msw)
   - [`Running mixed versions is not supported and may lead into bugs`](#running-mixed-versions-is-not-supported-and-may-lead-into-bugs)
+  - [`@nxgt/playwright/a11y needs @axe-core/playwright, an optional peer that is not installed`](#nxgtplaywrighta11y-needs-axe-coreplaywright-an-optional-peer-that-is-not-installed)
 - [Browsers](#browsers)
   - [`Executable doesn't exist at …/chromium_headless_shell-<revision>/…`](#executable-doesnt-exist-at-chromium_headless_shell-revision)
   - [`BEWARE: your OS is not officially supported by Playwright`](#beware-your-os-is-not-officially-supported-by-playwright)
@@ -21,6 +23,13 @@ to hit.
   - [`… is already used, make sure that nothing is running on the port/url`](#-is-already-used-make-sure-that-nothing-is-running-on-the-porturl)
   - [`Found a setup file with "setProjectAnnotations"`](#found-a-setup-file-with-setprojectannotations)
   - [`waiting for getByTestId('…')` until the test times out](#waiting-for-getbytestid-until-the-test-times-out)
+  - [`defineAppConfig: two projects are named "mobile-chromium"`](#defineappconfig-two-projects-are-named-mobile-chromium)
+  - [`defineAppConfig: "…" is not one of Playwright's devices`](#defineappconfig--is-not-one-of-playwrights-devices)
+  - [A `mobile-firefox` project does not look like a phone](#a-mobile-firefox-project-does-not-look-like-a-phone)
+- [Accessibility](#accessibility)
+  - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
+  - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
+  - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
 - [Auth and forms](#auth-and-forms)
   - [`Error reading storage state from playwright/.auth/<account>.json`](#error-reading-storage-state-from-playwrightauthaccountjson)
   - [`page.waitForURL: Test timeout of 30000ms exceeded.`](#pagewaitforurl-test-timeout-of-30000ms-exceeded)
@@ -46,11 +55,26 @@ you import needs a peer you have not installed.
 | Subpath | Install |
 | --- | --- |
 | `.`, `./config`, `./pages`, `./auth`, `./helpers` | `@playwright/test` |
+| `./a11y` | `@playwright/test`, `@axe-core/playwright` |
 | `./msw` | `@playwright/test`, `msw`, `@msw/playwright` |
 | `./storybook`, `./storybook/capture`, `./storybook/setup` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 
 ```sh
 bun add -d @playwright/test msw @msw/playwright
+```
+
+### `Cannot find package 'msw'`
+
+The message continues `imported from …/node_modules/@msw/playwright/…`.
+
+**When:** importing `@nxgt/playwright/msw`, with `msw` 2 installed.
+**Why:** `@msw/playwright` 0.7.x requires msw 3. Installed beside msw 2, it
+cannot load msw at all. `@nxgt/playwright` supports `@msw/playwright`
+`>=0.6.7 <0.7`, the versions that work with msw 2.
+**Fix:** keep `@msw/playwright` within that range.
+
+```sh
+bun add -d @msw/playwright@~0.6.7
 ```
 
 ### `Running mixed versions is not supported and may lead into bugs`
@@ -65,6 +89,21 @@ runner disagree about their protocol.
 
 ```sh
 bun add -d --exact vitest@4.1.10 @vitest/browser-playwright@4.1.10
+```
+
+### `@nxgt/playwright/a11y needs @axe-core/playwright, an optional peer that is not installed`
+
+The message ends `Install it: bun add -d @axe-core/playwright`.
+
+**When:** the first `expectAccessible`, `accessibilityScan` or `a11y.expect()`
+of a run.
+**Why:** `@nxgt/playwright/a11y` loads axe only when a scan runs, and
+`@axe-core/playwright` is an optional peer: installing `@nxgt/playwright`
+does not bring it.
+**Fix:**
+
+```sh
+bun add -d @axe-core/playwright
 ```
 
 ## Browsers
@@ -261,6 +300,108 @@ submit button the same way.
 
 ```ts
 export default defineAppConfig({ port: 5174, testIdAttribute: 'data-testid' });
+```
+
+### `defineAppConfig: two projects are named "mobile-chromium"`
+
+The message continues `Give a mobile device a name of its own`.
+
+**When:** loading `playwright.config.ts`.
+**Why:** a mobile project is named after its browser, so two Android devices
+(both Chromium) or two iPhones (both WebKit) claim the same name, and
+Playwright needs each project name once.
+**Fix:** name all but one.
+
+```ts
+export default defineAppConfig({
+	port: 5174,
+	mobile: ['Pixel 7', { device: 'Galaxy S9+', name: 'mobile-small' }],
+});
+```
+
+### `defineAppConfig: "…" is not one of Playwright's devices`
+
+Or `defineAppConfig: "…" is not a mobile device`.
+
+**When:** loading `playwright.config.ts` written in JavaScript, or with a name
+that came from a variable (TypeScript already rejects a literal typo).
+**Why:** `mobile` takes names from Playwright's `devices`, spelt as there
+(`'iPhone 14'`, not `'iphone-14'`), and only phones and tablets.
+**Fix:** use a name from the list, and `browsers` for a desktop browser.
+
+```sh
+bun -e "import { devices } from '@playwright/test'; console.log(Object.keys(devices).filter((d) => devices[d].isMobile))"
+```
+
+### A `mobile-firefox` project does not look like a phone
+
+No error: the page renders as a narrow desktop page, ignores
+`<meta name="viewport">`, and media queries on `pointer: coarse` or the mobile
+user agent do not match.
+
+**When:** a Firefox project built with a phone viewport (`mobile` never adds
+one: no Playwright device runs on Firefox).
+**Why:** Playwright does not support `isMobile` in Firefox. The viewport size
+and `hasTouch` are honoured; mobile layout emulation is not.
+**Fix:** test the phone layout on `mobile-chromium` (or `mobile-webkit` with an
+iPhone), and keep a Firefox phone-sized project only for width and touch
+checks. See [guide/config.md](guide/config.md#mobile).
+
+## Accessibility
+
+### `disableRules: "…" is disabled without a reason`
+
+Or `disableRules: {…} names no rule.`, where `{…}` is the entry as JSON.
+
+**When:** `expectAccessible` or `accessibilityScan`, before axe runs.
+**Why:** each disabled rule must say why it is off, so the exception can be
+reviewed and removed one day. TypeScript rejects a bare id; this catches a
+JavaScript caller and a blank reason.
+**Fix:**
+
+```ts
+await expectAccessible(page, {
+	disableRules: [{ rule: 'color-contrast', reason: 'brand palette under review, #42' }],
+});
+```
+
+### `color-contrast` fails, then passes on a retry
+
+The violation names an element that is fading in, sliding, or changing
+colour on hover or focus.
+
+**When:** a scan run right after a navigation, a click that opens something,
+or while a skeleton is replaced by content.
+**Why:** axe computes contrast from the colours at the moment it runs. Half way
+through a transition, text and background are a blend that is never seen at
+rest.
+**Fix:** wait for the final state before scanning; turn motion off if the app
+honours `prefers-reduced-motion`. Disable the rule only for a real, accepted
+exception — with a reason.
+
+```ts
+test.use({ reducedMotion: 'reduce' });
+
+test('dialog is accessible', async ({ page }) => {
+	await page.goto('/projects');
+	await page.getByTestId('new-project').click();
+	await expect(page.getByRole('dialog')).toBeVisible();
+	await expect(page.getByRole('dialog')).toHaveCSS('opacity', '1');
+	await expectAccessible(page, { include: '[role=dialog]' });
+});
+```
+
+### `expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide
+
+**When:** on a `mobile-chromium` or `mobile-webkit` project.
+**Why:** without `<meta name="viewport" content="width=device-width">`, a
+phone lays the page out 980px wide and zooms out to fit it on screen. Nothing
+scrolls sideways, so there is nothing to report — the reader gets a tiny page
+instead.
+**Fix:** add the tag to the app's document head.
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 ```
 
 ## Auth and forms

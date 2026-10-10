@@ -10,7 +10,7 @@ the public npm registry.
 
 | package | what it is |
 | --- | --- |
-| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `createMswTest` for msw through `@msw/playwright`, and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
+| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `expectAccessible` (axe) and `expectNoHorizontalScroll`, phone projects through `defineAppConfig`'s `mobile`, `createMswTest` for msw through `@msw/playwright`, and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
 
 `ROADMAP.md` lists what is planned next — `@nxgt/jenkins` among it. Nothing
 there is started until it has an entry in the work queue.
@@ -51,6 +51,7 @@ Every peer is **optional** and each subpath needs only its own:
 | subpath | needs |
 | --- | --- |
 | `.`, `./config`, `./pages`, `./auth`, `./helpers` | `@playwright/test` |
+| `./a11y` | + `@axe-core/playwright`, loaded on the first scan so a missing peer is named |
 | `./msw` | + `msw`, `@msw/playwright` |
 | `./storybook` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 | `./storybook/capture`, `./storybook/setup` | the same, **in the browser** |

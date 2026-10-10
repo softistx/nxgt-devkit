@@ -4,6 +4,8 @@ import { defineAppConfig } from '../src/config';
 export default defineAppConfig({
 	port: 4599,
 	browsers: ['chromium'],
+	// Every spec runs on a phone too: `mobile-chromium`, a Pixel 7.
+	mobile: true,
 	testDir: './e2e',
 	webServer: {
 		command: 'bun server.ts',
