@@ -1,5 +1,37 @@
 # @nxgt/playwright
 
+## 0.2.0
+
+### Minor Changes
+
+- [#4](https://github.com/softistx/nxgt-devkit/pull/4) [`faee0ee`](https://github.com/softistx/nxgt-devkit/commit/faee0ee8ad0f27fa7d188fc414b3c2259976305e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Accessibility checks and phone projects.
+  
+  - **`@nxgt/playwright/a11y`** (new subpath; install the new optional peer
+    `@axe-core/playwright`): `expectAccessible(page, options?)` runs axe with the
+    WCAG 2.2 A/AA tags and fails with each violated rule, its impact, help link
+    and first nodes, attaching the full report to the test as
+    `accessibility-scan.json`. Options: `include`, `exclude`, `tags`, and
+    `disableRules`, where each rule is given with a reason
+    (`{ rule: 'color-contrast', reason: '…' }`, enforced by the types).
+    `accessibilityScan` returns the results without asserting, `withA11y(test)`
+    adds an `a11y` fixture, and `formatViolations` builds the message.
+  - **`defineAppConfig({ mobile })`**: `true` adds a Pixel 7 project on Chromium
+    named `mobile-chromium`; an array takes any of Playwright's devices
+    (`['Pixel 7', 'iPhone 14']` → `mobile-chromium`, `mobile-webkit`). Mobile
+    projects come after the desktop `browsers` and depend on the `setup` project
+    like them.
+  - **`expectNoHorizontalScroll(page)`** in `/helpers`: fails when the page
+    scrolls sideways, naming the widest elements past the right edge.
+  
+  Nothing changes for an existing config: `mobile` is off by default, and the
+  root `@nxgt/playwright` does not re-export `/a11y`.
+
+### Patch Changes
+
+- [#4](https://github.com/softistx/nxgt-devkit/pull/4) [`ae59177`](https://github.com/softistx/nxgt-devkit/commit/ae591776c357a0f1dd3a2d38c32ce7138416e364) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The `@msw/playwright` peer range is now `>=0.6.7 <0.7`. `@msw/playwright`
+  0.7.0 requires msw 3, so an install that resolved it beside msw 2 failed to
+  load `@nxgt/playwright/msw` with `Cannot find package 'msw'`.
+
 ## 0.1.0
 
 ### Minor Changes
