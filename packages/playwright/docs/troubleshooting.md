@@ -336,7 +336,7 @@ checks. See [guide/config.md](guide/config.md#mobile).
 
 ### `disableRules: "…" is disabled without a reason`
 
-Or `disableRules: "…" names no rule.`
+Or `disableRules: {…} names no rule.`, where `{…}` is the entry as JSON.
 
 **When:** `expectAccessible` or `accessibilityScan`, before axe runs.
 **Why:** each disabled rule must say why it is off, so the exception can be

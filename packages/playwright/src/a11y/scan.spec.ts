@@ -18,6 +18,18 @@ describe('loadAxe', () => {
 		expect(MISSING_AXE).toContain('bun add -d @axe-core/playwright');
 	});
 
+	test('a missing dependency of the peer is not blamed on the peer', async () => {
+		const transitive = () =>
+			Promise.reject(
+				new Error(
+					"Cannot find package 'axe-core' imported from /app/node_modules/@axe-core/playwright/dist/index.mjs",
+				),
+			);
+		await expect(loadAxe(transitive)).rejects.toThrow(
+			"Cannot find package 'axe-core'",
+		);
+	});
+
 	test('any other error is rethrown as is', async () => {
 		const broken = () => Promise.reject(new Error('boom'));
 		await expect(loadAxe(broken)).rejects.toThrow('boom');

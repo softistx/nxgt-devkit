@@ -30,7 +30,13 @@ export async function loadAxe(
 	try {
 		return await importer();
 	} catch (error) {
-		if (String((error as Error)?.message).includes('@axe-core/playwright')) {
+		// The package itself, not something it imports: "Cannot find package
+		// 'axe-core' imported from …/@axe-core/playwright/…" is another fault.
+		if (
+			/Cannot find (package|module) '@axe-core\/playwright'/.test(
+				String((error as Error)?.message),
+			)
+		) {
 			throw new Error(MISSING_AXE, { cause: error });
 		}
 		throw error;
