@@ -1,12 +1,11 @@
 # Roadmap
 
-A direction, not a commitment. Nothing is published yet, so no version
-appears on this page; `CHANGELOG.md` will hold the history once there is one.
+A direction, not a commitment. The version something shipped in is the only
+number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-- **First release** — publish the package with the surface listed under
-  Shipped, tested on graphql 16 and 17 and on msw 2 and 3.
+Nothing is in progress.
 
 ## Next
 
@@ -21,6 +20,10 @@ appears on this page; `CHANGELOG.md` will hold the history once there is one.
   unit tests only; a run under Vite is wanted.
 - **`enableMocking` in a real browser** — only the disabled path and the
   handler-shape unwrapping are tested; a browser run is wanted.
+
+- **Idempotent mock-server start** — `startMockServer` starts the server-side
+  msw once, however many times an SSR app's entry module is evaluated, so its
+  server-side requests are mocked too without a second listener.
 
 ## Later
 
@@ -38,7 +41,7 @@ appears on this page; `CHANGELOG.md` will hold the history once there is one.
 
 ## Shipped
 
-First release contents (no version yet):
+First release, 0.1.0, tested on graphql 16 and 17 and on msw 2 and 3:
 
 - **`createExecutor`** — runs real operations against a schema; failing
   state, guard, parse and validation errors, HTTP status from
@@ -56,3 +59,5 @@ First release contents (no version yet):
 - **`/response`** — `ok`, `created`, `noContent`, `badRequest`,
   `unauthorized`, `forbidden`, `notFound`, `graphqlErrors`.
 - **Peers** — `msw ^2.12.10 || ^3.0.0`, `graphql ^16 || ^17`.
+
+- **TypeScript 7 peer** — the `typescript` peer is `^6.0.3 || ^7.0.0`. 0.1.1.

@@ -5,21 +5,13 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-- **PWA end-to-end helpers** — `pwaProject` and `isPwaRun` for a run against
-  a production build on a port of its own, `goOffline` / `goOnline` once the
-  worker controls the page, `nextWorkerVersion` for an update prompt's specs,
-  and `fillCaches` / `expectOnlyCaches` for what a sign-out or a new worker
-  leaves of the caches. Planned for 0.4.0.
+Nothing is in progress.
 
 ## Next
 
 - **A CI leg for `/msw`'s lower peers** — run the `/msw` specs on msw 2.12 with
   `@msw/playwright` 0.6.7, the bottom of the supported range, which is only
   checked by hand before a release today.
-- **Idempotent mock-server start** — for `@nxgt/msw-graphql`'s
-  `startMockServer`: start the server-side msw once, however many times an
-  SSR app's entry module is evaluated, so its server-side requests are mocked
-  too without a second listener.
 - **More responsive checks** — tap targets large enough on a phone, and text
   that does not overflow its box, beside `expectNoHorizontalScroll`.
 
@@ -47,19 +39,20 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Shipped
 
+Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
+
+- **TypeScript 7 peer** — the `typescript` peer is `^6.0.3 || ^7.0.0`. 0.5.1.
+- **Wider `/msw` peers** — `msw` `^2.12.10 || ^3` and `@msw/playwright`
+  below 0.8. 0.5.0.
 - **Server-side mock control** — `createMockServerTest` and `./mock-server`:
   a `mockServer` fixture (`reset`, `fail`, `scenario`, `use`) and the
-  `serverMocks` option drive the mocks of an SSR app's server over HTTP. Next
-  release.
-- **GraphQL mock server** — in `@nxgt/msw-graphql`:
-  a schema and resolvers in, handlers that answer the real operations out.
-  Next release.
-- **Dual SDL loader** — in `@nxgt/msw-graphql`: one way to
-  load a `.graphql` schema in the browser (Vite `?raw`) and in Node. Next
-  release.
-- **msw response helpers** — in `@nxgt/msw-graphql`: `ok`,
-  `created`, `badRequest` and the other common statuses, plus GraphQL
-  errors. Next release.
+  `serverMocks` option drive the mocks of an SSR app's server over HTTP. 0.5.0.
+- **PWA end-to-end helpers** — `/pwa`: `pwaProject` and `isPwaRun` for a run
+  against a production build on a port of its own, `goOffline` / `goOnline`
+  once the worker controls the page, `nextWorkerVersion` for an update
+  prompt's specs, `cachedUrls` and `expectNotCached`, and `fillCaches` /
+  `expectOnlyCaches` for what a sign-out or a new worker leaves of the
+  caches. 0.4.0.
 - **Hydration-aware navigation** — `withHydration` makes every `goto` resolve
   once the page is interactive, `hydrated` waits on demand, and
   `hydrationWarnings` reports mismatches; `/react-router` adds a marker that
@@ -75,22 +68,3 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
   answer in the runner and in its workers. 0.3.0.
 - **PWA cache checks** — `serviceWorkerControlled`, `cachedUrls` and
   `expectNotCached`. 0.3.0.
-- **Accessibility checks** — `expectAccessible` runs axe with the WCAG 2.2
-  A/AA rules and fails with each rule, its impact, help link and first nodes,
-  the full report attached; `accessibilityScan` and the `a11y` fixture for
-  custom checks. 0.2.0.
-- **Phone projects** — `defineAppConfig({ mobile: true })` adds a Pixel 7 on
-  Chromium (or any Playwright device), depending on the setup project like the
-  desktop browsers; `expectNoHorizontalScroll` checks a layout fits. 0.2.0.
-- **Storybook stories as Vitest browser tests** — `storybookProject` renders
-  every story in Chromium as a smoke test, and with `capture` writes WebP
-  previews of the stories tagged `preview`. 0.1.0.
-- **msw network fixtures** — `createMswTest` extends Playwright's `test` with
-  msw handlers per test. 0.1.0.
-- **Hydration-safe fills** — `fillSettled` and `fillUntilEnabled` keep typing
-  from being lost to a page that is still hydrating. 0.1.0.
-- **Login and storage-state fixtures** — `authSetup`, `authFile` and
-  `withLoginFixture` sign in once and reuse the stored state. 0.1.0.
-- **Page object bases** — `BasePage` and `FormPage`. 0.1.0.
-- **Shared app config** — `defineAppConfig` for a Playwright config every app
-  would otherwise repeat. 0.1.0.
