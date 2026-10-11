@@ -39,5 +39,11 @@
 				"organizeImports": "on"
 			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["scripts/close-released-issues*.ts"],
+			"linter": { "enabled": false }
+		}
+	]
 }
