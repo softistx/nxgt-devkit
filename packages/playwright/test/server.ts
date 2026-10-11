@@ -4,6 +4,8 @@
 // worker, for the hydration and PWA helpers.
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { mockState } from '@nxgt/msw-graphql';
+import { createMockControl } from '@nxgt/msw-graphql/control';
 
 const PORT = Number(process.env.PW_PORT) || 4599;
 // Where `/versioned-sw.js?id=<id>` is read from, per request: a spec writes
@@ -91,10 +93,52 @@ self.addEventListener('fetch', (event) => {
 		),
 };
 
+// The control channel of @nxgt/msw-graphql, mounted the way an SSR app mounts
+// it, over a recording stand-in for the msw server: e2e/mock-server.pw.ts
+// drives it with `createMockServerTest` and reads `/__state` back, which is
+// the contract spec between the two packages' wire types.
+const record = {
+	resets: 0,
+	overrides: [] as unknown[],
+	scenarios: [] as unknown[],
+};
+const control = createMockControl({
+	server: {
+		use: (...handlers) => {
+			record.overrides.push(...handlers);
+		},
+		resetHandlers: () => {
+			record.overrides = [];
+		},
+	},
+	reset: () => {
+		record.resets++;
+		record.scenarios = [];
+	},
+	scenarios: {
+		remove: (args) => {
+			record.scenarios.push({ name: 'remove', args });
+		},
+		empty: () => {
+			record.scenarios.push({ name: 'empty' });
+		},
+	},
+});
+
 Bun.serve({
 	port: PORT,
 	async fetch(request) {
 		const url = new URL(request.url);
+		const controlled = await control.handle(request);
+		if (controlled) return controlled;
+		if (url.pathname === '/__state') {
+			return Response.json({
+				failing: mockState.failing,
+				resets: record.resets,
+				overrides: record.overrides.length,
+				scenarios: record.scenarios,
+			});
+		}
 		if (url.pathname === '/login') {
 			return new Response(
 				'<!doctype html><title>Sign In</title><h1>Sign in</h1>',

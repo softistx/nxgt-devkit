@@ -22,7 +22,8 @@ subpaths you import:
 | --- | --- |
 | `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`) |
 | `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
-| `/msw` | `@playwright/test`, `msw` (`^2.12.10`), `@msw/playwright` (`>=0.6.7 <0.7`) |
+| `/msw` | `@playwright/test`, `msw` (`^2.12.10 \|\| ^3.0.0`), `@msw/playwright` (`>=0.6.7 <0.8`; 0.7 needs msw 3) |
+| `/mock-server` | `@playwright/test` only (it talks HTTP) |
 | `/storybook`, `/storybook/capture`, `/storybook/setup` | `vitest` (`^4.0.0`), `@vitest/browser-playwright` (`^4.0.0`), `@storybook/addon-vitest` (`>=10.3.0 <11`), and `playwright` itself (required by `@vitest/browser-playwright`) |
 
 ```bash
@@ -49,11 +50,12 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
 | `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
+| `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
 | `@nxgt/playwright/storybook/capture` | `capturePreview` | **browser only** |
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
-The root barrel does not re-export `/a11y`, `/msw` or `/storybook`, so an app
+The root barrel does not re-export `/a11y`, `/msw`, `/mock-server` or `/storybook`, so an app
 without those peers can still import it, nor the `/react-router` adapter.
 
 ## Usage

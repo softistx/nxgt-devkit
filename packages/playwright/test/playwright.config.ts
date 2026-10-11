@@ -19,6 +19,9 @@ export default defineAppConfig({
 		// The runner's answer, for `config.pw.ts` to compare its worker's with.
 		metadata: { selectedInRunner: selectedProjects() },
 		testMatch: /\.pw\.ts$/,
+		// Server mocks are process-global: this spec runs alone, in
+		// playwright.mock-server.config.ts, with one worker.
+		testIgnore: /mock-server\.pw\.ts$/,
 		reporter: 'list',
 		outputDir: '../.probe-results',
 	},
