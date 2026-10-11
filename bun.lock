@@ -14,7 +14,7 @@
     },
     "packages/msw-graphql": {
       "name": "@nxgt/msw-graphql",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@graphql-tools/mock": "^9.1.16",
         "@graphql-tools/schema": "^10.1.3",
@@ -27,7 +27,7 @@
         "@graphql-tools/schema": "^10.0.0",
         "graphql": "^16.0.0 || ^17.0.0",
         "msw": "^2.12.10 || ^3.0.0",
-        "typescript": "^6.0.3",
+        "typescript": "^6.0.3 || ^7.0.0",
       },
       "optionalPeers": [
         "@graphql-tools/mock",
@@ -36,7 +36,7 @@
     },
     "packages/playwright": {
       "name": "@nxgt/playwright",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "devDependencies": {
         "@axe-core/playwright": "4.13.0",
         "@msw/playwright": "^0.7.0",
@@ -55,7 +55,7 @@
         "@storybook/addon-vitest": ">=10.3.0 <11",
         "@vitest/browser-playwright": "^4.0.0",
         "msw": "^2.12.10 || ^3.0.0",
-        "typescript": "^6.0.3",
+        "typescript": "^6.0.3 || ^7.0.0",
         "vitest": "^4.0.0",
       },
       "optionalPeers": [
