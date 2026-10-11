@@ -12,6 +12,11 @@ on:
   push:
     branches: [develop]
 
+# A pull request's new push supersedes its run in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     name: CI
@@ -76,8 +81,11 @@ jobs:
         run: bun run changeset:status
 
   newest-peers:
-    # The job above runs the lockfile's toolchain: the oldest end of each peer
-    # range. This one runs the newest end (TypeScript 7, graphql 17, msw 3,
+    # Pull requests only: a push to develop has nothing new to measure, and
+    # newest-peers.yml covers the schedule.
+    if: github.event_name == 'pull_request'
+    # The job above runs the lockfile's toolchain: the versions the lockfile
+    # pins. This one runs the newest end (TypeScript 7, graphql 17, msw 3,
     # the latest Playwright and @msw/playwright the ranges accept) so a range
     # stays true after the release that would break it. It resolves without a
     # lockfile, so an upstream release can turn it red with no change here:
@@ -93,9 +101,12 @@ jobs:
         uses: ./.github/actions/setup
       # Rewrites the manifests in this checkout only, then installs what they
       # now name. The lockfile goes: its versions satisfy the rewritten
-      # ranges, so an install that kept it would test the oldest end again.
+      # ranges, so an install that kept it would test the pinned ones again.
       - name: Use the newest peers
         run: bun scripts/newest-peers.ts && rm bun.lock && bun install
+      # Which versions this run resolved, so a red run names the release.
+      - name: Resolved peers
+        run: bun pm ls --all | grep -E '[ ─](graphql|msw|@msw/playwright|@playwright/test|typescript)@' | sort -u || true
       - name: Build packages
         run: bun run build
       - name: Type checking

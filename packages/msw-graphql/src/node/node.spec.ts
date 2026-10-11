@@ -76,3 +76,59 @@ test('under production a call still throws and registers nothing', () => {
 		],
 	).toBeUndefined();
 });
+
+const registered = () =>
+	(globalThis as Record<symbol, unknown>)[Symbol.for('@nxgt/msw-graphql/node')];
+
+test('a stale close() on a replaced server does not unregister its successor', () => {
+	const a = startMockServer([]);
+	a.server.close();
+	const b = startMockServer([]);
+	try {
+		// msw 3 throws on a second close ("already disabled"); msw 2 does not.
+		// Either way the registry must still hold B.
+		try {
+			a.server.close();
+		} catch {}
+		expect(registered()).toBe(b);
+		expect(startMockServer([])).toBe(b);
+	} finally {
+		b.server.close();
+	}
+});
+
+test('dispose(), where msw has one, forgets the server like close()', () => {
+	const a = startMockServer([]);
+	const dispose = (a.server as { dispose?: () => void }).dispose?.bind(
+		a.server,
+	);
+	if (!dispose) {
+		a.server.close();
+		return; // this msw has no public dispose()
+	}
+	dispose();
+	expect(registered()).toBeUndefined();
+	const b = startMockServer([]);
+	try {
+		expect(b.server).not.toBe(a.server);
+		// A stale dispose() must not unregister the successor either.
+		try {
+			dispose();
+		} catch {}
+		expect(registered()).toBe(b);
+	} finally {
+		b.server.close();
+	}
+});
+
+test('under production, a registered server is returned without throwing', () => {
+	const first = startMockServer([]);
+	const before = process.env.NODE_ENV;
+	process.env.NODE_ENV = 'production';
+	try {
+		expect(startMockServer([])).toBe(first);
+	} finally {
+		process.env.NODE_ENV = before;
+		first.server.close();
+	}
+});
