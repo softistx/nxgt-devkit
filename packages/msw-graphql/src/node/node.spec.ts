@@ -15,3 +15,13 @@ test('starts a server holding the given handlers', async () => {
 		server.close();
 	}
 });
+
+test('under NODE_ENV=production it throws before any server listens', () => {
+	const before = process.env.NODE_ENV;
+	process.env.NODE_ENV = 'production';
+	try {
+		expect(() => startMockServer([])).toThrow('NODE_ENV is "production"');
+	} finally {
+		process.env.NODE_ENV = before;
+	}
+});

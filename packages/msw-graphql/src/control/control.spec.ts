@@ -57,6 +57,7 @@ const ask = (
 const http = (path: string, body?: unknown, method = 'POST') =>
 	new Request(`http://app.test/__mocks/${path}`, {
 		method,
+		headers: { 'content-type': 'application/json' },
 		body: body === undefined ? undefined : JSON.stringify(body),
 	});
 
@@ -193,6 +194,7 @@ describe('handle', () => {
 				await control.handle(
 					new Request('http://app.test/__mocks/fail', {
 						method: 'POST',
+						headers: { 'content-type': 'application/json' },
 						body: 'x',
 					}),
 				)
@@ -224,5 +226,80 @@ describe('production guard', () => {
 		process.env.NODE_ENV = 'production';
 		expect((await control.handle(http('reset', {})))?.status).toBe(404);
 		expect(await control.handle(new Request('http://app.test/x'))).toBeNull();
+	});
+});
+
+describe('review fixes', () => {
+	beforeEach(() => {
+		state.failing = null;
+		resets = 0;
+		removed.length = 0;
+	});
+
+	test('a once override is not spent by another operation or by failing', async () => {
+		const { server, control } = setup();
+		control.override({
+			operationName: 'A',
+			data: { whoami: 'fixed' },
+			once: true,
+		});
+		await ask(server, 'query B { whoami }', 'B');
+		await server.answer({ query: '{ whoami }' });
+		control.fail(503);
+		await ask(server, 'query A { whoami }', 'A');
+		control.fail(null);
+		const first = await ask(server, 'query A { whoami }', 'A');
+		expect(await first.json()).toEqual({ data: { whoami: 'fixed' } });
+		const second = await ask(server, 'query A { whoami }', 'A');
+		expect((await second.json()).data.whoami).toBeNull();
+	});
+
+	test('a document of several operations matches no override by name alone', async () => {
+		const { server, control } = setup();
+		control.override({ operationName: 'A', status: 418, errors: [] });
+		const response = await ask(server, 'query A { whoami } query B { whoami }');
+		expect(response.status).toBe(200);
+	});
+
+	test('override validates its fields', async () => {
+		const { control } = setup();
+		for (const bad of [
+			{ operationName: 'A', status: '500' },
+			{ operationName: 'A', status: 99 },
+			{ operationName: 'A', errors: 'x' },
+			{ operationName: 'A', once: 'yes' },
+		]) {
+			expect((await control.handle(http('override', bad)))?.status).toBe(400);
+		}
+		expect(() => control.override({ operationName: '' })).toThrow(TypeError);
+	});
+
+	test('a body that is not application/json is a 415', async () => {
+		const { control } = setup();
+		const response = await control.handle(
+			new Request('http://app.test/__mocks/fail', {
+				method: 'POST',
+				headers: { 'content-type': 'text/plain' },
+				body: '{"status":503}',
+			}),
+		);
+		expect(response?.status).toBe(415);
+		expect(state.failing).toBeNull();
+	});
+
+	test('an error in the app reset is a 500 with its message, and failing is cleared first', async () => {
+		const server = fakeServer([]);
+		const control = createMockControl({
+			server,
+			state,
+			reset: () => {
+				throw new Error('reseed broke');
+			},
+		});
+		control.fail(500);
+		const response = await control.handle(http('reset', {}));
+		expect(response?.status).toBe(500);
+		expect(await response?.json()).toEqual({ error: 'reseed broke' });
+		expect(state.failing).toBeNull();
 	});
 });

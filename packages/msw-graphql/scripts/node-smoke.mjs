@@ -60,6 +60,7 @@ try {
 		control.handle(
 			new Request(`http://app.test/__mocks/${path}`, {
 				method: 'POST',
+				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify(body),
 			}),
 		);

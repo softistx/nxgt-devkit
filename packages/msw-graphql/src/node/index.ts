@@ -23,13 +23,14 @@ export function startMockServer(
 	options: StartMockServerOptions = {},
 ) {
 	const { onUnhandledRequest = 'bypass', ...controlOptions } = options;
+	// First: under NODE_ENV=production this throws, and no server is left
+	// listening. `startMockServer` is dev and test only, as the control is.
 	const server = setupServer(...handlers);
+	const control = createMockControl({ ...controlOptions, server });
 	// msw 3 renamed the option to `onUnhandledFrame`; each ignores the other.
 	server.listen({
 		onUnhandledFrame: onUnhandledRequest,
 		onUnhandledRequest,
 	} as never);
-	// Throws under NODE_ENV=production, before it is ever mounted.
-	const control = createMockControl({ ...controlOptions, server });
 	return { server, control };
 }
