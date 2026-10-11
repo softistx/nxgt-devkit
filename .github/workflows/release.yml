@@ -71,6 +71,7 @@ jobs:
     needs: release
     if: ${{ !cancelled() && needs.release.outputs.published == 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       # the script runs gh pr view / gh pr list
