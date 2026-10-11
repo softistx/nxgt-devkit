@@ -92,10 +92,26 @@ CI runs it for graphql 16 and for msw 2, with full versions (`16 3.0.3`,
 `17 2.15.0`); on msw 2 it also runs `scripts/bun-fetch-probe.ts --expect
 intercepted`, which prints whether the installed msw sees Bun's fetch.
 
-`@nxgt/playwright/msw`'s lower peer range (msw 2.12+ with `@msw/playwright`
-0.6.7) is not exercised in CI; check it by hand before a release: in a scratch
-copy, `bun add -d msw@2.12.10 @msw/playwright@0.6.7` in `packages/playwright`,
-then `bun run test`.
+`@nxgt/playwright/msw`'s lower peer range (msw 2.12.10 with `@msw/playwright`
+0.6.7) is measured by `packages/playwright/scripts/test-lower-peers.ts` (`bun
+run test:lower-peers` there; CI runs it): in a scratch copy of the workspace it
+installs those two, builds, typechecks the package and runs `test/e2e/msw.pw.ts`.
+It keeps `bun.lock`, so the Chromium the lockfile's Playwright installed is
+the one it uses.
+
+**Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
+and ci.yml's `newest-peers` job (pull requests only; not a required check) run
+`scripts/newest-peers.ts`. That script and its spec come from the graphql repository's
+`scripts/newest-peers.ts` and are kept in step with it. It rewrites every peer to the newest end of its
+range (TypeScript 7, graphql 17, msw 3, the latest `@playwright/test`,
+`@msw/playwright`, `vitest`…), deletes `bun.lock`, installs, then builds,
+typechecks, tests and verifies the artifacts. A red run is an upstream release
+the range does not hold: fix the code or the range in a pull request, never
+the workflow. Run it only in a scratch copy, never in a checkout you keep: it
+edits the manifests, and a newer `playwright` replaces the Chromium build the
+shared `~/.cache/ms-playwright` holds for the lockfile's version (run
+`bunx playwright install chromium-headless-shell` in `packages/playwright`
+again afterwards).
 
 ## Browser-only subpaths
 
@@ -133,6 +149,14 @@ before `bun run typecheck` or `bun run test`. `@nxgt/playwright`'s specs import
   `defineAppConfig` itself. Specs are `*.pw.ts` so `bun test` never picks
   them up.
 
+`@nxgt/msw-graphql`'s `bun run test` also runs `test/vite` (`bun test`: a
+fixture built with `vite build`, whose output must hold the inlined SDL) and
+`test/browser` (Playwright, a plain config because this package cannot depend
+on `@nxgt/playwright`, which depends on it: a `Bun.serve` test server on port
+4598 serves a page, its `Bun.build` bundle and msw's `mockServiceWorker.js`,
+and `enableMocking({ enabled: true })` runs in Chromium). Neither is part of
+`scripts/test-matrix.ts`: they run on the workspace's graphql 17 and msw 3.
+
 The browser: `bunx playwright install chromium-headless-shell`, matching the
 installed `playwright`. On Arch or Manjaro (the `playwright` AUR package reads
 `~/.cache/ms-playwright` too) Playwright downloads an Ubuntu fallback, which
@@ -154,7 +178,8 @@ After a publish, the `close-issues` job of `release.yml` runs
 closes the issues the published versions fix. **`scripts/close-released-issues*.ts`
 are byte-for-byte copies of nxgt-core's** (`scripts/` there, canonical in
 `plugins/nxgt-issues/scripts/release/`): never edit them here, change them in
-nxgt-core and copy again. Its input is the `git-tag` NDJSON events
+nxgt-core and copy again. `biome.json` has an override that turns the linter off for them, so
+their lint infos stay out of `bun run check`; keep it when copying again. Its input is the `git-tag` NDJSON events
 `scripts/publish.ts` writes to `$CHANGESETS_OUTPUT`, which `changesets/action@v2`
 turns into the `published-packages` output. `scripts/tsconfig.json` turns on
 `noImplicitAny` (the base config leaves it off) because the copied files rely

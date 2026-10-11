@@ -16,14 +16,6 @@ Nothing is in progress.
 - **Drop the generator patch** — once
   [graphql-code-generator-community#1653](https://github.com/dotansimha/graphql-code-generator-community/pull/1653)
   is released and adopted, the `bun patch` in troubleshooting goes away.
-- **`loadSdl` against a real Vite build** — the Vite branch is covered by
-  unit tests only; a run under Vite is wanted.
-- **`enableMocking` in a real browser** — only the disabled path and the
-  handler-shape unwrapping are tested; a browser run is wanted.
-
-- **Idempotent mock-server start** — `startMockServer` starts the server-side
-  msw once, however many times an SSR app's entry module is evaluated, so its
-  server-side requests are mocked too without a second listener.
 
 ## Later
 
@@ -40,6 +32,19 @@ Nothing is in progress.
 - **Concrete schemas, handlers and mock data** — they are the app's.
 
 ## Shipped
+
+Tests only, no release:
+
+- **`loadSdl` against a real Vite build** — a fixture built with `vite build`
+  inlines the SDL and the built module resolves it.
+- **`enableMocking` in a real browser** — Chromium, a test server serving
+  msw's worker script, a handler answering a fetch.
+
+Next minor, unreleased:
+
+- **Idempotent `startMockServer`** — a second call in the same process returns
+  the running server and control (its arguments are ignored), so an SSR entry
+  re-evaluated under HMR does not stack listeners.
 
 First release, 0.1.0, tested on graphql 16 and 17 and on msw 2 and 3:
 

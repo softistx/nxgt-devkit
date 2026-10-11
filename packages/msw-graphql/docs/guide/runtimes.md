@@ -28,7 +28,8 @@ prints what was installed. On msw 2 the run also executes
 Bun's `fetch`.
 
 `@nxgt/playwright`'s `/msw` specs pass on msw 3.0.3 with `@msw/playwright`
-0.7.0 and on msw 2.15 with 0.6.7.
+0.7.0. Its lower peers, msw 2.12.10 with `@msw/playwright` 0.6.7, are tested in
+CI (`bun run test:lower-peers` in `packages/playwright`).
 
 ## msw 2 or msw 3
 
@@ -95,7 +96,15 @@ This writes a patch file and a `patchedDependencies` entry. Temporary, until
 is released and adopted; remove the patch then. That change makes the generator
 run on graphql 17; its output still targets msw 2's `graphql.query` API.
 
-## Not exercised here
+## Exercised in a real browser and a real Vite build
 
-- `loadSdl` under a real Vite build (the detection logic is tested, not a bundle).
-- `enableMocking({ enabled: true })`, which starts the browser worker: no browser run in this repository. Only the disabled path and the handler-shape unwrapping are tested.
+- `loadSdl` under `vite build` (`test/vite`): the `?raw` SDL is inlined in the
+  output, the built module resolves it, and the Node/Bun branch reads the file.
+- `enableMocking({ enabled: true })` in Chromium (`test/browser`, Playwright):
+  a page under a test server registers msw's worker script and a handler built
+  from `createExecutor` and `graphqlEndpoint` answers its `fetch`; with
+  `enabled: false` the fetch reaches the server.
+
+Both run in `bun run test`, on msw 3 and graphql 17 (the workspace). Neither is
+part of `scripts/test-matrix.ts`, which covers the other majors with the
+unit specs and the Node smoke test.

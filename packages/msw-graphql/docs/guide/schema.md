@@ -90,5 +90,6 @@ dynamic import Vite is told to leave alone, so a browser bundle never resolves
 `node:fs`.
 
 Measured here: the Node and Bun branches and the `vite`-only branch are
-exercised by the specs; the Vite detection was **not exercised against a real
-Vite build** in this repository.
+exercised by the specs, and a fixture built with `vite build` (`test/vite`)
+checks that the SDL is inlined and resolves from the built module; see
+[runtimes](./runtimes.md).
