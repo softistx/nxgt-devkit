@@ -32,6 +32,20 @@ export function overrideProblem(value: unknown): string | null {
 	return null;
 }
 
+/** An error entry that carries `extensions.http.status`, as an HTTP status. */
+type StatusError = { extensions: { http: { status: number } } };
+
+const isStatusError = (error: unknown): error is StatusError => {
+	const http = (
+		error as { extensions?: { http?: { status?: unknown } } } | null
+	)?.extensions?.http;
+	return typeof http?.status === 'number';
+};
+
+/** The first error's `extensions.http.status`; entries are unknown JSON. */
+export const statusOfErrors = (errors: unknown[] | undefined) =>
+	errors?.find(isStatusError)?.extensions.http.status;
+
 /**
  * The operation a request carries: its `operationName`, else the name of the
  * document's only operation (a document of several, with none selected, is
@@ -75,13 +89,7 @@ export function overrideHandler(override: Override, state: MockState) {
 			if (used) return undefined;
 			used = true;
 		}
-		const status =
-			override.status ??
-			// Entries are unknown JSON; `any` lets the optional chain read them.
-			(override.errors as any[] | undefined)?.find(
-				(error) => typeof error?.extensions?.http?.status === 'number',
-			)?.extensions.http.status ??
-			200;
+		const status = override.status ?? statusOfErrors(override.errors) ?? 200;
 		return HttpResponse.json(
 			{
 				...(override.data !== undefined && { data: override.data }),

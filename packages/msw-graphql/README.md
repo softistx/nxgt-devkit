@@ -141,6 +141,8 @@ if (process.env.MOCKS === 'true') {
 
 Alternative, for a client that cannot take a `fetch`: `startMockServer` patches
 the process instead (Node, or Bun on msw 2 only). Same options, same `control`.
+It is idempotent per process: a second call returns the first call's
+`{ server, control }` and ignores its arguments.
 
 ```ts
 const { startMockServer } = await import('@nxgt/msw-graphql/node');

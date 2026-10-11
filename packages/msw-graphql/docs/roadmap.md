@@ -21,10 +21,6 @@ Nothing is in progress.
 - **`enableMocking` in a real browser** — only the disabled path and the
   handler-shape unwrapping are tested; a browser run is wanted.
 
-- **Idempotent mock-server start** — `startMockServer` starts the server-side
-  msw once, however many times an SSR app's entry module is evaluated, so its
-  server-side requests are mocked too without a second listener.
-
 ## Later
 
 - **`startMockServer` on msw 3 under Bun** — once
@@ -40,6 +36,12 @@ Nothing is in progress.
 - **Concrete schemas, handlers and mock data** — they are the app's.
 
 ## Shipped
+
+Next minor, unreleased:
+
+- **Idempotent `startMockServer`** — a second call in the same process returns
+  the running server and control (its arguments are ignored), so an SSR entry
+  re-evaluated under HMR does not stack listeners.
 
 First release, 0.1.0, tested on graphql 16 and 17 and on msw 2 and 3:
 

@@ -167,7 +167,8 @@ After a publish, the `close-issues` job of `release.yml` runs
 closes the issues the published versions fix. **`scripts/close-released-issues*.ts`
 are byte-for-byte copies of nxgt-core's** (`scripts/` there, canonical in
 `plugins/nxgt-issues/scripts/release/`): never edit them here, change them in
-nxgt-core and copy again. Its input is the `git-tag` NDJSON events
+nxgt-core and copy again. `biome.json` has an override that turns the linter off for them, so
+their lint infos stay out of `bun run check`; keep it when copying again. Its input is the `git-tag` NDJSON events
 `scripts/publish.ts` writes to `$CHANGESETS_OUTPUT`, which `changesets/action@v2`
 turns into the `published-packages` output. `scripts/tsconfig.json` turns on
 `noImplicitAny` (the base config leaves it off) because the copied files rely

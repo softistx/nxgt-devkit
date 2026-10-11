@@ -22,7 +22,9 @@ const control = createMockControl({
 
 `startMockServer(handlers, options)` from `@nxgt/msw-graphql/node` does the
 `setupServer`, the `createMockControl` and `server.listen()` in one call and
-returns `{ server, control }`.
+returns `{ server, control }`. It is idempotent per process: a second call
+returns the running pair and ignores its arguments (see
+[getting started](./getting-started.md)).
 
 `createMockFetch` from `@nxgt/msw-graphql/fetch` returns the same `control`
 (`fail`, `reset`, `scenario`, `override`, `handle`) with the same options and
