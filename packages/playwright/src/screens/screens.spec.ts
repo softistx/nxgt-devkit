@@ -3,11 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FullConfig } from '@playwright/test';
-import {
-	clearScreensSetup,
-	defineAppConfig,
-	screensConfig,
-} from '../config/define-app-config';
+import { defineAppConfig } from '../config/define-app-config';
+import { clearScreensSetup, screensConfig } from '../config/screens';
 import clearScreens from './clear';
 import { screensDir, screensMetadata } from './dir';
 
@@ -91,6 +88,18 @@ describe('clearScreens', () => {
 		);
 		expect(existsSync(join(root, 'shots'))).toBe(false);
 		expect(existsSync(root)).toBe(true);
+	});
+
+	test("refuses the config's folder, or one holding it", () => {
+		const root = mkdtempSync(join(tmpdir(), 'screens-'));
+		const pw = join(root, 'app', 'pw.ts');
+		mkdirSync(join(root, 'app'));
+		for (const dir of ['.', '..', '/']) {
+			expect(() =>
+				clearScreens(config({ nxgtScreens: { dir, enabled: true } }, pw)),
+			).toThrow('defineAppConfig: screens.dir');
+		}
+		expect(existsSync(join(root, 'app'))).toBe(true);
 	});
 });
 

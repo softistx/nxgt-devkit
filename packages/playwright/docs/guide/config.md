@@ -349,6 +349,10 @@ An absent (or `undefined`) `webServer` gives the default dev server; the
 spread above sets one only for the `pwa` run. The specs
 are in [pwa.md](pwa.md).
 
+It reads the command line only: UI mode (`--ui`) and editor extensions pick
+projects without `--project`, and give `[]`. Keep an environment switch
+(`PWA=1`) beside it for those.
+
 ## Defaults
 
 What the returned config holds when only `port` is given:

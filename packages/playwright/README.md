@@ -360,6 +360,7 @@ every Cache Storage entry by cache, and `expectNotCached` fails when a URL
 that must never be kept is:
 
 ```ts
+import { expect, test } from '@playwright/test';
 import { cachedUrls, expectNotCached, serviceWorkerControlled } from '@nxgt/playwright/pwa';
 
 test('keeps no signed-in page', async ({ page }) => {

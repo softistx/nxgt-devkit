@@ -88,7 +88,7 @@ it as Playwright's `globalSetup` by path, `new URL('../screens/clear.js',
 import.meta.url)`. It is an entry point (under `nxgt.entrypoints`, not in
 `exports`: nothing imports it) so the file exists; the relative URL holds from
 `dist/config/` and from `dist/chunks/`, the two places the bundler may put
-`defineAppConfig`, both one folder below `dist/`. From the sources (the
+`clearScreensSetup` (`src/config/screens.ts`), both one folder below `dist/`. From the sources (the
 specs) it resolves to `src/screens/clear.ts`. A spec asserts the file exists.
 
 ## Tests

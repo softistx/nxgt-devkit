@@ -27,6 +27,7 @@ throws itself are quoted exactly.
   - [`defineAppConfig: "…" is not one of Playwright's devices`](#defineappconfig--is-not-one-of-playwrights-devices)
   - [A `mobile-firefox` project does not look like a phone](#a-mobile-firefox-project-does-not-look-like-a-phone)
   - [`defineAppConfig: the screens' global setup is missing at <path>`](#defineappconfig-the-screens-global-setup-is-missing-at-path)
+  - [`defineAppConfig: screens.dir resolves to <dir>, which holds <folder>`](#defineappconfig-screensdir-resolves-to-dir-which-holds-folder)
   - [Old screens remain, or the screens folder is empty](#old-screens-remain-or-the-screens-folder-is-empty)
   - [A config that branches on `--project` builds something else in the workers](#a-config-that-branches-on---project-builds-something-else-in-the-workers)
 - [Hydration](#hydration)
@@ -371,6 +372,18 @@ package's `dist/`. The installation is incomplete or was patched.
 bun add -d @nxgt/playwright
 ```
 
+### `defineAppConfig: screens.dir resolves to <dir>, which holds <folder>`
+
+**When:** the first thing a run with `SCREENS=1` does, with `screens: { dir }`
+set to `.`, `..`, `/` or any folder holding the config file or the specs.
+**Why:** the global setup empties the screens folder recursively; emptying
+that one would delete the project, so it refuses before touching anything.
+**Fix:** give the screens a folder of their own.
+
+```ts
+export default defineAppConfig({ port: 5174, screens: { dir: './playwright/screenshots' } });
+```
+
 ### Old screens remain, or the screens folder is empty
 
 No error: a screen you renamed is still in the folder, or nothing was saved.
@@ -401,7 +414,9 @@ projects.
 **Why:** Playwright's workers load the config again without the command line,
 so `process.argv` holds no `--project` there.
 **Fix:** read the selection through `selectedProjects`, which hands the
-runner's answer to the workers.
+runner's answer to the workers. It reads the command line only: UI mode and
+editor extensions pick projects without `--project`, and it gives `[]` there
+(so keep an environment switch such as `PWA=1` beside it).
 
 ```ts
 import { defineAppConfig, selectedProjects } from '@nxgt/playwright/config';

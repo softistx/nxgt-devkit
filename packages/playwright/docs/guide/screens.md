@@ -41,7 +41,9 @@ type SaveScreenOptions = {
 function saveScreen(page: Page, testInfo: TestInfo, name: string, options?: SaveScreenOptions): Promise<string>;
 ```
 
-It saves `<dir>/<project name>/<name>.png` and returns the path.
+It saves `<dir>/<project name>/<name>.png` and returns the path. `name` may
+hold folders (`'auth/sign-in'`); a project without a name saves under
+`default/`.
 
 | Option | Type | Default | Effect |
 | --- | --- | --- | --- |

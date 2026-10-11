@@ -69,8 +69,13 @@ export async function hydrated(
 }
 
 /** Whether a `goto` landed on a document, the only thing that hydrates. */
-function isDocument(response: Awaited<ReturnType<Page['goto']>>): boolean {
-	if (!response) return true; // same-document navigation: the page is still there
+function isDocument(
+	response: Awaited<ReturnType<Page['goto']>>,
+	url: string,
+): boolean {
+	// No response: a same-document navigation (the page is still the app's),
+	// or `about:blank` and `data:` URLs, which never hydrate.
+	if (!response) return /^https?:/.test(url);
 	const type = response.headers()['content-type'] ?? '';
 	return type.includes('text/html') || type.includes('xhtml');
 }
@@ -84,7 +89,7 @@ function patchGoto(page: Page, options: HydrationOptions): void {
 	const goto = page.goto.bind(page);
 	page.goto = async (...args: Parameters<Page['goto']>) => {
 		const response = await goto(...args);
-		if (isDocument(response)) await hydrated(page, options);
+		if (isDocument(response, page.url())) await hydrated(page, options);
 		return response;
 	};
 }
@@ -96,7 +101,8 @@ export type HydrationFixture = { hydration: HydrationOptions | false };
  * Extends a `test` so that `page.goto` on every page of the context — the
  * `page` fixture, `context.newPage()`, a page object's `goto()` — resolves
  * once the page it opened is {@link hydrated}. A response that is not a
- * document (`/manifest.webmanifest`, an image) is returned without waiting.
+ * document (`/manifest.webmanifest`, an image), `about:blank` and a `data:`
+ * URL are returned without waiting.
  *
  * ```ts
  * export const test = withHydration(base);

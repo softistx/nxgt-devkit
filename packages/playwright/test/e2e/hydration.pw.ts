@@ -68,3 +68,11 @@ base('hydrationWarnings collects mismatch warnings only', async ({ page }) => {
 	expect(warnings[0]).toContain('did not match');
 	expect(warnings[1]).toContain('Hydration failed');
 });
+
+test('about:blank and a data: URL are returned without waiting', async ({
+	page,
+}) => {
+	await page.goto('about:blank');
+	await page.goto('data:text/html,<p>static</p>');
+	await expect(page.locator('p')).toHaveText('static');
+});

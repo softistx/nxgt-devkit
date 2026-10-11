@@ -132,8 +132,8 @@ function withHydration<T extends PlaywrightTestArgs, W extends object>(
 ): TestType<T & { hydration: HydrationOptions | false }, W>;
 ```
 
-- A response that is not a document (`/manifest.webmanifest`, JSON, an image)
-  is returned without waiting.
+- A response that is not a document (`/manifest.webmanifest`, JSON, an image),
+  `about:blank` and a `data:` URL are returned without waiting.
 - It adds an option fixture, `hydration`: `false` turns the wait off, an
   object changes the marker or the timeout.
 

@@ -1,16 +1,10 @@
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import {
 	defineConfig,
 	devices,
 	type PlaywrightTestConfig,
 	type Project,
 } from '@playwright/test';
-import {
-	DEFAULT_SCREENS_DIR,
-	SCREENS_METADATA_KEY,
-	type ScreensMetadata,
-} from '../screens/dir';
+import { type ScreensOption, withScreens } from './screens';
 import { selectedProjects } from './selected-projects';
 
 export type Browser = 'chromium' | 'firefox' | 'webkit' | 'msedge' | 'chrome';
@@ -68,7 +62,7 @@ export type AppConfigOptions = {
 	 * first by a global setup, and each screen saved under
 	 * `<dir>/<project>/`. `true` takes both defaults. Default `false`.
 	 */
-	screens?: boolean | { dir?: string; env?: string };
+	screens?: ScreensOption;
 	/** Merged last, over everything above. */
 	overrides?: PlaywrightTestConfig;
 };
@@ -116,41 +110,6 @@ export function mobileProjects(
 			device,
 		};
 	});
-}
-
-/**
- * The global setup that empties the screens folder: `dist/screens/clear.js`
- * from the build (an entry point of its own, one folder below `dist` like
- * this module and the chunks it may be bundled into), `src/screens/clear.ts`
- * from the sources.
- */
-export function clearScreensSetup(): string {
-	const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
-	const path = fileURLToPath(
-		new URL(`../screens/clear.${extension}`, import.meta.url),
-	);
-	if (!existsSync(path)) {
-		throw new Error(
-			`defineAppConfig: the screens' global setup is missing at ${path}. ` +
-				'Reinstall @nxgt/playwright.',
-		);
-	}
-	return path;
-}
-
-/** The `screens` option, as the config's metadata and global setup. */
-export function screensConfig(
-	screens: AppConfigOptions['screens'],
-	env: NodeJS.ProcessEnv = process.env,
-): Pick<PlaywrightTestConfig, 'metadata' | 'globalSetup'> {
-	if (!screens) return {};
-	const { dir = DEFAULT_SCREENS_DIR, env: variable = 'SCREENS' } =
-		screens === true ? {} : screens;
-	const metadata: ScreensMetadata = { dir, enabled: env[variable] === '1' };
-	return {
-		metadata: { [SCREENS_METADATA_KEY]: metadata },
-		...(metadata.enabled ? { globalSetup: clearScreensSetup() } : {}),
-	};
 }
 
 /**
@@ -218,16 +177,10 @@ export function defineAppConfig(options: AppConfigOptions) {
 					...(options.env ? { env: options.env } : {}),
 				});
 
-	const screens = screensConfig(options.screens);
-	// `defineConfig` replaces `metadata` wholesale: an app's own keys must not
-	// drop the screens' entry the workers read.
-	const overrides: PlaywrightTestConfig =
-		screens.metadata && options.overrides?.metadata
-			? {
-					...options.overrides,
-					metadata: { ...screens.metadata, ...options.overrides.metadata },
-				}
-			: (options.overrides ?? {});
+	const { screens, overrides } = withScreens(
+		options.screens,
+		options.overrides,
+	);
 
 	return defineConfig(
 		{

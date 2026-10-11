@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { Page, PageScreenshotOptions, TestInfo } from '@playwright/test';
 import { nextFrames, settled } from '../helpers/frames';
 import { screensDir, screensMetadata } from './dir';
@@ -42,8 +42,9 @@ function hiddenHeight(page: Page): Promise<number> {
 }
 
 /**
- * Saves the whole page as `<dir>/<project name>/<name>.png` and returns the
- * file's path. An app shell as tall as the viewport, whose content scrolls
+ * Saves the whole page as `<dir>/<project name>/<name>.png` (a project
+ * without a name: `default`; `name` may hold folders) and returns the file's
+ * path. An app shell as tall as the viewport, whose content scrolls
  * inside it, stops a plain full-page screenshot at the fold: the viewport is
  * stretched until no inner scroll container hides anything, the shot taken,
  * then the viewport put back and the page left to settle.
@@ -57,9 +58,13 @@ export async function saveScreen(
 	name: string,
 	{ dir, maxGrowth = 5, screenshot }: SaveScreenOptions = {},
 ): Promise<string> {
-	const folder = join(screensDir(testInfo.config, dir), testInfo.project.name);
-	mkdirSync(folder, { recursive: true });
-	const path = join(folder, `${name}.png`);
+	const path = join(
+		screensDir(testInfo.config, dir),
+		testInfo.project.name || 'default',
+		`${name}.png`,
+	);
+	// A `name` may hold folders of its own: `auth/sign-in`.
+	mkdirSync(dirname(path), { recursive: true });
 	const viewport = page.viewportSize();
 	await settled(page);
 	try {

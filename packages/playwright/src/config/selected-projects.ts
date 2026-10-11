@@ -34,6 +34,9 @@ export function projectsFromArgv(argv: readonly string[]): string[] {
  * JSON array), which the workers inherit and read instead. `defineAppConfig`
  * calls it too, so the variable is always there for a spec to read.
  *
+ * It reads the command line only: UI mode and editor extensions pick projects
+ * without `--project`, and give `[]`.
+ *
  * ```ts
  * const pwa = selectedProjects().includes('pwa');
  * export default defineAppConfig({ port: pwa ? 5274 : 5273, … });
