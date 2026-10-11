@@ -1,5 +1,11 @@
 # @nxgt/msw-graphql
 
+## 0.2.0
+
+### Minor Changes
+
+- [#25](https://github.com/softistx/nxgt-devkit/pull/25) [`8aae7c1`](https://github.com/softistx/nxgt-devkit/commit/8aae7c1cfd6bef60e2bd25928e6cfcdd89b8e9b7) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `startMockServer` is idempotent per process: a second call returns the first call's `{ server, control }` (kept on `globalThis` under `Symbol.for('@nxgt/msw-graphql/node')`), so an SSR entry module re-evaluated under HMR no longer stacks listeners. The second call's handlers and options are ignored; `server.close()` forgets the server so the next call starts a new one (so does `dispose()`, where msw has one).
+
 ## 0.1.1
 
 ### Patch Changes
