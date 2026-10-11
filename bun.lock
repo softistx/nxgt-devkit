@@ -14,7 +14,7 @@
     },
     "packages/playwright": {
       "name": "@nxgt/playwright",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "devDependencies": {
         "@axe-core/playwright": "4.13.0",
         "@msw/playwright": "^0.6.7",
