@@ -11,6 +11,7 @@ the public npm registry.
 | package | what it is |
 | --- | --- |
 | `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `withHydration` / `hydrated` (a `goto` that waits for a hydration marker; the React Router marker in the `./react-router` adapter), `settled` / `nextFrames` / `toastsGone`, `expectAccessible` (axe) and `expectNoHorizontalScroll` (with an inner `scroller`), phone projects through `defineAppConfig`'s `mobile`, `saveScreen` and `defineAppConfig`'s `screens` (full-page screens, a folder emptied by a packaged global setup), `selectedProjects` (`--project` seen by the workers), `/pwa`'s production-build project (`pwaProject`, `isPwaRun`), offline (`goOffline` / `goOnline`), a new worker version (`nextWorkerVersion`) and cache checks (`cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`), `createMswTest` for msw through `@msw/playwright`, and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
+| `@nxgt/msw-graphql` | Mock a GraphQL API with msw by executing the real operations against a schema: `createExecutor` (parse, validate, execute, status from `extensions.http.status`), `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`; `/schema` (`buildMockSchema`), `/sdl` (`loadSdl`, Vite `?raw` or a file read). **Private until the owner's go** |
 
 `ROADMAP.md` lists what is planned next — `@nxgt/jenkins` among it. Nothing
 there is started until it has an entry in the work queue.
@@ -73,6 +74,19 @@ Every peer is **optional** and each subpath needs only its own:
 The root barrel re-exports only the first row, but for `./react-router`, an
 adapter an app of another framework never needs. Adding an export that reaches
 msw or Vitest to it would make every consumer install them.
+
+`@nxgt/msw-graphql` has the same shape for its own peers: `.` needs `msw` and
+`graphql`, `./schema` also the two optional `@graphql-tools/*` peers, `./sdl`
+nothing.
+
+**msw 3 and Bun.** msw 3's Node interceptors patch `node:net`, which Bun's
+native `fetch` does not go through, so under Bun a `setupServer` intercepts
+nothing (msw 2.15 does). `@nxgt/msw-graphql`'s specs therefore call handlers
+with `getResponse` under `bun test`, and `scripts/node-smoke.mjs` runs a real
+msw server under Node against the built `dist/`. `scripts/test-matrix.ts
+<graphql> <msw>` runs the whole bar against other majors in a scratch copy;
+CI runs it for graphql 16 and for msw 2. `scripts/bun-fetch-probe.ts` prints
+whether the installed msw sees Bun's fetch.
 
 ## Browser-only subpaths
 
