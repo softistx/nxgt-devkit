@@ -75,8 +75,20 @@ bun add -d msw@^2.12.10
 request is not mocked and goes to the network (`ENOTFOUND`). Measured.
 **Why:** msw 3's Node server patches `node:net`, which does not intercept
 Bun's native `fetch`. msw 2.15 does intercept under Bun.
-**Fix:** on a server that runs on Bun, use msw 2; a server run by Node
->= 22.12 can use msw 3.
+This is [mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811).
+**Fix:** when the API client takes a `fetch`, use `createMockFetch` from
+`@nxgt/msw-graphql/fetch`, which works on msw 3 under Bun. Otherwise use
+msw 2 on a server that runs on Bun; a server run by Node >= 22.12 can use
+msw 3 with `startMockServer`.
+
+```ts
+import { createMockFetch } from '@nxgt/msw-graphql/fetch';
+
+const { fetch, control } = createMockFetch(handlers);
+const client = createClient({ url, fetch }); // your API client
+```
+
+Or, for a client that cannot take a fetch:
 
 ```bash
 bun add -d msw@^2.12.10

@@ -41,6 +41,11 @@
 			"import": "./dist/node/index.js",
 			"default": "./dist/node/index.js"
 		},
+		"./fetch": {
+			"types": "./dist/fetch/index.d.ts",
+			"import": "./dist/fetch/index.js",
+			"default": "./dist/fetch/index.js"
+		},
 		"./response": {
 			"types": "./dist/response/index.d.ts",
 			"import": "./dist/response/index.js",
@@ -84,6 +89,7 @@
 			"src/sdl/index.ts",
 			"src/browser/index.ts",
 			"src/node/index.ts",
+			"src/fetch/index.ts",
 			"src/response/index.ts",
 			"src/control/index.ts"
 		]

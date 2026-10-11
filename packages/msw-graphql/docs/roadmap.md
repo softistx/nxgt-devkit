@@ -24,8 +24,10 @@ appears on this page; `CHANGELOG.md` will hold the history once there is one.
 
 ## Later
 
-- **msw 3 under Bun** — if msw's interceptors learn to patch Bun's native
-  `fetch`, the msw 2 restriction for servers that run on Bun can be lifted.
+- **`startMockServer` on msw 3 under Bun** — once
+  [mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811) is fixed,
+  `startMockServer` works under Bun with msw 3 too. Until then, use
+  `createMockFetch`, or msw 2.
 
 ## Not planned
 
@@ -46,6 +48,9 @@ First release contents (no version yet):
 - **`/sdl`** — `loadSdl`, one loader for Vite and Node.
 - **`/browser`** — `enableMocking`.
 - **`/node`** — `startMockServer`.
+- **`/fetch`** — `createMockFetch`: a `fetch` answered by the handlers with
+  no global patch, for an SSR/BFF client that takes a fetch; works on msw 2
+  and 3, Node and Bun.
 - **`/control`** — `createMockControl`: reset, fail, scenario, override over
   HTTP or in code.
 - **`/response`** — `ok`, `created`, `noContent`, `badRequest`,

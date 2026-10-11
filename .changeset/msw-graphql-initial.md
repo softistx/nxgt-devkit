@@ -10,9 +10,12 @@ against a schema.
   `bearerToken`.
 - `/schema` (`buildMockSchema`) and `/sdl` (`loadSdl`: Vite `?raw` or a file read).
 - `/browser` (`enableMocking`), `/node` (`startMockServer`) and `/response`.
+- `/fetch` (`createMockFetch`): a `fetch` answered by the handlers, with no
+  global patch, for an API client that takes a fetch. It works with msw 2 and
+  3 under Node and Bun.
 - `/control` (`createMockControl`): reset, fail, scenarios with arguments and
   per-operation overrides, programmatically or over `POST /__mocks/*`, with a
   production guard.
 
 Peers: `msw ^2.12.10 || ^3.0.0` (msw 3's Node server does not intercept Bun's
-fetch, so an app whose server runs on Bun stays on msw 2), `graphql ^16 || ^17`.
+fetch, mswjs/msw#2811: under Bun, use `/fetch` or msw 2), `graphql ^16 || ^17`.
