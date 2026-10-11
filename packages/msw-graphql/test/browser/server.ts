@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /**
@@ -6,6 +7,7 @@ import { join } from 'node:path';
  * worker script. It answers `/graphql` with a 404, so only msw can answer it.
  */
 const dir = import.meta.dir;
+await rm(join(dir, '.out'), { recursive: true, force: true });
 const build = await Bun.build({
 	entrypoints: [join(dir, 'app.ts')],
 	target: 'browser',
@@ -16,12 +18,11 @@ if (!build.success) {
 	for (const log of build.logs) console.error(log);
 	process.exit(1);
 }
-const worker = Bun.file(
-	join(dir, '../../node_modules/msw/lib/mockServiceWorker.js'),
-);
+// Resolved from msw itself, wherever the install put it.
+const worker = Bun.file(Bun.resolveSync('msw/mockServiceWorker.js', dir));
 
 const page = `<!doctype html><meta charset="utf-8"><title>mocks</title>
-<body data-ready="no"><script type="module" src="/app.js"></script></body>`;
+<body><script type="module" src="/app.js"></script></body>`;
 
 Bun.serve({
 	port: 4598,
