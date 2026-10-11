@@ -126,6 +126,10 @@ sends `{}`). Any other POST is a `415`.
 | `scenario` | `{ "name": "remove", "args": { "id": "1" } }` | `control.scenario(name, args)`; `args` is any JSON |
 | `override` | one override object, or an array | `control.override(...)` |
 
+The routes are fixed. An app's own control routes (`/__mocks/empty`,
+`/__mocks/remove?id=…`) become scenarios: register `scenarios: { empty, remove }`
+and post `{ "name": "remove", "args": { "id": "1" } }` to `scenario`.
+
 ```bash
 curl -X POST localhost:3000/__mocks/fail -H 'content-type: application/json' -d '{"status":503}'
 ```

@@ -16,7 +16,7 @@ previews of your components.
 bun add -d @nxgt/playwright @playwright/test
 ```
 
-Every peer is optional except `typescript` (`^6.0.3`); install the ones for the
+Every peer is optional except `typescript` (`^6.0.3 || ^7.0.0`); install the ones for the
 subpaths you import:
 
 | Subpath | Peers to add |

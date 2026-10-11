@@ -16,7 +16,7 @@ bun add -d @graphql-tools/schema @graphql-tools/mock   # only for /schema
 
 | Peer | Range | Required |
 | --- | --- | --- |
-| `typescript` | `^6.0.3` | yes |
+| `typescript` | `^6.0.3 \|\| ^7.0.0` | yes |
 | `msw` | `^2.12.10 \|\| ^3.0.0` | yes |
 | `graphql` | `^16.0.0 \|\| ^17.0.0` | yes |
 | `@graphql-tools/schema` | `^10.0.0` | optional, only `/schema` |

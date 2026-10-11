@@ -11,7 +11,7 @@ the public npm registry.
 | package | what it is |
 | --- | --- |
 | `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `withHydration` / `hydrated` (a `goto` that waits for a hydration marker; the React Router marker in the `./react-router` adapter), `settled` / `nextFrames` / `toastsGone`, `expectAccessible` (axe) and `expectNoHorizontalScroll` (with an inner `scroller`), phone projects through `defineAppConfig`'s `mobile`, `saveScreen` and `defineAppConfig`'s `screens` (full-page screens, a folder emptied by a packaged global setup), `selectedProjects` (`--project` seen by the workers), `/pwa`'s production-build project (`pwaProject`, `isPwaRun`), offline (`goOffline` / `goOnline`), a new worker version (`nextWorkerVersion`) and cache checks (`cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`), `createMswTest` for msw through `@msw/playwright`, `createMockServerTest` (`/mock-server`: a `mockServer` fixture that resets, fails, runs scenarios and overrides operations of an app server's mocks over HTTP, for `@nxgt/msw-graphql`'s control), and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
-| `@nxgt/msw-graphql` | Mock a GraphQL API with msw by executing the real operations against a schema: `createExecutor` (parse, validate, execute, status from `extensions.http.status`), `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`; `/schema` (`buildMockSchema`), `/sdl` (`loadSdl`, Vite `?raw` or a file read), `/browser` (`enableMocking`), `/node` (`startMockServer`), `/control` (`createMockControl`), `/response`. **Private until the owner's go** |
+| `@nxgt/msw-graphql` | Mock a GraphQL API with msw by executing the real operations against a schema: `createExecutor` (parse, validate, execute, status from `extensions.http.status`), `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`; `/schema` (`buildMockSchema`), `/sdl` (`loadSdl`, Vite `?raw` or a file read), `/browser` (`enableMocking`), `/node` (`startMockServer`), `/fetch` (`createMockFetch`, a fetch answered by the handlers, for Bun with msw 3), `/control` (`createMockControl`), `/response` |
 
 `ROADMAP.md` lists what is planned next — `@nxgt/jenkins` among it. Nothing
 there is started until it has an entry in the work queue.
@@ -121,6 +121,10 @@ import.meta.url)`. It is an entry point (under `nxgt.entrypoints`, not in
 specs) it resolves to `src/screens/clear.ts`. A spec asserts the file exists.
 
 ## Tests
+
+**Build before typecheck.** In a fresh checkout or worktree, run `bun run build`
+before `bun run typecheck` or `bun run test`. `@nxgt/playwright`'s specs import
+`@nxgt/msw-graphql` through its `dist/` types, which only the build writes.
 
 - `bun test src` — the pure logic: names, config, the Storybook project shape.
 - `playwright test -c test/playwright.config.ts` — the pages, fixtures, fills
