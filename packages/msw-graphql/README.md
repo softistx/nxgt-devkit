@@ -27,6 +27,7 @@ two optional `@graphql-tools/*` packages for `/schema`.
 | `@nxgt/msw-graphql/sdl` | `loadSdl` | nothing |
 | `@nxgt/msw-graphql/browser` | `enableMocking` (msw worker, handlers imported on demand) | `msw`, a browser |
 | `@nxgt/msw-graphql/node` | `startMockServer` (msw server for SSR/BFF loaders) | `msw` |
+| `@nxgt/msw-graphql/control` | `createMockControl` (`reset`, `fail`, `scenario`, `override`, `handle`), `UnknownScenarioError` | `msw`, `graphql` |
 | `@nxgt/msw-graphql/response` | `ok`, `created`, `noContent`, `badRequest`, `unauthorized`, `forbidden`, `notFound`, `graphqlErrors` | `msw` |
 
 ## Usage

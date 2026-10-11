@@ -27,7 +27,7 @@ const schema = buildMockSchema({
 	},
 });
 
-const { server } = startMockServer(
+const { server, control } = startMockServer(
 	[
 		graphqlEndpoint('http://api.test/graphql', createExecutor({ schema })),
 		http.get('http://api.test/rest', () => ok({ rest: true })),
@@ -54,6 +54,33 @@ try {
 	assert.equal(invalid.status, 400);
 	const rest = await fetch('http://api.test/rest');
 	assert.deepEqual(await rest.json(), { rest: true });
+
+	// The control channel, over a real server: fail, override, scenario, reset.
+	const reply = (path, body) =>
+		control.handle(
+			new Request(`http://app.test/__mocks/${path}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(body),
+			}),
+		);
+	assert.equal((await reply('fail', { status: 503 })).status, 200);
+	assert.equal((await call('{ hello }')).status, 503);
+	assert.equal((await reply('reset', {})).status, 200);
+	assert.equal((await call('{ hello }')).status, 200);
+	await reply('override', {
+		operationName: 'Hi',
+		status: 403,
+		errors: [{ message: 'no' }],
+	});
+	const forced = await fetch('http://api.test/graphql', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ query: 'query Hi { hello }', operationName: 'Hi' }),
+	});
+	assert.equal(forced.status, 403);
+	await control.reset();
+	assert.equal((await call('query Hi { hello }')).status, 200);
 
 	// onUnhandledRequest 'error' is honoured by both msw majors.
 	await assert.rejects(fetch('http://api.test/unhandled'));

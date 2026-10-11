@@ -46,6 +46,11 @@
 			"import": "./dist/response/index.js",
 			"default": "./dist/response/index.js"
 		},
+		"./control": {
+			"types": "./dist/control/index.d.ts",
+			"import": "./dist/control/index.js",
+			"default": "./dist/control/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -79,7 +84,8 @@
 			"src/sdl/index.ts",
 			"src/browser/index.ts",
 			"src/node/index.ts",
-			"src/response/index.ts"
+			"src/response/index.ts",
+			"src/control/index.ts"
 		]
 	},
 	"devDependencies": {
