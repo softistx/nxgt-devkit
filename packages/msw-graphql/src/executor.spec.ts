@@ -92,9 +92,8 @@ describe('createExecutor', () => {
 
 	test('an error without a status stays a 200', async () => {
 		const { run } = setup();
-		// The mock resolves `student` for any id but 404; a non-null field of
-		// a null parent is a plain GraphQL error with no http extension.
-		const { status } = await run('{ student(id: "1") { id } nope: whoami }');
+		const { status, body } = await run('{ plain }');
+		expect(body.errors.length).toBe(1);
 		expect(status).toBe(200);
 	});
 

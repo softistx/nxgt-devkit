@@ -10,6 +10,7 @@ export const typeDefs = /* GraphQL */ `
 		students: [Student!]!
 		whoami: String
 		boom: String
+		plain: String
 	}
 	type Mutation { removeStudent(id: ID!): Boolean! }
 `;
@@ -24,6 +25,9 @@ export const schema = buildMockSchema<{ token: string | null }>({
 				return { id, name: 'Ada' };
 			},
 			whoami: (_root, _args, context) => context.token,
+			plain: () => {
+				throw new Error('plain failure');
+			},
 			boom: () => {
 				throw new GraphQLHttpError('teapot', 418, { hint: 'tea' });
 			},

@@ -30,13 +30,12 @@ export async function loadSdl(options: LoadSdlOptions): Promise<string> {
 	if (!vite && !file) {
 		throw new Error('loadSdl needs a `vite` callback, a `file`, or both.');
 	}
-	const useVite =
-		vite && (underVite() || typeof window !== 'undefined' || !file);
-	if (useVite) {
+	if (vite && (underVite() || typeof window !== 'undefined' || !file)) {
 		const loaded = await vite();
 		return typeof loaded === 'string' ? loaded : loaded.default;
 	}
+	if (!file) throw new Error('loadSdl: no `file` to read.');
 	const fs = 'node:fs/promises';
 	const { readFile } = await import(/* @vite-ignore */ fs);
-	return readFile(file as URL | string, 'utf8');
+	return readFile(file, 'utf8');
 }

@@ -1,7 +1,7 @@
 import {
 	type DocumentNode,
 	execute,
-	type GraphQLError,
+	GraphQLError,
 	type GraphQLSchema,
 	parse,
 	validate,
@@ -97,7 +97,8 @@ export function createExecutor<TContext = unknown>(
 		try {
 			document = parse(query);
 		} catch (error) {
-			return invalid([error as GraphQLError]);
+			if (!(error instanceof GraphQLError)) throw error;
+			return invalid([error]);
 		}
 		const errors = validate(schema, document);
 		if (errors.length > 0) return invalid(errors);

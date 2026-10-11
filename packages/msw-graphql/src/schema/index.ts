@@ -5,7 +5,7 @@ import {
 } from '@graphql-tools/schema';
 import type { GraphQLSchema } from 'graphql';
 
-export type MockSchemaOptions<TContext = any> = {
+export type MockSchemaOptions<TContext = unknown> = {
 	/** The SDL, from `loadSdl()` or a string. */
 	typeDefs: IExecutableSchemaDefinition<TContext>['typeDefs'];
 	/** Hand-written resolvers: what they return wins over a generated mock. */
@@ -19,7 +19,7 @@ export type MockSchemaOptions<TContext = any> = {
  * every other field is generated from its type: `makeExecutableSchema`, then
  * `addMocksToSchema` with `preserveResolvers`.
  */
-export function buildMockSchema<TContext = any>(
+export function buildMockSchema<TContext = unknown>(
 	options: MockSchemaOptions<TContext>,
 ): GraphQLSchema {
 	const { typeDefs, resolvers, mocks } = options;

@@ -28,7 +28,8 @@ const schema = buildMockSchema({
 const server = setupServer(
 	graphqlEndpoint('http://api.test/graphql', createExecutor({ schema })),
 );
-server.listen({ onUnhandledRequest: 'error' });
+// msw 3 renamed `onUnhandledRequest` to `onUnhandledFrame`; each ignores the other.
+server.listen({ onUnhandledFrame: 'error', onUnhandledRequest: 'error' });
 
 const call = (query) =>
 	fetch('http://api.test/graphql', {
