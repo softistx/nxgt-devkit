@@ -16,10 +16,6 @@ Nothing is in progress.
 - **Drop the generator patch** — once
   [graphql-code-generator-community#1653](https://github.com/dotansimha/graphql-code-generator-community/pull/1653)
   is released and adopted, the `bun patch` in troubleshooting goes away.
-- **`loadSdl` against a real Vite build** — the Vite branch is covered by
-  unit tests only; a run under Vite is wanted.
-- **`enableMocking` in a real browser** — only the disabled path and the
-  handler-shape unwrapping are tested; a browser run is wanted.
 
 ## Later
 
@@ -36,6 +32,13 @@ Nothing is in progress.
 - **Concrete schemas, handlers and mock data** — they are the app's.
 
 ## Shipped
+
+Tests only, no release:
+
+- **`loadSdl` against a real Vite build** — a fixture built with `vite build`
+  inlines the SDL and the built module resolves it.
+- **`enableMocking` in a real browser** — Chromium, a test server serving
+  msw's worker script, a handler answering a fetch.
 
 Next minor, unreleased:
 
