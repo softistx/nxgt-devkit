@@ -31,6 +31,21 @@
 			"import": "./dist/sdl/index.js",
 			"default": "./dist/sdl/index.js"
 		},
+		"./browser": {
+			"types": "./dist/browser/index.d.ts",
+			"import": "./dist/browser/index.js",
+			"default": "./dist/browser/index.js"
+		},
+		"./node": {
+			"types": "./dist/node/index.d.ts",
+			"import": "./dist/node/index.js",
+			"default": "./dist/node/index.js"
+		},
+		"./response": {
+			"types": "./dist/response/index.d.ts",
+			"import": "./dist/response/index.js",
+			"default": "./dist/response/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -61,7 +76,10 @@
 		"entrypoints": [
 			"src/index.ts",
 			"src/schema/index.ts",
-			"src/sdl/index.ts"
+			"src/sdl/index.ts",
+			"src/browser/index.ts",
+			"src/node/index.ts",
+			"src/response/index.ts"
 		]
 	},
 	"devDependencies": {

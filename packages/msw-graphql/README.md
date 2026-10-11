@@ -25,6 +25,9 @@ two optional `@graphql-tools/*` packages for `/schema`.
 | `@nxgt/msw-graphql` | `createExecutor`, `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`, `createMockState`, `mockState`, `failure`; types `Executor`, `ExecutorInput`, `ExecutorOptions`, `MockState` | `msw`, `graphql` |
 | `@nxgt/msw-graphql/schema` | `buildMockSchema` | + `@graphql-tools/schema`, `@graphql-tools/mock` |
 | `@nxgt/msw-graphql/sdl` | `loadSdl` | nothing |
+| `@nxgt/msw-graphql/browser` | `enableMocking` (msw worker, handlers imported on demand) | `msw`, a browser |
+| `@nxgt/msw-graphql/node` | `startMockServer` (msw server for SSR/BFF loaders) | `msw` |
+| `@nxgt/msw-graphql/response` | `ok`, `created`, `noContent`, `badRequest`, `unauthorized`, `forbidden`, `notFound`, `graphqlErrors` | `msw` |
 
 ## Usage
 
