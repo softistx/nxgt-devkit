@@ -55,6 +55,12 @@ jobs:
         run: |
           bun run scripts/test-matrix.ts 16 3.0.3
           bun run scripts/test-matrix.ts 17 2.15.0
+      # @nxgt/playwright/msw promises msw ^2.12.10 || ^3 and @msw/playwright
+      # >=0.6.7 <0.8; the workspace holds msw 3 and 0.7, so the bottom of both
+      # ranges runs in a scratch copy (install, build, typecheck, msw specs).
+      - name: playwright/msw on the lowest msw and @msw/playwright
+        working-directory: packages/playwright
+        run: bun run scripts/test-lower-peers.ts 2.12.10 0.6.7
       # The build exits 0 on packages that throw the instant they are imported.
       # This packs them, installs them as a consumer does and imports every
       # declared subpath but the browser-only ones.

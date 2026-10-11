@@ -9,9 +9,6 @@ Nothing is in progress.
 
 ## Next
 
-- **A CI leg for `/msw`'s lower peers** — run the `/msw` specs on msw 2.12 with
-  `@msw/playwright` 0.6.7, the bottom of the supported range, which is only
-  checked by hand before a release today.
 - **More responsive checks** — tap targets large enough on a phone, and text
   that does not overflow its box, beside `expectNoHorizontalScroll`.
 
@@ -40,6 +37,10 @@ Nothing is in progress.
 ## Shipped
 
 Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
+
+- **A CI leg for `/msw`'s lower peers** — the `/msw` specs run on msw 2.12.10
+  with `@msw/playwright` 0.6.7, the bottom of the supported range, in every
+  CI run (`scripts/test-lower-peers.ts`). CI only, no release.
 
 - **TypeScript 7 peer** — the `typescript` peer is `^6.0.3 || ^7.0.0`. 0.5.1.
 - **Wider `/msw` peers** — `msw` `^2.12.10 || ^3` and `@msw/playwright`

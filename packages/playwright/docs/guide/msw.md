@@ -34,7 +34,8 @@ bun add -d msw @msw/playwright
 The peers are `msw` `^2.12.10 || ^3.0.0` and `@msw/playwright`
 `>=0.6.7 <0.8`. `@msw/playwright` 0.7 needs msw 3; with msw 2 stay on
 `@msw/playwright@~0.6.7`. The `/msw` specs of this package pass on msw 3.0.3 with
-`@msw/playwright` 0.7.0 and on msw 2.15 with 0.6.7.
+`@msw/playwright` 0.7.0 and, in CI, on msw 2.12.10 with 0.6.7 (the bottom of
+both ranges).
 
 The interception happens at the browser context, through `@msw/playwright`:
 nothing is installed in the app, there is no service worker to register, and
