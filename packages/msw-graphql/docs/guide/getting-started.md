@@ -50,19 +50,24 @@ bunx msw init public/ --save    # the worker script, once
 
 ```ts
 // src/main.tsx
-import { enableMocking } from '@nxgt/msw-graphql/browser';
-
-await enableMocking({
-	enabled: import.meta.env.VITE_MOCKS === 'true',
-	handlers: () => import('../mocks/handlers'),
-});
+// import.meta.env.DEV is `false` in a production build: Vite removes the
+// branch and its imports, so no msw or handlers chunk is emitted.
+if (import.meta.env.DEV && import.meta.env.VITE_MOCKS === 'true') {
+	const { enableMocking } = await import('@nxgt/msw-graphql/browser');
+	await enableMocking({
+		enabled: true,
+		handlers: () => import('../mocks/handlers'),
+	});
+}
 
 await import('./render'); // mounts the app
 ```
 
 `enableMocking` resolves to the worker, or `null` when `enabled` is false;
-then neither `msw/browser` nor the handlers are imported, so a production
-bundle never carries them. The handlers module may export the array as
+then neither `msw/browser` nor the handlers are loaded at run time. Keeping
+them out of the production bundle is the `import.meta.env.DEV` condition's job:
+a dynamic `import()` behind a runtime flag alone still emits the chunk (see
+[Production](./control.md#production)). The handlers module may export the array as
 `handlers`, as `default`, or be the array itself.
 
 To drive the mocks from Playwright in a browser, use the `/msw` subpath of

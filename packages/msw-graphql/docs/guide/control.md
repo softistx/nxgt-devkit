@@ -5,7 +5,7 @@ the API fail, run a named scenario (reseed the app), or answer one operation
 with a fixed result. It is a set of methods, and the same methods over HTTP.
 
 It is for development and tests only: `createMockControl` and `startMockServer`
-throw under `NODE_ENV=production`.
+throw under `NODE_ENV=production` and in a Vite production build (`import.meta.env.PROD`).
 
 ```ts
 import { createMockControl } from '@nxgt/msw-graphql/control';
@@ -132,7 +132,7 @@ Success is `200` with `{ "ok": true }`.
 | Status | When |
 | --- | --- |
 | `null` result (your app answers) | The path is not `<path>` or `<path>/...` |
-| `404` | Unknown route, **and every route when `NODE_ENV=production`** (empty body) |
+| `404` | Unknown route, **and every route in production** (`NODE_ENV=production` or `import.meta.env.PROD`) (empty body) |
 | `404` with `{ error }` | Unknown scenario; the message lists the registered names |
 | `405` with `allow: POST` | A method other than POST |
 | `415` | A POST without `Content-Type: application/json`, an empty body included. A cross-site page cannot send that without a preflight the app never grants, which is the protection against another tab driving your mocks |
