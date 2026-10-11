@@ -88,12 +88,14 @@ The probe lives in this package's `scripts/` folder in the repository.
 ## `createMockControl is dev and test only: NODE_ENV is "production"`
 
 **When:** calling `createMockControl` or `startMockServer` (which builds the
-control first) with `NODE_ENV=production`. A mounted control also answers
+control first) with `NODE_ENV=production` or in a Vite production build
+(`import.meta.env.PROD`). The guard fails open when `NODE_ENV` is unset, as under Bun. A mounted control also answers
 `404` to every `/__mocks` route in production.
 **Why:** the control can reset, fail and reseed the API; it must never run in
 a production build.
 **Fix:** import `/node` and `/control` only behind your mocks flag, with a
-dynamic import, so a production build never loads them:
+dynamic import (on a server; in a Vite client build the condition must be
+statically false, see the Production section of the control guide):
 
 ```ts
 if (process.env.MOCKS === 'true') {
@@ -113,7 +115,7 @@ Run the mocked server (and the e2e suite) with `NODE_ENV` not `production`.
 
 | Answer | Message | Cause |
 | --- | --- | --- |
-| `415` | `The body must be application/json.` | a body without a `content-type: application/json` header |
+| `415` | `The body must be application/json.` | any POST without a `content-type: application/json` header, an empty `reset` included |
 | `404` | empty | an unknown route (only `reset`, `fail`, `scenario`, `override`), or any route under production |
 | `404` | `No scenario "x". Registered: a, b.` | the scenario name is not in the `scenarios` you passed (`none` when there are none) |
 | `405` | `POST only.` | any method other than `POST` |

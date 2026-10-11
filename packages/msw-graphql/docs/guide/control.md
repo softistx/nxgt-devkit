@@ -79,10 +79,12 @@ control.override(
 );
 ```
 
-An override answers before the executor, so it also bypasses `guard`. An
-override matches a POST by the `operationName` in the body, or, without one,
+An override answers before the executor, so it also bypasses `guard`.
+
+An override matches a POST by the `operationName` in the body, or, without one,
 by the name of the query's only operation (a document with several operations
-and none selected matches nothing). It stands aside while the API is failing. Later overrides are consulted first.
+and none selected matches nothing). It stands aside while the API is failing. Later overrides
+are consulted first.
 
 ## Over HTTP
 
@@ -109,7 +111,8 @@ A custom `path` must match the mount and the client's.
 
 ### Routes
 
-All are `POST <path>/<route>` with an `application/json` body (or none).
+All are `POST <path>/<route>` with `Content-Type: application/json`, even when the body is empty (`reset`
+sends `{}`). Any other POST is a `415`.
 
 | Route | Body | Effect |
 | --- | --- | --- |
@@ -132,7 +135,7 @@ Success is `200` with `{ "ok": true }`.
 | `404` | Unknown route, **and every route when `NODE_ENV=production`** (empty body) |
 | `404` with `{ error }` | Unknown scenario; the message lists the registered names |
 | `405` with `allow: POST` | A method other than POST |
-| `415` | A body that is not `application/json`. A cross-site page cannot send that without a preflight the app never grants, which is the protection against another tab driving your mocks |
+| `415` | A POST without `Content-Type: application/json`, an empty body included. A cross-site page cannot send that without a preflight the app never grants, which is the protection against another tab driving your mocks |
 | `400` | Bad JSON; `fail` status not an integer 100-599 or null; `scenario` without a string `name`; an invalid override (`operationName` missing, `status` out of range, `errors` not an array, `once` not a boolean) |
 | `500` with `{ error }` | Your `reset` or a scenario threw; `error` is its message |
 

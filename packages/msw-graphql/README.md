@@ -178,7 +178,10 @@ await control.reset();
 - **`typescript-msw` handlers do not work on msw 3.** `graphql.query` is gone
   from `msw`; use `graphqlEndpoint(url, execute)`.
 - **The control and `/node` throw under `NODE_ENV=production`.** Import them
-  behind the mocks flag, dynamically, so a production build never ships them.
+  behind the mocks flag. A dynamic `import()` alone still emits a Vite chunk
+  unless the condition is statically false (`import.meta.env.DEV`); the guard
+  also covers Vite builds and fails open when `NODE_ENV` is unset (Bun). See
+  the Production section of [docs/guide/control.md](docs/guide/control.md).
 - **The `?raw` import must stay a literal** in `loadSdl({ vite })`: Vite can only
   inline what it sees.
 - **Mocks are process-global**: one server, one `mockState`. Parallel specs
