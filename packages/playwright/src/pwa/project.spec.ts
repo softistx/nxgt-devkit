@@ -48,7 +48,7 @@ describe('pwaProject', () => {
 				start: 'node server.js',
 				readyPath: 'manifest.webmanifest',
 				env: { LOG_LEVEL: 'warn', PORT: 'ignored' },
-				webServer: { stderr: 'ignore', timeout: 60_000 },
+				webServer: { stderr: 'ignore', timeout: 60_000, env: { DEBUG: '1' } },
 				use: { locale: 'fr-CA' },
 			},
 			{},
@@ -56,7 +56,7 @@ describe('pwaProject', () => {
 		expect(options.webServer).toEqual({
 			command: 'node server.js',
 			url: 'http://localhost:4000/manifest.webmanifest',
-			env: { LOG_LEVEL: 'warn', PORT: '4000' },
+			env: { LOG_LEVEL: 'warn', DEBUG: '1', PORT: '4000' },
 			reuseExistingServer: true,
 			timeout: 60_000,
 			stderr: 'ignore',

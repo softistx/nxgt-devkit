@@ -500,7 +500,8 @@ See [guide/pwa.md](guide/pwa.md) and the project that runs alone in
 
 ### `<url> is cached: <cache> (<urls>)`
 
-**When:** `expectNotCached(page, url)`.
+**When:** `expectNotCached(page, url)`. `<url>` is the string or pattern
+you passed (`/^\/acc/ is cached: pages (/account)`), not the page's URL.
 **Why:** the service worker stored a response that must not be kept. The
 message names each cache and the entries that matched.
 **Fix:** make the worker's caching rule skip that URL (a signed-in page, an
@@ -510,7 +511,8 @@ the page's origin. Cache Storage exists in a secure context only:
 
 ### `cachedUrls: <url> has no Cache Storage`
 
-The message continues `Open a page of the app first, on a secure origin
+Also `fillCaches: <url> has no Cache Storage` and
+`expectOnlyCaches: <url> has no Cache Storage`. The message continues `Open a page of the app first, on a secure origin
 (https, or http://localhost); about:blank and page.setContent have none.` The
 first word is the helper called: `cachedUrls`, `fillCaches` or
 `expectOnlyCaches` (`expectNotCached` reports `cachedUrls`).

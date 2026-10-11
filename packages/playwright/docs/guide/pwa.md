@@ -69,7 +69,7 @@ type PwaProjectOptions = {
 	start?: string;                     // 'bun run start', run with PORT=<port>
 	readyPath?: string;                 // '/', the path the server is awaited on
 	env?: Record<string, string>;       // more environment for the server
-	webServer?: Partial<WebServerConfig>; // merged over the preset (stderr, timeout, …)
+	webServer?: Partial<WebServerConfig>; // merged over the preset (stderr, timeout, env…); PORT stays the preset's
 	use?: Project['use'];               // merged over Desktop Chrome, serviceWorkers: 'allow'
 	overrides?: PlaywrightTestConfig;   // merged last; its projects come after this one
 };
@@ -219,6 +219,7 @@ nextWorkerVersion: no service worker is registered for <url>. Wait for it first:
 nextWorkerVersion: the browser found no new worker after editing <path>. Is it the file the server sends for the registered script, read anew per request (not kept in memory, nor cached by a CDN)?
 nextWorkerVersion: the new worker did not install within <timeout>ms: still installing.
 nextWorkerVersion: the new worker failed to install (redundant): …
+nextWorkerVersion: the page navigated away while the new worker installed: let the call finish first.
 nextWorkerVersion: the edit left <path> as it was; the browser would see no new worker.
 ```
 

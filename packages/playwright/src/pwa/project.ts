@@ -29,7 +29,10 @@ export type PwaProjectOptions = {
 	readyPath?: string;
 	/** Extra environment for the server. No mock flag: a production build ignores them. */
 	env?: Record<string, string>;
-	/** Merged over the web server the preset builds (`stderr`, `timeout`, …). */
+	/**
+	 * Merged over the web server the preset builds (`stderr`, `timeout`, …);
+	 * its `env` is merged too, `PORT` always the preset's.
+	 */
 	webServer?: Partial<WebServer>;
 	/** Merged over the project's `use` (Desktop Chrome, workers allowed). */
 	use?: Project['use'];
@@ -83,11 +86,11 @@ export function pwaProject(
 		webServer: {
 			command: build ? `${build} && ${start}` : start,
 			url: `http://localhost:${port}${readyPath.startsWith('/') ? '' : '/'}${readyPath}`,
-			env: { ...options.env, PORT: String(port) },
 			reuseExistingServer: !env.CI,
 			// A build takes a while.
 			timeout: 180_000,
 			...options.webServer,
+			env: { ...options.env, ...options.webServer?.env, PORT: String(port) },
 		},
 		overrides: {
 			...overrides,
