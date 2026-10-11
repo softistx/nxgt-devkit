@@ -14,7 +14,7 @@
     },
     "packages/msw-graphql": {
       "name": "@nxgt/msw-graphql",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "devDependencies": {
         "@graphql-tools/mock": "^9.1.16",
         "@graphql-tools/schema": "^10.1.3",
