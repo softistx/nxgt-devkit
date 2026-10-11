@@ -5,12 +5,14 @@
 // the one place the interception itself is exercised. It imports `dist/`, so
 // it also proves the built subpaths load. Build first.
 import assert from 'node:assert/strict';
-import { setupServer } from 'msw/node';
+import { http } from 'msw';
 import {
 	createExecutor,
 	GraphQLHttpError,
 	graphqlEndpoint,
 } from '../dist/index.js';
+import { startMockServer } from '../dist/node/index.js';
+import { ok } from '../dist/response/index.js';
 import { buildMockSchema } from '../dist/schema/index.js';
 
 const schema = buildMockSchema({
@@ -25,11 +27,13 @@ const schema = buildMockSchema({
 	},
 });
 
-const server = setupServer(
-	graphqlEndpoint('http://api.test/graphql', createExecutor({ schema })),
+const { server } = startMockServer(
+	[
+		graphqlEndpoint('http://api.test/graphql', createExecutor({ schema })),
+		http.get('http://api.test/rest', () => ok({ rest: true })),
+	],
+	{ onUnhandledRequest: 'error' },
 );
-// msw 3 renamed `onUnhandledRequest` to `onUnhandledFrame`; each ignores the other.
-server.listen({ onUnhandledFrame: 'error', onUnhandledRequest: 'error' });
 
 const call = (query) =>
 	fetch('http://api.test/graphql', {
@@ -48,6 +52,11 @@ try {
 
 	const invalid = await call('{ nope }');
 	assert.equal(invalid.status, 400);
+	const rest = await fetch('http://api.test/rest');
+	assert.deepEqual(await rest.json(), { rest: true });
+
+	// onUnhandledRequest 'error' is honoured by both msw majors.
+	await assert.rejects(fetch('http://api.test/unhandled'));
 	console.log('node smoke: ok');
 } finally {
 	server.close();
