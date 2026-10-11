@@ -7,6 +7,14 @@ export type StartMockServerOptions = Omit<MockControlOptions, 'server'> & {
 	onUnhandledRequest?: 'bypass' | 'warn' | 'error';
 };
 
+type Started = {
+	server: ReturnType<typeof setupServer>;
+	control: ReturnType<typeof createMockControl>;
+};
+
+const STARTED = Symbol.for('@nxgt/msw-graphql/node');
+const registry = globalThis as { [STARTED]?: Started };
+
 /**
  * Starts an msw server in this process, for an SSR or BFF app whose loaders
  * call the API from the server:
@@ -28,14 +36,6 @@ export type StartMockServerOptions = Omit<MockControlOptions, 'server'> & {
  * Bun's native `fetch` (mswjs/msw#2811). There, give the client
  * `createMockFetch`'s fetch (`./fetch`), or stay on msw 2.
  */
-type Started = {
-	server: ReturnType<typeof setupServer>;
-	control: ReturnType<typeof createMockControl>;
-};
-
-const STARTED = Symbol.for('@nxgt/msw-graphql/node');
-const registry = globalThis as { [STARTED]?: Started };
-
 export function startMockServer(
 	handlers: AnyHandler[],
 	options: StartMockServerOptions = {},

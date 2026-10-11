@@ -37,6 +37,12 @@ Nothing is in progress.
 
 ## Shipped
 
+Next minor, unreleased:
+
+- **Idempotent `startMockServer`** — a second call in the same process returns
+  the running server and control (its arguments are ignored), so an SSR entry
+  re-evaluated under HMR does not stack listeners.
+
 First release, 0.1.0, tested on graphql 16 and 17 and on msw 2 and 3:
 
 - **`createExecutor`** — runs real operations against a schema; failing
@@ -46,8 +52,7 @@ First release, 0.1.0, tested on graphql 16 and 17 and on msw 2 and 3:
 - **`/schema`** — `buildMockSchema`.
 - **`/sdl`** — `loadSdl`, one loader for Vite and Node.
 - **`/browser`** — `enableMocking`.
-- **`/node`** — `startMockServer`, idempotent per process (a second call
-  returns the running server and control; its arguments are ignored).
+- **`/node`** — `startMockServer`.
 - **`/fetch`** — `createMockFetch`: a `fetch` answered by the handlers with
   no global patch, for an SSR/BFF client that takes a fetch; works on msw 2
   and 3, Node and Bun.
