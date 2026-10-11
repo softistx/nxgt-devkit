@@ -102,7 +102,11 @@ the one it uses.
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
 `scripts/newest-peers.ts`. That script and its spec come from the graphql repository's
-`scripts/newest-peers.ts` and are kept in step with it. It rewrites every peer to the newest end of its
+`scripts/newest-peers.ts` (itself nxgt-data's) and are kept in step with it, but for
+one comment: theirs says the lockfile pins "the oldest end of each peer range",
+which is true there; here the lockfile pins the newest end of `graphql` and `msw`
+(the oldest `msw` is `packages/playwright/scripts/test-lower-peers.ts`'s job), so
+the comment names which end each peer is pinned at. It rewrites every peer to the newest end of its
 range (TypeScript 7, graphql 17, msw 3, the latest `@playwright/test`,
 `@msw/playwright`, `vitest`…), deletes `bun.lock`, installs, then builds,
 typechecks, tests and verifies the artifacts. A red run is an upstream release

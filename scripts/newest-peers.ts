@@ -8,7 +8,8 @@
  * the newest version it allows. A sibling's `workspace:^` is the sibling.
  *
  * The repository's own toolchain is the lockfile's: the exact versions each
- * package pins as a devDependency, the versions the lockfile pins, so
+ * package pins as a devDependency, one end of each peer range (here the
+ * oldest for `typescript`, the newest for `graphql` and `msw`), so
  * everything CI normally runs proves only that end of it. The "Newest peers"
  * workflow (weekly, and on demand) runs this, deletes `bun.lock`, installs, then builds, typechecks, tests
  * and verifies the artifacts: the other end. The ranges come from the
