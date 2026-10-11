@@ -31,11 +31,17 @@ Needs `msw` and `@msw/playwright` next to `@playwright/test`:
 bun add -d msw @msw/playwright
 ```
 
+The peers are `msw` `^2.12.10 || ^3.0.0` and `@msw/playwright`
+`>=0.6.7 <0.8`. `@msw/playwright` 0.7 needs msw 3; with msw 2 stay on
+`@msw/playwright@~0.6.7`. The `/msw` specs of this package pass on msw 3.0.3 with
+`@msw/playwright` 0.7.0 and on msw 2.15 with 0.6.7.
+
 The interception happens at the browser context, through `@msw/playwright`:
 nothing is installed in the app, there is no service worker to register, and
 requests the page makes (`fetch`, XHR) that a handler matches are answered by
 it. Requests your **server** makes during SSR do not go
-through the browser and are not intercepted.
+through the browser and are not intercepted: when the mocks live in the app's
+server, see [mock-server.md](mock-server.md).
 
 ## Signature
 

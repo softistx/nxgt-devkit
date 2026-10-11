@@ -2,7 +2,8 @@
 
 The Playwright boilerplate every app ends up writing, written once: a shared
 `playwright.config.ts`, `BasePage` and `FormPage` page objects, sign-in and
-storage-state fixtures, msw network fixtures, navigation and fills that wait
+storage-state fixtures, msw network fixtures, a driver for the mocks of an
+SSR app's server, navigation and fills that wait
 for hydration, waits for a page at rest, axe accessibility checks, phone
 projects and a no-sideways-scroll check, full-page screens of every state,
 PWA specs against a production build (offline, a new worker version, what the
@@ -22,7 +23,8 @@ subpaths you import:
 | --- | --- |
 | `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`) |
 | `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
-| `/msw` | `@playwright/test`, `msw` (`^2.12.10`), `@msw/playwright` (`>=0.6.7 <0.7`) |
+| `/msw` | `@playwright/test`, `msw` (`^2.12.10 \|\| ^3.0.0`), `@msw/playwright` (`>=0.6.7 <0.8`; 0.7 needs msw 3) |
+| `/mock-server` | `@playwright/test` only (it talks HTTP) |
 | `/storybook`, `/storybook/capture`, `/storybook/setup` | `vitest` (`^4.0.0`), `@vitest/browser-playwright` (`^4.0.0`), `@storybook/addon-vitest` (`>=10.3.0 <11`), and `playwright` itself (required by `@vitest/browser-playwright`) |
 
 ```bash
@@ -49,11 +51,12 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
 | `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
+| `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
 | `@nxgt/playwright/storybook/capture` | `capturePreview` | **browser only** |
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
-The root barrel does not re-export `/a11y`, `/msw` or `/storybook`, so an app
+The root barrel does not re-export `/a11y`, `/msw`, `/mock-server` or `/storybook`, so an app
 without those peers can still import it, nor the `/react-router` adapter.
 
 ## Usage
@@ -490,6 +493,43 @@ test('shows a server error', async ({ page, network }) => {
 });
 ```
 
+### Mock server
+
+When the app's **server** calls the API (SSR, a BFF), the browser's msw never
+sees it. The mocks then live in the server, which mounts a control route
+(`@nxgt/msw-graphql`'s `createMockControl`, at `/__mocks` by default), and
+the spec drives it over HTTP:
+
+```ts
+// playwright/config/playwright.setup.ts
+import { test as base } from '@playwright/test';
+import { createMockServerTest } from '@nxgt/playwright/mock-server';
+
+export const test = createMockServerTest(base); // or createMockServerTest(createMswTest(handlers))
+export { expect } from '@playwright/test';
+```
+
+```ts
+// playwright/e2e/students.spec.ts
+import { expect, test } from '../config/playwright.setup';
+
+test('API down', async ({ page, mockServer }) => {
+	await mockServer.fail(503);
+	await page.goto('/students');
+	await expect(page.getByRole('alert')).toBeVisible();
+});
+
+test.describe('forbidden', () => {
+	test.use({
+		serverMocks: [{ operationName: 'GetStudents', status: 403, errors: [{ message: 'forbidden' }] }],
+	});
+	// or, in a test: await mockServer.scenario('remove', { id: 7 });
+});
+```
+
+The mocks are reset before and after every test. They are process-global:
+run these specs with `workers: 1`. See [docs/guide/mock-server.md](docs/guide/mock-server.md).
+
 ### Storybook
 
 ```ts
@@ -545,6 +585,8 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 - **`auth.setup.ts` belongs in `playwright/config/`** — the `setup` project
   looks only there — and `playwright/.auth/` holds live session cookies:
   add it to `.gitignore`.
+- **Server mocks are global to the app's server**: specs using `mockServer`
+  or `serverMocks` run with `workers: 1` (`overrides: { workers: 1, fullyParallel: false }`).
 - **`test.use({ handlers })` replaces the default handlers**; to add one, use
   `network.use(...)` or spread the defaults after it.
 - **`mobile` adds projects, it does not filter `browsers`**: `browsers: ['firefox'], mobile: true`
@@ -577,6 +619,6 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 
 ## Documentation
 
-- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md).
+- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md), [mock server](docs/guide/mock-server.md).
 - [Troubleshooting](docs/troubleshooting.md) — the error you are looking at, and its fix.
 - [Roadmap](docs/roadmap.md) — what is coming, and what is not planned.

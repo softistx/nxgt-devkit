@@ -10,7 +10,8 @@ the public npm registry.
 
 | package | what it is |
 | --- | --- |
-| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `withHydration` / `hydrated` (a `goto` that waits for a hydration marker; the React Router marker in the `./react-router` adapter), `settled` / `nextFrames` / `toastsGone`, `expectAccessible` (axe) and `expectNoHorizontalScroll` (with an inner `scroller`), phone projects through `defineAppConfig`'s `mobile`, `saveScreen` and `defineAppConfig`'s `screens` (full-page screens, a folder emptied by a packaged global setup), `selectedProjects` (`--project` seen by the workers), `/pwa`'s production-build project (`pwaProject`, `isPwaRun`), offline (`goOffline` / `goOnline`), a new worker version (`nextWorkerVersion`) and cache checks (`cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`), `createMswTest` for msw through `@msw/playwright`, and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
+| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `withHydration` / `hydrated` (a `goto` that waits for a hydration marker; the React Router marker in the `./react-router` adapter), `settled` / `nextFrames` / `toastsGone`, `expectAccessible` (axe) and `expectNoHorizontalScroll` (with an inner `scroller`), phone projects through `defineAppConfig`'s `mobile`, `saveScreen` and `defineAppConfig`'s `screens` (full-page screens, a folder emptied by a packaged global setup), `selectedProjects` (`--project` seen by the workers), `/pwa`'s production-build project (`pwaProject`, `isPwaRun`), offline (`goOffline` / `goOnline`), a new worker version (`nextWorkerVersion`) and cache checks (`cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`), `createMswTest` for msw through `@msw/playwright`, `createMockServerTest` (`/mock-server`: a `mockServer` fixture that resets, fails, runs scenarios and overrides operations of an app server's mocks over HTTP, for `@nxgt/msw-graphql`'s control), and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
+| `@nxgt/msw-graphql` | Mock a GraphQL API with msw by executing the real operations against a schema: `createExecutor` (parse, validate, execute, status from `extensions.http.status`), `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`; `/schema` (`buildMockSchema`), `/sdl` (`loadSdl`, Vite `?raw` or a file read), `/browser` (`enableMocking`), `/node` (`startMockServer`), `/control` (`createMockControl`), `/response`. **Private until the owner's go** |
 
 `ROADMAP.md` lists what is planned next — `@nxgt/jenkins` among it. Nothing
 there is started until it has an entry in the work queue.
@@ -66,13 +67,35 @@ Every peer is **optional** and each subpath needs only its own:
 | --- | --- |
 | `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
 | `./a11y` | + `@axe-core/playwright`, loaded on the first scan so a missing peer is named |
-| `./msw` | + `msw`, `@msw/playwright` |
+| `./msw` | + `msw` (2.12.10+ or 3), `@msw/playwright` (0.6.7 to 0.7; 0.7 needs msw 3) |
+| `./mock-server` | `@playwright/test`; no msw import, it talks HTTP |
 | `./storybook` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 | `./storybook/capture`, `./storybook/setup` | the same, **in the browser** |
+
+`./mock-server` copies the wire types of `@nxgt/msw-graphql/control` (`ServerOverride`) on purpose, so it imports neither msw nor that package; `test/e2e/mock-server.pw.ts` imports both (`@nxgt/msw-graphql` is a devDependency) and fails to typecheck if the two types drift, and `test/server.ts` mounts the real control it drives. That spec runs in its own config (`test/playwright.mock-server.config.ts`, one worker): server mocks are process-global.
 
 The root barrel re-exports only the first row, but for `./react-router`, an
 adapter an app of another framework never needs. Adding an export that reaches
 msw or Vitest to it would make every consumer install them.
+
+`@nxgt/msw-graphql` has the same shape for its own peers: `.` needs `msw` and
+`graphql`, `./schema` also the two optional `@graphql-tools/*` peers, `./sdl`
+nothing.
+
+**msw 3 and Bun.** msw 3's Node interceptors patch `node:net`, which Bun's
+native `fetch` does not go through, so under Bun a `setupServer` intercepts
+nothing (msw 2.15 does). `@nxgt/msw-graphql`'s specs therefore call handlers
+with `getResponse` under `bun test`, and `scripts/node-smoke.mjs` runs a real
+msw server under Node against the built `dist/`. `scripts/test-matrix.ts
+<graphql> <msw>` runs the whole bar against other majors in a scratch copy;
+CI runs it for graphql 16 and for msw 2, with full versions (`16 3.0.3`,
+`17 2.15.0`); on msw 2 it also runs `scripts/bun-fetch-probe.ts --expect
+intercepted`, which prints whether the installed msw sees Bun's fetch.
+
+`@nxgt/playwright/msw`'s lower peer range (msw 2.12+ with `@msw/playwright`
+0.6.7) is not exercised in CI; check it by hand before a release: in a scratch
+copy, `bun add -d msw@2.12.10 @msw/playwright@0.6.7` in `packages/playwright`,
+then `bun run test`.
 
 ## Browser-only subpaths
 

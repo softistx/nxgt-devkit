@@ -44,6 +44,9 @@ throws itself are quoted exactly.
   - [`nextWorkerVersion: the new worker failed to install (redundant)`](#nextworkerversion-the-new-worker-failed-to-install-redundant)
   - [`Timed out waiting 180000ms from config.webServer` on the PWA run](#timed-out-waiting-180000ms-from-configwebserver-on-the-pwa-run)
   - [`--project=pwa` starts the dev server, or finds no tests](#--projectpwa-starts-the-dev-server-or-finds-no-tests)
+- [Mock server](#mock-server)
+  - [`<path>/<route> answered <status>: <body>. Is the control mounted…`](#pathroute-answered-status-body-is-the-control-mounted)
+  - [Mock-server specs pass alone and fail in parallel](#mock-server-specs-pass-alone-and-fail-in-parallel)
 - [Accessibility](#accessibility)
   - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
@@ -76,6 +79,7 @@ you import needs a peer you have not installed.
 | `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
 | `./a11y` | `@playwright/test`, `@axe-core/playwright` |
 | `./msw` | `@playwright/test`, `msw`, `@msw/playwright` |
+| `./mock-server` | `@playwright/test` |
 | `./storybook`, `./storybook/capture`, `./storybook/setup` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 
 ```sh
@@ -89,8 +93,8 @@ The message continues `imported from …/node_modules/@msw/playwright/…`.
 **When:** importing `@nxgt/playwright/msw`, with `msw` 2 installed.
 **Why:** `@msw/playwright` 0.7.x requires msw 3. Installed beside msw 2, it
 cannot load msw at all. `@nxgt/playwright` supports `@msw/playwright`
-`>=0.6.7 <0.7`, the versions that work with msw 2.
-**Fix:** keep `@msw/playwright` within that range.
+`>=0.6.7 <0.8`: 0.6.x with msw 2, 0.7.x with msw 3.
+**Fix:** on msw 2, keep `@msw/playwright` on 0.6, or move to msw 3.
 
 ```sh
 bun add -d @msw/playwright@~0.6.7
@@ -618,6 +622,61 @@ the one `isPwaRun` looks for.
 const offline = isPwaRun({ project: 'offline' });
 export default defineAppConfig(offline ? pwaProject({ port: 5274, name: 'offline' }) : { port: 5273 });
 ```
+
+## Mock server
+
+### `<path>/<route> answered <status>: <body>. Is the control mounted…`
+
+The full message is `<path>/<route> answered <status>: <body>. Is the control
+mounted (createMockControl().handle) and NODE_ENV not production?`, for example
+`/__mocks/reset answered 404: …`. It is thrown by `mockServer.reset()`,
+`fail`, `scenario` or `use`, and by the automatic reset before and after every
+test, so it can fail a test that never touches `mockServer`.
+
+**When:** a spec using `createMockServerTest`.
+**Why:** the status says which. 404 on every route: the app does not mount the
+control at that path, the `path` option differs from the app's, or the server
+runs in production, `NODE_ENV=production` or a Vite production build (the control refuses to exist there). 404 on
+`scenario`, with a body naming the scenario: no such name is registered.
+405, 415: the route was not called with a JSON `POST`. 400: bad input, such as
+a `fail` status outside 100-599. 500: the app's `reset` or scenario threw.
+The `<body>` is the control's own answer; read it first. A connection error
+instead means the server is not running at `baseURL`.
+**Fix:** mount the control and match the path.
+
+```ts
+// the app's server entry
+const { control } = startMockServer(handlers, { path: '/__mocks' });
+app.all('/__mocks/*', async ({ request }) =>
+	(await control.handle(request)) ?? new Response(null, { status: 404 }),
+);
+```
+
+```ts
+export const test = createMockServerTest(base, { path: '/__mocks' });
+```
+
+See [guide/mock-server.md](guide/mock-server.md).
+
+### Mock-server specs pass alone and fail in parallel
+
+**When:** `mockServer` or `serverMocks` specs run with more than one worker,
+or beside other spec files against one server. Symptoms: a page shows the
+error of another test's `fail(503)`, an override is missing, or the above
+error for no apparent reason.
+**Why:** the mocks live in the app's one server process and are global to it;
+workers reset and change each other's mocks. Measured here: the contract spec
+failed 11 of 18 run in parallel with the other specs.
+**Fix:** run those specs in a project with one worker.
+
+```ts
+export default defineAppConfig({
+	port: 5174,
+	overrides: { workers: 1, fullyParallel: false },
+});
+```
+
+Or give each worker a server of its own on its own port.
 
 ## Accessibility
 
