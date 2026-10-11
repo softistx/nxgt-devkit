@@ -46,6 +46,8 @@ export function createMockFetch(
 		init?: RequestInit,
 	): Promise<Response> => {
 		const request = new Request(input, init);
+		// As the real fetch does: an aborted signal rejects, mocked or not.
+		request.signal.throwIfAborted();
 		// `as never`: msw 2 and 3 name their handler types differently.
 		const mocked = await getResponse(current as never, request.clone());
 		if (mocked) return mocked;

@@ -109,3 +109,41 @@ test('server.use puts a handler in front until resetHandlers', async () => {
 		data: { whoami: 't1' },
 	});
 });
+
+test('the handler reads the body of a Request input', async () => {
+	const { fetch, server } = setup();
+	server.use(
+		http.post('http://echo.test/', async ({ request }) =>
+			HttpResponse.text(await request.text()),
+		),
+	);
+	const request = new Request('http://echo.test/', {
+		method: 'POST',
+		body: 'hi',
+	});
+	expect(await (await fetch(request)).text()).toBe('hi');
+	expect(server.listHandlers()).toHaveLength(2);
+});
+
+test('the fallback gets the request with its body unread', async () => {
+	let seen: Request | undefined;
+	const { fetch } = setup({
+		fallback: (async (input: RequestInfo | URL) => {
+			seen = input as Request;
+			return new Response(await seen.text());
+		}) as typeof globalThis.fetch,
+	});
+	const response = await fetch('http://b.test/y', {
+		method: 'POST',
+		body: 'payload',
+	});
+	expect(seen).toBeInstanceOf(Request);
+	expect(await response.text()).toBe('payload');
+});
+
+test('an aborted signal rejects, as the real fetch does', async () => {
+	const { fetch } = setup();
+	await expect(
+		fetch(url, { method: 'POST', signal: AbortSignal.abort() }),
+	).rejects.toThrow();
+});

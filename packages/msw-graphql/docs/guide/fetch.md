@@ -59,7 +59,8 @@ const { fetch } = createMockFetch(handlers, {
 - `control`: the same channel as `startMockServer`'s (`fail`, `reset`,
   `scenario`, `override`, `handle`), documented in [control](control.md). Its
   overrides go in front of the handlers until the next reset.
-- `server`: `use(...handlers)` puts handlers in front, `resetHandlers()`
+- `server`, a small subset of msw's server, typed loosely because msw 2 and 3
+  name their handler types differently: `use(...handlers)` puts handlers in front, `resetHandlers()`
   restores the initial ones, `listHandlers()` returns the current ones.
 
 ```ts
@@ -86,3 +87,6 @@ const client = createClient({ url: 'https://api.example.com/graphql', fetch: moc
 
 Import it behind your mocks flag: it builds the control, which throws under
 `NODE_ENV=production` (see [control](control.md#production)).
+
+An aborted `signal` rejects the call, as with the real `fetch`, whether a
+handler answers it or not.
