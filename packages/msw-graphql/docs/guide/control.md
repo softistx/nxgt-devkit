@@ -1,0 +1,205 @@
+# The control channel
+
+The control lets a test change the mocks while the app runs: reset them, make
+the API fail, run a named scenario (reseed the app), or answer one operation
+with a fixed result. It is a set of methods, and the same methods over HTTP.
+
+It is for development and tests only: `createMockControl` and `startMockServer`
+throw under `NODE_ENV=production`.
+
+```ts
+import { createMockControl } from '@nxgt/msw-graphql/control';
+import { setupServer } from 'msw/node';
+import { handlers } from './mocks/handlers';
+
+const server = setupServer(...handlers);
+const control = createMockControl({
+	server,
+	reset: () => resetMocks(),
+	scenarios: { empty: () => emptyMocks() },
+});
+```
+
+`startMockServer(handlers, options)` from `@nxgt/msw-graphql/node` does the
+`setupServer`, the `createMockControl` and `server.listen()` in one call and
+returns `{ server, control }`.
+
+## Options
+
+| Option | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `server` | `{ use, resetHandlers }` | required | An msw Node server or browser worker. Not an option of `startMockServer`, which makes it |
+| `reset` | `() => unknown` | none | The app's reseed. `control.reset()` calls it; nothing else does |
+| `scenarios` | `Record<string, (args?) => unknown>` | `{}` | Named app states, run by name with JSON arguments |
+| `path` | `string` | `'/__mocks'` | Where the HTTP routes are mounted |
+| `state` | `MockState` | `mockState` | The state shared with the executor: pass the same one to both, or neither |
+
+`startMockServer` adds `onUnhandledRequest` (`'bypass'` default, `'warn'`,
+`'error'`).
+
+## The methods
+
+```ts
+control.fail(503);                       // every call answers 503, no body
+control.fail(null);                      // back to normal
+control.failing;                         // number | null
+await control.scenario('remove', { id: '1' });
+control.override({ operationName: 'GetStudents', data: { students: [] } });
+await control.reset();
+```
+
+| Method | Effect |
+| --- | --- |
+| `reset()` | `failing = null`, `server.resetHandlers()` (drops overrides), then your `reset`. Nothing else: sessions, say, are the app's business |
+| `fail(status \| null)` | While set, the executor answers that status first ([order](executor.md#the-order)) |
+| `scenario(name, args?)` | Runs `scenarios[name](args)`. Throws `UnknownScenarioError` (`No scenario "x". Registered: empty, remove.`) for an unregistered name |
+| `override(...overrides)` | A static answer per operation, until the next reset. Throws `TypeError` for an invalid one |
+| `handle(request)` | The HTTP face, below |
+
+### Overrides
+
+```ts
+type Override = {
+	operationName: string;
+	status?: number;     // default: the first error's extensions.http.status, else 200
+	data?: unknown;
+	errors?: unknown[];
+	once?: boolean;      // answer once, then fall back to the executor
+};
+```
+
+```ts
+control.override(
+	{ operationName: 'GetStudents', data: { students: [] } },
+	{
+		operationName: 'RemoveStudent',
+		once: true,
+		errors: [{ message: 'forbidden', extensions: { http: { status: 403 } } }],
+	},
+);
+```
+
+An override matches a POST by the `operationName` in the body, or, without one,
+by the name of the query's only operation (a document with several operations
+and none selected matches nothing). It does not run the guard, and it stands
+aside while the API is failing. Later overrides are consulted first.
+
+## Over HTTP
+
+`control.handle(request)` is a Fetch API handler: `Request -> Promise<Response | null>`.
+It returns `null` when the path is not the control's, so it composes with any
+framework. Mount it anywhere that can hand it the raw `Request`:
+
+```ts
+// Hono
+app.all('/__mocks/*', async ({ req }) => (await control.handle(req.raw)) ?? new Response(null, { status: 404 }));
+```
+
+```ts
+// a plain fetch handler (Bun.serve, a Worker-style entry, a React Router server)
+export async function fetch(request: Request) {
+	const response = await control.handle(request);
+	if (response) return response;
+	return app.fetch(request);
+}
+```
+
+Elysia hands the Request as `request`: `app.all('/__mocks/*', async ({ request }) => (await control.handle(request)) ?? new Response(null, { status: 404 }))`.
+A custom `path` must match the mount and the client's.
+
+### Routes
+
+All are `POST <path>/<route>` with an `application/json` body (or none).
+
+| Route | Body | Effect |
+| --- | --- | --- |
+| `reset` | none | `control.reset()` |
+| `fail` | `{ "status": 503 }` or `{ "status": null }` | `control.fail(status)` |
+| `scenario` | `{ "name": "remove", "args": { "id": "1" } }` | `control.scenario(name, args)`; `args` is any JSON |
+| `override` | one override object, or an array | `control.override(...)` |
+
+```bash
+curl -X POST localhost:3000/__mocks/fail -H 'content-type: application/json' -d '{"status":503}'
+```
+
+### Statuses
+
+Success is `200` with `{ "ok": true }`.
+
+| Status | When |
+| --- | --- |
+| `null` result (your app answers) | The path is not `<path>` or `<path>/...` |
+| `404` | Unknown route, **and every route when `NODE_ENV=production`** (empty body) |
+| `404` with `{ error }` | Unknown scenario; the message lists the registered names |
+| `405` with `allow: POST` | A method other than POST |
+| `415` | A body that is not `application/json`. A cross-site page cannot send that without a preflight the app never grants, which is the protection against another tab driving your mocks |
+| `400` | Bad JSON; `fail` status not an integer 100-599 or null; `scenario` without a string `name`; an invalid override (`operationName` missing, `status` out of range, `errors` not an array, `once` not a boolean) |
+| `500` with `{ error }` | Your `reset` or a scenario threw; `error` is its message |
+
+Errors carry `{ "error": "<message>" }`.
+
+## From Playwright
+
+`@nxgt/playwright/mock-server` is the typed client of these routes; see
+[getting started](getting-started.md#setup-b-an-ssrbff-app). Its error names
+the route, the status and the body, and reminds you the control must be mounted
+and `NODE_ENV` not production.
+
+## Unit tests without HTTP
+
+Call the executor and the control directly; there is no server to start:
+
+```ts
+import { beforeEach, expect, test } from 'bun:test';
+import { createExecutor, createMockState } from '@nxgt/msw-graphql';
+import { createMockControl } from '@nxgt/msw-graphql/control';
+
+const state = createMockState();
+const execute = createExecutor({ schema, state });
+const control = createMockControl({
+	server: { use() {}, resetHandlers() {} }, // enough for fail/reset
+	state,
+});
+
+beforeEach(() => control.reset());
+
+test('an outage answers 503', async () => {
+	control.fail(503);
+	const response = await execute({
+		query: '{ students { id } }',
+		request: new Request('http://api.test/graphql', { method: 'POST' }),
+	});
+	expect(response.status).toBe(503);
+});
+
+test('the HTTP face, with a hand-made Request', async () => {
+	const response = await control.handle(
+		new Request('http://app.test/__mocks/fail', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ status: 502 }),
+		}),
+	);
+	expect(response?.status).toBe(200);
+	expect(control.failing).toBe(502);
+});
+```
+
+`override` needs a real msw `server` (or worker) to register its handler with.
+Own the state, not the process-global one, so tests do not leak into each other.
+
+## Production
+
+Import `@nxgt/msw-graphql/control` and `/node` only behind the mocks flag,
+with a dynamic `import()`, so a production build never ships them:
+
+```ts
+if (process.env.MOCKS === 'true') {
+  const { startMockServer } = await import('@nxgt/msw-graphql/node');
+  // ...
+}
+```
+
+Creating the control under `NODE_ENV=production` throws
+`createMockControl is dev and test only: NODE_ENV is "production". ...`, and
+`startMockServer` builds it before it listens, so no server is left running.
