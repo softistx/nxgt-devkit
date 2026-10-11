@@ -144,3 +144,14 @@ re-reads the registry before tagging. The token is `NPM_TOKEN`, read by
 `bunfig.toml`, and must be set as a repository secret.
 
 A new package starts `"private": true`; removing it is a commit of its own.
+
+After a publish, the `close-issues` job of `release.yml` runs
+`scripts/close-released-issues.ts`, which comments on, labels `released` and
+closes the issues the published versions fix. **`scripts/close-released-issues*.ts`
+are byte-for-byte copies of nxgt-core's** (`scripts/` there, canonical in
+`plugins/nxgt-issues/scripts/release/`): never edit them here, change them in
+nxgt-core and copy again. Its input is the `git-tag` NDJSON events
+`scripts/publish.ts` writes to `$CHANGESETS_OUTPUT`, which `changesets/action@v2`
+turns into the `published-packages` output. `scripts/tsconfig.json` turns on
+`noImplicitAny` (the base config leaves it off) because the copied files rely
+on it.
