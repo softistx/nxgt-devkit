@@ -2,9 +2,10 @@
 
 The Playwright boilerplate every app ends up writing, written once: a shared
 `playwright.config.ts`, `BasePage` and `FormPage` page objects, sign-in and
-storage-state fixtures, msw network fixtures, hydration-safe fills, axe
-accessibility checks, phone projects and a no-sideways-scroll check, and
-Storybook stories run as Vitest browser tests that can also capture WebP
+storage-state fixtures, msw network fixtures, navigation and fills that wait
+for hydration, waits for a page at rest, axe accessibility checks, phone
+projects and a no-sideways-scroll check, full-page screens of every state,
+PWA cache checks, and Storybook stories run as Vitest browser tests that can also capture WebP
 previews of your components.
 
 ## Install
@@ -18,7 +19,7 @@ subpaths you import:
 
 | Subpath | Peers to add |
 | --- | --- |
-| `.`, `/config`, `/pages`, `/auth`, `/helpers` | `@playwright/test` (`^1.55.0`) |
+| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`) |
 | `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
 | `/msw` | `@playwright/test`, `msw` (`^2.12.10`), `@msw/playwright` (`>=0.6.7 <0.7`) |
 | `/storybook`, `/storybook/capture`, `/storybook/setup` | `vitest` (`^4.0.0`), `@vitest/browser-playwright` (`^4.0.0`), `@storybook/addon-vitest` (`>=10.3.0 <11`), and `playwright` itself (required by `@vitest/browser-playwright`) |
@@ -37,11 +38,14 @@ imports, so the consumer's `tsconfig.json` needs
 
 | Subpath | Exports | Runs in |
 | --- | --- | --- |
-| `@nxgt/playwright` | everything from `/config`, `/pages`, `/auth`, `/helpers` | Node |
-| `@nxgt/playwright/config` | `defineAppConfig`, `AppConfigOptions`, `Browser`, `DeviceName`, `MobileProject` | Node |
+| `@nxgt/playwright` | everything from `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa` | Node |
+| `@nxgt/playwright/config` | `defineAppConfig`, `selectedProjects`, `projectsFromArgv`, `PROJECTS_ENV`; types `AppConfigOptions`, `Browser`, `DeviceName`, `MobileProject` | Node |
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
-| `@nxgt/playwright/helpers` | `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
+| `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
+| `@nxgt/playwright/screens` | `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR` | Node |
+| `@nxgt/playwright/pwa` | `serviceWorkerControlled`, `cachedUrls`, `expectNotCached` | Node |
+| `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
 | `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
@@ -49,7 +53,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
 The root barrel does not re-export `/a11y`, `/msw` or `/storybook`, so an app
-without those peers can still import it.
+without those peers can still import it, nor the `/react-router` adapter.
 
 ## Usage
 
@@ -77,6 +81,24 @@ export default defineAppConfig({
 	setup: true,
 	browsers: ['chromium'],
 	mobile: ['Pixel 7', 'iPhone 14'], // mobile-chromium, mobile-webkit (needs WebKit installed)
+});
+```
+
+Playwright's workers load the config again **without the command line**, so a
+config that reads `process.argv` builds one thing in the runner and another in
+each worker. `selectedProjects()` gives both the `--project` names the command
+line selected:
+
+```ts
+import { defineAppConfig, selectedProjects } from '@nxgt/playwright/config';
+
+// `playwright test --project=pwa`: a production build on a port of its own.
+const pwa = selectedProjects().includes('pwa');
+
+export default defineAppConfig({
+	port: pwa ? 5274 : 5273,
+	browsers: pwa ? [] : ['chromium', 'firefox'],
+	...(pwa ? { webServer: { command: 'bun run build && PORT=5274 bun run start', url: 'http://localhost:5274' } } : {}),
 });
 ```
 
@@ -165,6 +187,88 @@ test('signs in', async ({ login, page }) => {
 });
 ```
 
+### Hydration
+
+A server-rendered control is visible and clickable before the framework has
+hydrated it, and a click then is lost — a checkbox that never toggles, a menu
+that never opens. `withHydration` makes `page.goto` (every page of the
+context, page objects included) resolve once the page is hydrated. The app
+says so with a marker, `<html data-hydrated>` by default:
+
+```tsx
+// the app's root component
+useEffect(() => {
+	document.documentElement.dataset.hydrated = '';
+}, []);
+```
+
+```ts
+// playwright/support/test.ts — every spec imports `test` from here
+import { test as base } from '@playwright/test';
+import { withHydration } from '@nxgt/playwright/helpers';
+
+export const test = withHydration(base);
+export { expect } from '@playwright/test';
+```
+
+```ts
+test('toggles archived', async ({ page }) => {
+	await page.goto('/projects'); // resolves once hydrated
+	await page.getByRole('checkbox', { name: 'Archived' }).check();
+});
+
+test.describe('static pages', () => {
+	test.use({ hydration: false }); // the plain goto
+});
+```
+
+A React Router app needs no marker of its own: the adapter reads the router
+and React. `elementHydrated` waits for one element shown later (a dialog's
+button):
+
+```ts
+import { withHydration } from '@nxgt/playwright/helpers';
+import { elementHydrated, reactRouterHydrated } from '@nxgt/playwright/react-router';
+
+export const test = withHydration(base, { marker: reactRouterHydrated });
+
+await elementHydrated(page.getByRole('button', { name: 'Continue' }));
+```
+
+`hydrated(page, options?)` waits on a page already open, and
+`hydrationWarnings(page)` collects the console's hydration-mismatch warnings
+(call it before `goto`, expect `[]` after). See
+[docs/guide/hydration.md](docs/guide/hydration.md).
+
+### A page at rest
+
+`settled(page)` resolves once every animation and transition that ends has
+ended (a spinner is left running); `nextFrames(page, count = 2)` once React's
+commit and its effects have run. Call them before an axe scan, which reads
+colours mid-fade, or a screenshot:
+
+```ts
+import { nextFrames, settled } from '@nxgt/playwright/helpers';
+
+await page.getByRole('button', { name: 'Open menu' }).click();
+await settled(page);
+await expectAccessible(page);
+```
+
+`toastsGone(page, text)` waits for the toast saying `text` to show, then for
+every toast to go, moving the pointer off it first (a pointer resting on a
+toast pauses it). The default selector is sonner's, `[data-sonner-toast]`:
+
+```ts
+import { toastsGone } from '@nxgt/playwright/helpers';
+
+await page.getByRole('button', { name: 'Save' }).click();
+await toastsGone(page, 'Saved');
+await page.getByRole('button', { name: 'Next' }).click(); // no toast over it
+
+await toastsGone(page, /saved/i, { selector: '[role="status"]' }); // another library
+```
+
 ### Helpers
 
 A server-rendered input can be filled before the framework hydrates it; when
@@ -199,6 +303,74 @@ test('fits a phone', async ({ page }) => {
 	await expectNoHorizontalScroll(page);
 });
 ```
+
+An app shell as tall as the viewport, whose `main` scrolls, never widens the
+document: name the scroll container with `scroller` to check it as well (a
+page without it, such as an error page, checks the document only).
+`isMobileProject(testInfo)` tells a phone project:
+
+```ts
+import { expectNoHorizontalScroll, isMobileProject } from '@nxgt/playwright/helpers';
+
+test('fits', async ({ page }, testInfo) => {
+	await page.goto('/projects');
+	await expectNoHorizontalScroll(page, { scroller: 'main' });
+	if (isMobileProject(testInfo)) await page.getByRole('button', { name: 'Open menu' }).click();
+});
+```
+
+### Screens
+
+Saves every screen of a run, full page, under `<dir>/<project>/<name>.png`,
+to be looked at before a pull request. An app shell whose content scrolls
+inside it is captured whole: the viewport is stretched to the content for the
+shot, then put back. With `screens`, a run whose `SCREENS` is `1` saves them,
+in a folder emptied first:
+
+```ts
+// playwright.config.ts
+export default defineAppConfig({ port: 5174, mobile: true, screens: true }); // ./playwright/screenshots
+```
+
+```ts
+// playwright/e2e/projects.spec.ts
+import { expectAccessible } from '@nxgt/playwright/a11y';
+import { settled } from '@nxgt/playwright/helpers';
+import { saveScreen, savingScreens } from '@nxgt/playwright/screens';
+
+test('projects', async ({ page }, testInfo) => {
+	await page.goto('/projects');
+	await settled(page);
+	if (savingScreens(testInfo)) await saveScreen(page, testInfo, 'projects');
+	await expectAccessible(page);
+});
+```
+
+```bash
+SCREENS=1 bunx playwright test   # playwright/screenshots/chromium/projects.png, …/mobile-chromium/…
+```
+
+See [docs/guide/screens.md](docs/guide/screens.md).
+
+### PWA caches
+
+For a service worker's specs, against a build that registers it:
+`serviceWorkerControlled` waits for it to control the page, `cachedUrls` lists
+every Cache Storage entry by cache, and `expectNotCached` fails when a URL
+that must never be kept is:
+
+```ts
+import { cachedUrls, expectNotCached, serviceWorkerControlled } from '@nxgt/playwright/pwa';
+
+test('keeps no signed-in page', async ({ page }) => {
+	await page.goto('/');
+	await serviceWorkerControlled(page);
+	expect(await cachedUrls(page)).toHaveProperty('precache-v1');
+	await expectNotCached(page, /^\/account/);
+});
+```
+
+See [docs/guide/pwa.md](docs/guide/pwa.md).
 
 ### Accessibility
 
@@ -333,6 +505,14 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 - **`expectAccessible` scans the page as it is now**: wait for the content
   (and for transitions to end) first, or `color-contrast` reports colours
   mid-fade.
+- **`withHydration` waits for a marker the app sets**: without
+  `<html data-hydrated>` (or another marker), every `goto` fails with
+  "was not hydrated after 15000ms".
+- **A run with `SCREENS=1` empties the screens folder**, which is
+  `playwright/screenshots`, `BasePage.screenshot()`'s folder too: give one a
+  `dir` of its own. An `overrides.globalSetup` replaces the emptying.
+- **`settled` does not wait for web fonts**, which change widths:
+  `await page.evaluate(() => document.fonts.ready)` first.
 - **Never import `/storybook/capture` or `/storybook/setup` from Node** — they
   touch `document`. `storybookProject()` already registers the setup file.
 - **Only one story per component should carry `preview`**: they share one file
@@ -340,6 +520,6 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 
 ## Documentation
 
-- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [accessibility](docs/guide/a11y.md).
+- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md).
 - [Troubleshooting](docs/troubleshooting.md) — the error you are looking at, and its fix.
 - [Roadmap](docs/roadmap.md) — what is coming, and what is not planned.

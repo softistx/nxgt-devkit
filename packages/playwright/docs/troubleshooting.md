@@ -26,10 +26,20 @@ throws itself are quoted exactly.
   - [`defineAppConfig: two projects are named "mobile-chromium"`](#defineappconfig-two-projects-are-named-mobile-chromium)
   - [`defineAppConfig: "…" is not one of Playwright's devices`](#defineappconfig--is-not-one-of-playwrights-devices)
   - [A `mobile-firefox` project does not look like a phone](#a-mobile-firefox-project-does-not-look-like-a-phone)
+  - [`defineAppConfig: the screens' global setup is missing at <path>`](#defineappconfig-the-screens-global-setup-is-missing-at-path)
+  - [Old screens remain, or the screens folder is empty](#old-screens-remain-or-the-screens-folder-is-empty)
+  - [A config that branches on `--project` builds something else in the workers](#a-config-that-branches-on---project-builds-something-else-in-the-workers)
+- [Hydration](#hydration)
+  - [`<url> was not hydrated after <timeout>ms (marker: …)`](#url-was-not-hydrated-after-timeoutms-marker-)
+  - [`React never attached its props to this element`](#react-never-attached-its-props-to-this-element)
+- [PWA](#pwa)
+  - [`No service worker controls <url> after <timeout>ms`](#no-service-worker-controls-url-after-timeoutms)
+  - [`<url> is cached: <cache> (<urls>)`](#url-is-cached-cache-urls)
 - [Accessibility](#accessibility)
   - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
+  - [`The scroll container <tag#id.class> scrolls horizontally`](#the-scroll-container-tagidclass-scrolls-horizontally)
 - [Auth and forms](#auth-and-forms)
   - [`Error reading storage state from playwright/.auth/<account>.json`](#error-reading-storage-state-from-playwrightauthaccountjson)
   - [`page.waitForURL: Test timeout of 30000ms exceeded.`](#pagewaitforurl-test-timeout-of-30000ms-exceeded)
@@ -54,7 +64,7 @@ you import needs a peer you have not installed.
 
 | Subpath | Install |
 | --- | --- |
-| `.`, `./config`, `./pages`, `./auth`, `./helpers` | `@playwright/test` |
+| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
 | `./a11y` | `@playwright/test`, `@axe-core/playwright` |
 | `./msw` | `@playwright/test`, `msw`, `@msw/playwright` |
 | `./storybook`, `./storybook/capture`, `./storybook/setup` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
@@ -347,6 +357,134 @@ and `hasTouch` are honoured; mobile layout emulation is not.
 iPhone), and keep a Firefox phone-sized project only for width and touch
 checks. See [guide/config.md](guide/config.md#mobile).
 
+### `defineAppConfig: the screens' global setup is missing at <path>`
+
+The message continues ` Reinstall @nxgt/playwright.` and `<path>` ends in
+`screens/clear.js`.
+
+**When:** loading `playwright.config.ts` with `screens` set and `SCREENS=1`.
+**Why:** the global setup that empties the screens folder ships in the
+package's `dist/`. The installation is incomplete or was patched.
+**Fix:** reinstall the package.
+
+```sh
+bun add -d @nxgt/playwright
+```
+
+### Old screens remain, or the screens folder is empty
+
+No error: a screen you renamed is still in the folder, or nothing was saved.
+
+**When:** after `defineAppConfig({ screens: true })`.
+**Why:** the folder is emptied by a global setup, and only on a run whose
+variable is `1`. Either the run did not set it (`SCREENS=1`, or the `env` you
+named), or `overrides.globalSetup` replaced the package's one.
+**Fix:** set the variable, and list both setups when you have your own.
+
+```bash
+SCREENS=1 bunx playwright test e2e/screens
+```
+
+`overrides.globalSetup` replaces the screens' setup; Playwright accepts an
+array, so list your setup beside the package's, or empty the folder in your
+own. The default folder is also
+where `BasePage.screenshot()` writes: a `SCREENS=1` run empties those files
+too. Give the screens another `dir`. See [guide/screens.md](guide/screens.md).
+
+### A config that branches on `--project` builds something else in the workers
+
+No error: a `--project=pwa` run starts the dev server instead of the
+production build, or the workers use another port than the runner.
+
+**When:** the config reads `process.argv` to pick a port, a server or the
+projects.
+**Why:** Playwright's workers load the config again without the command line,
+so `process.argv` holds no `--project` there.
+**Fix:** read the selection through `selectedProjects`, which hands the
+runner's answer to the workers.
+
+```ts
+import { defineAppConfig, selectedProjects } from '@nxgt/playwright/config';
+
+const pwa = selectedProjects().includes('pwa');
+export default defineAppConfig({ port: pwa ? 5274 : 5273 });
+```
+
+See [guide/config.md](guide/config.md#selectedprojects).
+
+## Hydration
+
+### `<url> was not hydrated after <timeout>ms (marker: …)`
+
+The message continues `Look for a client error in the console, a module that
+failed to load, or an app that never sets the marker.` The marker reads
+`a function` when it is one.
+
+**When:** on every `goto` once `withHydration` wraps the `test`, or on a call
+to `hydrated`.
+**Why:** the page's hydration marker (`html[data-hydrated]` by default) never
+appears. The app does not set it, its client bundle failed to load or threw,
+or the page is not a hydrating one.
+**Fix:** set the marker in the root component's effect, use the React Router
+adapter, or turn the wait off for pages that never hydrate.
+
+```tsx
+useEffect(() => {
+	document.documentElement.dataset.hydrated = '';
+}, []);
+```
+
+```ts
+import { reactRouterHydrated } from '@nxgt/playwright/react-router';
+
+export const test = withHydration(base, { marker: reactRouterHydrated });
+// or, for a block of specs: test.use({ hydration: false });
+```
+
+When the marker is right, open the page by hand and read the browser console.
+See [guide/hydration.md](guide/hydration.md).
+
+### `React never attached its props to this element`
+
+**When:** `elementHydrated(locator)` on an element React does not manage, or
+a page where React did not hydrate.
+**Why:** it waits for the `__reactProps…` key React puts on a hydrated
+element. A server-rendered node React never took over, or an element outside
+the React tree, never gets one.
+**Fix:** check the locator points at a React element, and that the page itself
+hydrated (`hydrationWarnings` shows a mismatch).
+
+## PWA
+
+### `No service worker controls <url> after <timeout>ms`
+
+The message continues `: is it registered in this build, and does it call
+clients.claim()? Playwright's `serviceWorkers` must not be 'block'.`
+
+**When:** `serviceWorkerControlled(page)`.
+**Why:** no worker controls the page. The build does not register one (most
+frameworks register it in a production build only, not in a dev server), the
+worker does not call `clients.claim()`, or the project blocks workers.
+**Fix:** run the spec against a production build, in a project that allows
+workers, and have the worker claim its clients.
+
+```ts
+use: { ...devices['Desktop Chrome'], serviceWorkers: 'allow' }
+```
+
+See [guide/pwa.md](guide/pwa.md) and the project that runs alone in
+[guide/config.md](guide/config.md#a-project-that-runs-alone).
+
+### `<url> is cached: <cache> (<urls>)`
+
+**When:** `expectNotCached(page, url)`.
+**Why:** the service worker stored a response that must not be kept. The
+message names each cache and the entries that matched.
+**Fix:** make the worker's caching rule skip that URL (a signed-in page, an
+API answer). `cachedUrls(page)` lists everything cached, as path and query for
+the page's origin. Cache Storage exists in a secure context only:
+`http://localhost` is one, `about:blank` is not.
+
 ## Accessibility
 
 ### `disableRules: "…" is disabled without a reason`
@@ -403,6 +541,19 @@ instead.
 ```html
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 ```
+
+### `The scroll container <tag#id.class> scrolls horizontally`
+
+The message continues `scrolls horizontally: scrollWidth Npx > clientWidth
+Npx.` and lists the widest elements past the right edge.
+
+**When:** `expectNoHorizontalScroll(page, { scroller })` on a page whose app
+shell scrolls its `main` inside.
+**Why:** the container is wider than it shows. The document's own check cannot
+see it: an inner scroller never widens the document.
+**Fix:** narrow the listed elements, or wrap a wide table in its own
+`overflow-x: auto` box. A selector that matches nothing (an error page without
+the shell) checks the document only.
 
 ## Auth and forms
 

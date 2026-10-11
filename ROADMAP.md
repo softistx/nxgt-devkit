@@ -8,7 +8,7 @@ roadmap in its `docs/roadmap.md`.
 
 | Package | What it is | Roadmap |
 | --- | --- | --- |
-| [`@nxgt/playwright`](packages/playwright) | Playwright config, page objects, login and msw fixtures, and Storybook stories as Vitest browser tests with preview capture | [roadmap](packages/playwright/docs/roadmap.md) |
+| [`@nxgt/playwright`](packages/playwright) | Playwright config, page objects, login and msw fixtures, hydration and screen helpers, and Storybook stories as Vitest browser tests with preview capture | [roadmap](packages/playwright/docs/roadmap.md) |
 
 ## Planned
 

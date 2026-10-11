@@ -297,6 +297,22 @@ await page.getByTestId('name').fill('Apollo');
 await fillSettled(page.getByTestId('name'), 'Apollo');
 ```
 
+## Hand-written support helpers
+
+Apps grow a `playwright/support/` of their own. Each file maps to an export:
+
+| You wrote | Use |
+| --- | --- |
+| a `test.ts` that patches `page.goto` to wait for a hydration attribute | [`withHydration`](hydration.md#withhydration) (`hydrated` for one page); `reactRouterHydrated` from `/react-router` for a React Router app |
+| a `waitForFunction` on an element's `__reactProps` | [`elementHydrated`](hydration.md#elementhydrated) |
+| a listener for hydration-mismatch console messages | [`hydrationWarnings`](hydration.md#hydrationwarnings) |
+| a `screens.ts` with a full-page saver and a `globalSetup` that empties the folder | [`saveScreen`](screens.md) and `defineAppConfig({ screens })` |
+| an `app.ts` with `nextFrames`, a wait for animations, a wait for toasts, an `isMobile` check | [`nextFrames`, `settled`, `toastsGone`, `isMobileProject`](helpers.md#nextframes-and-settled) |
+| a `pwa.ts` listing Cache Storage and waiting for the worker | [`serviceWorkerControlled`, `cachedUrls`, `expectNotCached`](pwa.md) |
+| a config reading `process.argv` for `--project` | [`selectedProjects`](config.md#selectedprojects) |
+
+Delete the file once its callers import from the package.
+
 ## What is left
 
 ```

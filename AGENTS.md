@@ -10,7 +10,7 @@ the public npm registry.
 
 | package | what it is |
 | --- | --- |
-| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `expectAccessible` (axe) and `expectNoHorizontalScroll`, phone projects through `defineAppConfig`'s `mobile`, `createMswTest` for msw through `@msw/playwright`, and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
+| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `withHydration` / `hydrated` (a `goto` that waits for a hydration marker; the React Router marker in the `./react-router` adapter), `settled` / `nextFrames` / `toastsGone`, `expectAccessible` (axe) and `expectNoHorizontalScroll` (with an inner `scroller`), phone projects through `defineAppConfig`'s `mobile`, `saveScreen` and `defineAppConfig`'s `screens` (full-page screens, a folder emptied by a packaged global setup), `selectedProjects` (`--project` seen by the workers), `/pwa`'s cache checks, `createMswTest` for msw through `@msw/playwright`, and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
 
 `ROADMAP.md` lists what is planned next — `@nxgt/jenkins` among it. Nothing
 there is started until it has an entry in the work queue.
@@ -35,6 +35,14 @@ those files; the migration table is in
 application's. A helper that needs one of them takes it as an argument
 (`authSetup`'s `signIn`, `createMswTest`'s `handlers`).
 
+The 0.3.0 helpers came from one application's `playwright/support/` the same
+way; left there on purpose: an off-canvas menu's `openMenu` / `followMenu`
+and a date picker's `pickDay` (a component library's labels and markup), the
+axe exclusions of a component library's known faults, and the composition of
+checks a screen goes through (`checkScreen`), which names the app's own rules.
+Framework specifics sit behind an adapter subpath (`./react-router`); the
+generic contract is a marker (`html[data-hydrated]`).
+
 Two things changed on the way in, and both are fixes, not style:
 
 - `PATHS.screenhot` (sic, in every copy) became `BasePage`'s `screenshotDir`
@@ -50,13 +58,14 @@ Every peer is **optional** and each subpath needs only its own:
 
 | subpath | needs |
 | --- | --- |
-| `.`, `./config`, `./pages`, `./auth`, `./helpers` | `@playwright/test` |
+| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
 | `./a11y` | + `@axe-core/playwright`, loaded on the first scan so a missing peer is named |
 | `./msw` | + `msw`, `@msw/playwright` |
 | `./storybook` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 | `./storybook/capture`, `./storybook/setup` | the same, **in the browser** |
 
-The root barrel re-exports only the first row. Adding an export that reaches
+The root barrel re-exports only the first row, but for `./react-router`, an
+adapter an app of another framework never needs. Adding an export that reaches
 msw or Vitest to it would make every consumer install them.
 
 ## Browser-only subpaths
@@ -73,6 +82,14 @@ A subpath added there must be one whose own specs load it in a browser.
 `new URL('./setup.js', import.meta.url)`, which is why `setup` is an entry
 point and an export rather than an internal module: the file must exist beside
 the built `index.js`.
+
+The same holds for `screens/clear`: `defineAppConfig({ screens })` registers
+it as Playwright's `globalSetup` by path, `new URL('../screens/clear.js',
+import.meta.url)`. It is an entry point (under `nxgt.entrypoints`, not in
+`exports`: nothing imports it) so the file exists; the relative URL holds from
+`dist/config/` and from `dist/chunks/`, the two places the bundler may put
+`defineAppConfig`, both one folder below `dist/`. From the sources (the
+specs) it resolves to `src/screens/clear.ts`. A spec asserts the file exists.
 
 ## Tests
 
