@@ -101,7 +101,7 @@ the one it uses.
 
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
-`scripts/newest-peers.ts`. That script and its spec come from graphql's
+`scripts/newest-peers.ts`. That script and its spec come from the graphql repository's
 `scripts/newest-peers.ts` and are kept in step with it. It rewrites every peer to the newest end of its
 range (TypeScript 7, graphql 17, msw 3, the latest `@playwright/test`,
 `@msw/playwright`, `vitest`…), deletes `bun.lock`, installs, then builds,

@@ -12,10 +12,10 @@ on:
   push:
     branches: [develop]
 
-# A pull request's new push supersedes its run in progress.
+# A pull request's new push supersedes its run in progress; a push to develop is never cancelled.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
