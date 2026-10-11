@@ -189,8 +189,8 @@ not found (`ENOENT`, or `loadSdl: no \`file\` to read.`).
 elsewhere the `file` is read with `node:fs`. With neither there is nothing to
 load, and under Node a `vite`-only call has no file to fall back to. The
 Vite branch is detected by `import.meta.env` (boolean `DEV`, string
-`BASE_URL`), by `window`, or by a missing `file`; it was not exercised against
-a Vite build here.
+`BASE_URL`), by `window`, or by a missing `file`; a spec builds a fixture with
+`vite build` and checks the SDL is inlined and resolves from the built module.
 **Fix:** pass both, with the `?raw` import kept as a literal:
 
 ```ts

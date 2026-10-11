@@ -148,6 +148,14 @@ before `bun run typecheck` or `bun run test`. `@nxgt/playwright`'s specs import
   `defineAppConfig` itself. Specs are `*.pw.ts` so `bun test` never picks
   them up.
 
+`@nxgt/msw-graphql`'s `bun run test` also runs `test/vite` (`bun test`: a
+fixture built with `vite build`, whose output must hold the inlined SDL) and
+`test/browser` (Playwright, a plain config because this package cannot depend
+on `@nxgt/playwright`, which depends on it: a `Bun.serve` test server on port
+4598 serves a page, its `Bun.build` bundle and msw's `mockServiceWorker.js`,
+and `enableMocking({ enabled: true })` runs in Chromium). Neither is part of
+`scripts/test-matrix.ts`: they run on the workspace's graphql 17 and msw 3.
+
 The browser: `bunx playwright install chromium-headless-shell`, matching the
 installed `playwright`. On Arch or Manjaro (the `playwright` AUR package reads
 `~/.cache/ms-playwright` too) Playwright downloads an Ubuntu fallback, which
