@@ -13,6 +13,9 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Next
 
+- **A CI leg for `/msw`'s lower peers** — run the `/msw` specs on msw 2.12 with
+  `@msw/playwright` 0.6.7, the bottom of the supported range, which is only
+  checked by hand before a release today.
 - **Idempotent mock-server start** — for `@nxgt/msw-graphql`'s
   `startMockServer`: start the server-side msw once, however many times an
   SSR app's entry module is evaluated, so its server-side requests are mocked

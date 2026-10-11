@@ -37,10 +37,14 @@ export function overrideProblem(value: unknown): string | null {
  * document's only operation (a document of several, with none selected, is
  * ambiguous and matches nothing).
  */
-function operationOf(body: any): string | null {
-	if (typeof body?.operationName === 'string') return body.operationName;
+function operationOf(body: unknown): string | null {
+	const fields = (typeof body === 'object' && body !== null ? body : {}) as {
+		operationName?: unknown;
+		query?: unknown;
+	};
+	if (typeof fields.operationName === 'string') return fields.operationName;
 	try {
-		const operations = parse(String(body?.query)).definitions.filter(
+		const operations = parse(String(fields.query)).definitions.filter(
 			(definition) => definition.kind === 'OperationDefinition',
 		);
 		const only = operations.length === 1 ? operations[0] : undefined;
@@ -66,9 +70,14 @@ export function overrideHandler(override: Override, state: MockState) {
 			.json()
 			.catch(() => null);
 		if (operationOf(body) !== override.operationName) return undefined;
-		if (override.once) used = true;
+		// Re-check after the awaits: a concurrent request may have spent it.
+		if (override.once) {
+			if (used) return undefined;
+			used = true;
+		}
 		const status =
 			override.status ??
+			// Entries are unknown JSON; `any` lets the optional chain read them.
 			(override.errors as any[] | undefined)?.find(
 				(error) => typeof error?.extensions?.http?.status === 'number',
 			)?.extensions.http.status ??

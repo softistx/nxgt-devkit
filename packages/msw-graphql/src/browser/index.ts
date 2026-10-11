@@ -1,4 +1,5 @@
 import type { setupWorker } from 'msw/browser';
+import { resolveHandlers } from './resolve-handlers';
 
 type Handlers = Parameters<typeof setupWorker>;
 type WorkerStart = NonNullable<
@@ -21,14 +22,6 @@ export type EnableMockingOptions = {
 	start?: WorkerStart;
 };
 
-/** The handler list of what `handlers()` resolved to, whatever its shape. */
-export function resolveHandlers(
-	loaded: Awaited<ReturnType<EnableMockingOptions['handlers']>>,
-): Handlers {
-	if (Array.isArray(loaded)) return loaded as Handlers;
-	return 'handlers' in loaded ? loaded.handlers : loaded.default;
-}
-
 /**
  * Starts the msw browser worker when `enabled`, before the app renders:
  *
@@ -47,7 +40,8 @@ export async function enableMocking(options: EnableMockingOptions) {
 	]);
 	const handlers = resolveHandlers(loaded);
 	const worker = setupWorker(...handlers);
-	// msw 3 renamed the option to `onUnhandledFrame`; each ignores the other.
+	// `as WorkerStart`: msw 3 renamed the option to `onUnhandledFrame` and each
+	// major ignores the other's, so the options type fits neither.
 	await worker.start({
 		onUnhandledFrame: 'bypass',
 		onUnhandledRequest: 'bypass',

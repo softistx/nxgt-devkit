@@ -79,10 +79,12 @@ control.override(
 );
 ```
 
+An override answers before the executor, so it also bypasses `guard`.
+
 An override matches a POST by the `operationName` in the body, or, without one,
 by the name of the query's only operation (a document with several operations
-and none selected matches nothing). It does not run the guard, and it stands
-aside while the API is failing. Later overrides are consulted first.
+and none selected matches nothing). It stands aside while the API is failing. Later overrides
+are consulted first.
 
 ## Over HTTP
 
@@ -109,7 +111,8 @@ A custom `path` must match the mount and the client's.
 
 ### Routes
 
-All are `POST <path>/<route>` with an `application/json` body (or none).
+All are `POST <path>/<route>` with `Content-Type: application/json`, even when the body is empty (`reset`
+sends `{}`). Any other POST is a `415`.
 
 | Route | Body | Effect |
 | --- | --- | --- |
@@ -132,7 +135,7 @@ Success is `200` with `{ "ok": true }`.
 | `404` | Unknown route, **and every route when `NODE_ENV=production`** (empty body) |
 | `404` with `{ error }` | Unknown scenario; the message lists the registered names |
 | `405` with `allow: POST` | A method other than POST |
-| `415` | A body that is not `application/json`. A cross-site page cannot send that without a preflight the app never grants, which is the protection against another tab driving your mocks |
+| `415` | A POST without `Content-Type: application/json`, an empty body included. A cross-site page cannot send that without a preflight the app never grants, which is the protection against another tab driving your mocks |
 | `400` | Bad JSON; `fail` status not an integer 100-599 or null; `scenario` without a string `name`; an invalid override (`operationName` missing, `status` out of range, `errors` not an array, `once` not a boolean) |
 | `500` with `{ error }` | Your `reset` or a scenario threw; `error` is its message |
 
@@ -190,16 +193,32 @@ Own the state, not the process-global one, so tests do not leak into each other.
 
 ## Production
 
-Import `@nxgt/msw-graphql/control` and `/node` only behind the mocks flag,
-with a dynamic `import()`, so a production build never ships them:
+The real protection is importing `@nxgt/msw-graphql/control` and `/node` only
+behind the mocks flag. The guard is a backstop: creating the control throws
+when `NODE_ENV=production` (Node) or in a Vite production build
+(`import.meta.env.PROD`):
+
+```
+createMockControl is dev and test only: NODE_ENV is "production". ...
+```
+
+`startMockServer` builds the control before it listens, so no server is left
+running. The guard fails open when `NODE_ENV` is unset, which is the case under
+Bun: do not rely on it there.
+
+A dynamic `import()` alone does not keep the code out of a client build: Vite
+still emits the chunk (it is just not loaded) unless the condition is
+statically false. Use something Vite replaces at build time:
 
 ```ts
-if (process.env.MOCKS === 'true') {
-  const { startMockServer } = await import('@nxgt/msw-graphql/node');
+// import.meta.env.DEV is `false` in a production build, so the branch and
+// its import are removed and no chunk is emitted.
+if (import.meta.env.DEV && import.meta.env.VITE_MOCKS === 'true') {
+  const { enableMocking } = await import('@nxgt/msw-graphql/browser');
   // ...
 }
 ```
 
-Creating the control under `NODE_ENV=production` throws
-`createMockControl is dev and test only: NODE_ENV is "production". ...`, and
-`startMockServer` builds it before it listens, so no server is left running.
+or a constant from `define` in `vite.config.ts` (`__MOCKS__: JSON.stringify(mode !== 'production')`)
+tested as `if (__MOCKS__) { ... }`. On a server, `process.env.MOCKS === 'true'`
+with a dynamic import is enough, since nothing is bundled for the client.

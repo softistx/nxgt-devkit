@@ -10,7 +10,12 @@
  * value at "_wrapHandle"`). msw 3's Node interceptors patch `node:net`, which
  * Bun's fetch never goes through. An app whose server runs on Bun and wants
  * `startMockServer` therefore stays on msw 2; the same app run by Node >= 22.12
- * can use msw 3. Exits 0 either way: it reports, it does not assert.
+ * can use msw 3. Exits 0 either way unless told what to expect:
+ *
+ *   bun run scripts/bun-fetch-probe.ts --expect intercepted      # msw 2
+ *   bun run scripts/bun-fetch-probe.ts --expect not-intercepted  # msw 3
+ *
+ * With `--expect`, the exit code is 1 when the outcome differs.
  */
 import { HttpResponse, http } from 'msw';
 import { setupServer } from 'msw/node';
@@ -23,13 +28,24 @@ server.listen({
 	onUnhandledFrame: 'bypass',
 	onUnhandledRequest: 'bypass',
 } as never);
+const flag = Bun.argv.indexOf('--expect');
+const expected = flag === -1 ? null : (Bun.argv[flag + 1] ?? '');
+if (
+	expected !== null &&
+	!['intercepted', 'not-intercepted'].includes(expected)
+) {
+	console.error('--expect takes `intercepted` or `not-intercepted`.');
+	process.exit(2);
+}
+let intercepted = false;
 try {
 	const response = await fetch('http://probe.test/x');
-	console.log(
-		(await response.json()).ok ? 'intercepted' : 'NOT intercepted (odd body)',
-	);
+	intercepted = (await response.json()).ok === true;
+	console.log(intercepted ? 'intercepted' : 'NOT intercepted (odd body)');
 } catch {
 	console.log('NOT intercepted');
 } finally {
 	server.close();
 }
+if (expected !== null && intercepted !== (expected === 'intercepted'))
+	process.exit(1);

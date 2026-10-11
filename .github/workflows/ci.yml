@@ -53,8 +53,8 @@ jobs:
       - name: msw-graphql on graphql 16 and on msw 2
         working-directory: packages/msw-graphql
         run: |
-          bun run scripts/test-matrix.ts 16 3
-          bun run scripts/test-matrix.ts 17 2
+          bun run scripts/test-matrix.ts 16 3.0.3
+          bun run scripts/test-matrix.ts 17 2.15.0
       # The build exits 0 on packages that throw the instant they are imported.
       # This packs them, installs them as a consumer does and imports every
       # declared subpath but the browser-only ones.

@@ -24,7 +24,11 @@ export type MockServerTestOptions = {
 
 function client(request: APIRequestContext, path: string): MockServer {
 	const post = async (route: string, data: unknown) => {
-		const response = await request.post(`${path}/${route}`, { data });
+		// Always JSON, `reset` included: the control answers 415 to any other POST.
+		const response = await request.post(`${path}/${route}`, {
+			data,
+			headers: { 'content-type': 'application/json' },
+		});
 		if (!response.ok()) {
 			throw new Error(
 				`${path}/${route} answered ${response.status()}: ${await response.text()}. ` +

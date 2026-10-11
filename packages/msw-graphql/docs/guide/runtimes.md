@@ -18,9 +18,14 @@ smoke test over a real msw server including the control) passes on:
 Reproduce one in a scratch copy, from the package folder:
 
 ```bash
-bun run scripts/test-matrix.ts 16 3     # graphql 16, msw 3
-bun run scripts/test-matrix.ts 17 2     # graphql 17, msw 2
+bun run scripts/test-matrix.ts 16 3.0.3     # graphql 16, msw 3.0.3
+bun run scripts/test-matrix.ts 17 2.15.0    # graphql 17, msw 2.15.0
 ```
+
+Pass full versions so the installed one is unambiguous; the final `ok:` line
+prints what was installed. On msw 2 the run also executes
+`scripts/bun-fetch-probe.ts --expect intercepted` and fails if msw does not see
+Bun's `fetch`.
 
 `@nxgt/playwright`'s `/msw` specs pass on msw 3.0.3 with `@msw/playwright`
 0.7.0 and on msw 2.15 with 0.6.7.
