@@ -11,6 +11,7 @@ were reproduced while writing this page.
   [`createMockFetch: no handler`](#createmockfetch-no-handler-for-method-url),
   [control answers](#the-control-answers-415-404-405-or-400),
   [parallel specs](#mock-server-specs-fail-when-run-in-parallel),
+  [second `startMockServer` ignored](#my-second-startmockserver-calls-handlers-or-options-are-ignored),
   [`loadSdl`](#loadsdl-needs-a-vite-callback-a-file-or-both),
   [two graphql copies](#cannot-use-graphqlschema-object-graphqlschema-from-another-module-or-realm)
 
@@ -180,6 +181,26 @@ are process-global; workers overwrite one another.
 // playwright.config.ts
 export default defineConfig({ workers: 1, fullyParallel: false });
 ```
+
+## My second `startMockServer` call's handlers or options are ignored
+
+**When:** `startMockServer(handlers, options)` runs twice in one process (an
+SSR entry module re-evaluated by HMR, or two specs) and the second call's
+handlers, `onUnhandledRequest` or `reset` seem to do nothing.
+**Why:** it is idempotent per process by design: the second call returns the
+first call's `{ server, control }`, and its arguments are ignored.
+**Fix:** change the running server, or close it first:
+
+```ts
+const { server, control } = startMockServer(handlers);
+server.use(...moreHandlers); // or control.reset()
+
+server.close(); // the supported way to stop; the next call starts a new server
+const next = startMockServer(otherHandlers, { onUnhandledRequest: 'error' });
+```
+
+Do not call `listen()` again on a closed server: it intercepts again but is not
+registered, so the next `startMockServer` starts a second server beside it.
 
 ## `loadSdl needs a \`vite\` callback, a \`file\`, or both.`
 

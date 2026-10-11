@@ -54,12 +54,14 @@ try {
 		JSON.stringify(manifest, null, '\t'),
 	);
 
+	// A failed step throws: `process.exit` here would skip the `finally` and
+	// leave the scratch copy behind.
 	const run = async (label: string, ...command: string[]) => {
 		console.log(`\n[graphql ${graphql}, msw ${msw}] ${label}`);
 		const result = await $`${command}`.cwd(copy).nothrow();
 		if (result.exitCode !== 0) {
-			console.error(`${label} failed (${result.exitCode})`);
-			process.exit(result.exitCode);
+			process.exitCode = result.exitCode;
+			throw new Error(`${label} failed (${result.exitCode})`);
 		}
 	};
 	await run('install', 'bun', 'install');

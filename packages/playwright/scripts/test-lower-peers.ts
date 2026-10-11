@@ -53,12 +53,14 @@ try {
 	await Bun.write(path, `${JSON.stringify(manifest, null, '\t')}\n`);
 
 	const label = `msw ${msw}, @msw/playwright ${mswPlaywright}`;
+	// A failed step throws: `process.exit` here would skip the `finally` and
+	// leave the scratch copy behind.
 	const run = async (step: string, cwd: string, ...command: string[]) => {
 		console.log(`\n[${label}] ${step}`);
 		const result = await $`${command}`.cwd(cwd).nothrow();
 		if (result.exitCode !== 0) {
-			console.error(`${step} failed (${result.exitCode})`);
-			process.exit(result.exitCode);
+			process.exitCode = result.exitCode;
+			throw new Error(`${step} failed (${result.exitCode})`);
 		}
 	};
 	const pkg = join(work, 'packages', 'playwright');

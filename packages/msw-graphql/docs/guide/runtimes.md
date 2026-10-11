@@ -28,7 +28,8 @@ prints what was installed. On msw 2 the run also executes
 Bun's `fetch`.
 
 `@nxgt/playwright`'s `/msw` specs pass on msw 3.0.3 with `@msw/playwright`
-0.7.0 and on msw 2.15 with 0.6.7.
+0.7.0. Its lower peers, msw 2.12.10 with `@msw/playwright` 0.6.7, are tested in
+CI (`bun run test:lower-peers` in `packages/playwright`).
 
 ## msw 2 or msw 3
 

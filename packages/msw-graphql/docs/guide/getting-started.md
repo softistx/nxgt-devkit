@@ -123,6 +123,13 @@ second call's `handlers` and options are ignored; to change them, use
 `server.use(...)` or `control.reset()` on the running server, or
 `server.close()`, after which the next call starts a new one.
 
+`close()` is the supported way to stop the server. Calling `listen()` again on
+a closed server restarts its interception but does not register it again, so
+the next `startMockServer` starts another server rather than returning that
+one: close, then call `startMockServer` again. A call that finds a registered
+server returns it before anything else, so it does not throw under
+`NODE_ENV=production`; the production guard ran when that server was built.
+
 Then Playwright, with `@nxgt/playwright/mock-server` (it needs only
 `@playwright/test`):
 
