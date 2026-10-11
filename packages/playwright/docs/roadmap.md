@@ -41,7 +41,6 @@ Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
 - **A CI leg for `/msw`'s lower peers** — the `/msw` specs run on msw 2.12.10
   with `@msw/playwright` 0.6.7, the bottom of the supported range, in every
   CI run (`scripts/test-lower-peers.ts`). CI only, no release.
-
 - **TypeScript 7 peer** — the `typescript` peer is `^6.0.3 || ^7.0.0`. 0.5.1.
 - **Wider `/msw` peers** — `msw` `^2.12.10 || ^3` and `@msw/playwright`
   below 0.8. 0.5.0.
