@@ -67,9 +67,12 @@ export function createMockServerTest<
 			async ({ request, serverMocks }, use) => {
 				const server = client(request, path);
 				await server.reset();
-				if (serverMocks.length > 0) await server.use(...serverMocks);
-				await use(server);
-				await server.reset();
+				try {
+					if (serverMocks.length > 0) await server.use(...serverMocks);
+					await use(server);
+				} finally {
+					await server.reset();
+				}
 			},
 			{ auto: true },
 		],

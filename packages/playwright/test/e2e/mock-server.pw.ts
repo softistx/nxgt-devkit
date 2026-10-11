@@ -87,3 +87,19 @@ test('every test starts reset', async ({ request }) => {
 	expect(now.failing).toBeNull();
 	expect(now.resets).toBeGreaterThan(0);
 });
+
+test.describe('the reset around a test', () => {
+	test.describe.configure({ mode: 'serial' });
+	let seen = 0;
+
+	test('counts the resets it saw', async ({ request }) => {
+		seen = (await state(request)).resets;
+	});
+
+	test('the next test finds one before it and one after the previous', async ({
+		request,
+	}) => {
+		// previous test: its teardown reset (+1); this test: its setup reset (+1)
+		expect((await state(request)).resets).toBe(seen + 2);
+	});
+});
