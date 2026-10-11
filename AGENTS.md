@@ -97,6 +97,19 @@ intercepted`, which prints whether the installed msw sees Bun's fetch.
 copy, `bun add -d msw@2.12.10 @msw/playwright@0.6.7` in `packages/playwright`,
 then `bun run test`.
 
+**Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
+and ci.yml's `newest-peers` job (not a required check) run
+`scripts/newest-peers.ts`, which rewrites every peer to the newest end of its
+range (TypeScript 7, graphql 17, msw 3, the latest `@playwright/test`,
+`@msw/playwright`, `vitest`…), deletes `bun.lock`, installs, then builds,
+typechecks, tests and verifies the artifacts. A red run is an upstream release
+the range does not hold: fix the code or the range in a pull request, never
+the workflow. Run it only in a scratch copy, never in a checkout you keep: it
+edits the manifests, and a newer `playwright` replaces the Chromium build the
+shared `~/.cache/ms-playwright` holds for the lockfile's version (run
+`bunx playwright install chromium-headless-shell` in `packages/playwright`
+again afterwards).
+
 ## Browser-only subpaths
 
 `./storybook/capture` and `./storybook/setup` import `vitest/browser`, which
