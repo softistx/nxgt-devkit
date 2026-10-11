@@ -80,6 +80,11 @@
 			"import": "./dist/storybook/setup.js",
 			"default": "./dist/storybook/setup.js"
 		},
+		"./mock-server": {
+			"types": "./dist/mock-server/index.d.ts",
+			"import": "./dist/mock-server/index.js",
+			"default": "./dist/mock-server/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -96,7 +101,8 @@
 		"screenshots",
 		"pwa",
 		"service-worker",
-		"react-router"
+		"react-router",
+		"mock-server"
 	],
 	"repository": {
 		"type": "git",
@@ -109,7 +115,7 @@
 	},
 	"scripts": {
 		"build": "bun run ../../build.ts",
-		"test": "bun test src && playwright test -c test/playwright.config.ts",
+		"test": "bun test src && playwright test -c test/playwright.config.ts && playwright test -c test/playwright.mock-server.config.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"nxgt": {
@@ -127,7 +133,8 @@
 			"src/msw/index.ts",
 			"src/storybook/index.ts",
 			"src/storybook/capture.ts",
-			"src/storybook/setup.ts"
+			"src/storybook/setup.ts",
+			"src/mock-server/index.ts"
 		],
 		"browserOnly": [
 			"./storybook/capture",
@@ -136,21 +143,22 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "4.13.0",
-		"@msw/playwright": "^0.6.7",
+		"@msw/playwright": "^0.7.0",
+		"@nxgt/msw-graphql": "workspace:^",
 		"@playwright/test": "1.63.0",
 		"@storybook/addon-vitest": "10.6.0",
 		"@types/bun": "^1.4.0",
 		"@vitest/browser-playwright": "4.1.10",
-		"msw": "^2.15.0",
+		"msw": "^3.0.3",
 		"vitest": "4.1.10"
 	},
 	"peerDependencies": {
 		"@axe-core/playwright": ">=4.10.0 <5",
-		"@msw/playwright": ">=0.6.7 <0.7",
+		"@msw/playwright": ">=0.6.7 <0.8",
 		"@playwright/test": "^1.55.0",
 		"@storybook/addon-vitest": ">=10.3.0 <11",
 		"@vitest/browser-playwright": "^4.0.0",
-		"msw": "^2.12.10",
+		"msw": "^2.12.10 || ^3.0.0",
 		"typescript": "^6.0.3",
 		"vitest": "^4.0.0"
 	},

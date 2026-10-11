@@ -10,7 +10,7 @@ the public npm registry.
 
 | package | what it is |
 | --- | --- |
-| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `withHydration` / `hydrated` (a `goto` that waits for a hydration marker; the React Router marker in the `./react-router` adapter), `settled` / `nextFrames` / `toastsGone`, `expectAccessible` (axe) and `expectNoHorizontalScroll` (with an inner `scroller`), phone projects through `defineAppConfig`'s `mobile`, `saveScreen` and `defineAppConfig`'s `screens` (full-page screens, a folder emptied by a packaged global setup), `selectedProjects` (`--project` seen by the workers), `/pwa`'s production-build project (`pwaProject`, `isPwaRun`), offline (`goOffline` / `goOnline`), a new worker version (`nextWorkerVersion`) and cache checks (`cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`), `createMswTest` for msw through `@msw/playwright`, and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
+| `@nxgt/playwright` | Playwright and Vitest browser-mode tooling: `defineAppConfig` (the `playwright.config.ts` every app spelled out), `BasePage` / `FormPage`, `authSetup` / `authFile` / `withLoginFixture` for storage states, `fillSettled` / `fillUntilEnabled` for inputs a hydration resets, `withHydration` / `hydrated` (a `goto` that waits for a hydration marker; the React Router marker in the `./react-router` adapter), `settled` / `nextFrames` / `toastsGone`, `expectAccessible` (axe) and `expectNoHorizontalScroll` (with an inner `scroller`), phone projects through `defineAppConfig`'s `mobile`, `saveScreen` and `defineAppConfig`'s `screens` (full-page screens, a folder emptied by a packaged global setup), `selectedProjects` (`--project` seen by the workers), `/pwa`'s production-build project (`pwaProject`, `isPwaRun`), offline (`goOffline` / `goOnline`), a new worker version (`nextWorkerVersion`) and cache checks (`cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`), `createMswTest` for msw through `@msw/playwright`, `createMockServerTest` (`/mock-server`: a `mockServer` fixture that resets, fails, runs scenarios and overrides operations of an app server's mocks over HTTP, for `@nxgt/msw-graphql`'s control), and `storybookProject` — Storybook stories as Vitest browser tests, with WebP preview capture for component-library docs |
 | `@nxgt/msw-graphql` | Mock a GraphQL API with msw by executing the real operations against a schema: `createExecutor` (parse, validate, execute, status from `extensions.http.status`), `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`; `/schema` (`buildMockSchema`), `/sdl` (`loadSdl`, Vite `?raw` or a file read), `/browser` (`enableMocking`), `/node` (`startMockServer`), `/control` (`createMockControl`), `/response`. **Private until the owner's go** |
 
 `ROADMAP.md` lists what is planned next — `@nxgt/jenkins` among it. Nothing
@@ -67,9 +67,12 @@ Every peer is **optional** and each subpath needs only its own:
 | --- | --- |
 | `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
 | `./a11y` | + `@axe-core/playwright`, loaded on the first scan so a missing peer is named |
-| `./msw` | + `msw`, `@msw/playwright` |
+| `./msw` | + `msw` (2.12.10+ or 3), `@msw/playwright` (0.6.7 to 0.7; 0.7 needs msw 3) |
+| `./mock-server` | `@playwright/test`; no msw import, it talks HTTP |
 | `./storybook` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 | `./storybook/capture`, `./storybook/setup` | the same, **in the browser** |
+
+`./mock-server` copies the wire types of `@nxgt/msw-graphql/control` (`ServerOverride`) on purpose, so it imports neither msw nor that package; `test/e2e/mock-server.pw.ts` imports both (`@nxgt/msw-graphql` is a devDependency) and fails to typecheck if the two types drift, and `test/server.ts` mounts the real control it drives. That spec runs in its own config (`test/playwright.mock-server.config.ts`, one worker): server mocks are process-global.
 
 The root barrel re-exports only the first row, but for `./react-router`, an
 adapter an app of another framework never needs. Adding an export that reaches
