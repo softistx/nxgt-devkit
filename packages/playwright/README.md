@@ -2,7 +2,8 @@
 
 The Playwright boilerplate every app ends up writing, written once: a shared
 `playwright.config.ts`, `BasePage` and `FormPage` page objects, sign-in and
-storage-state fixtures, msw network fixtures, navigation and fills that wait
+storage-state fixtures, msw network fixtures, a driver for the mocks of an
+SSR app's server, navigation and fills that wait
 for hydration, waits for a page at rest, axe accessibility checks, phone
 projects and a no-sideways-scroll check, full-page screens of every state,
 PWA specs against a production build (offline, a new worker version, what the
@@ -492,6 +493,43 @@ test('shows a server error', async ({ page, network }) => {
 });
 ```
 
+### Mock server
+
+When the app's **server** calls the API (SSR, a BFF), the browser's msw never
+sees it. The mocks then live in the server, which mounts a control route
+(`@nxgt/msw-graphql`'s `createMockControl`, at `/__mocks` by default), and
+the spec drives it over HTTP:
+
+```ts
+// playwright/config/playwright.setup.ts
+import { test as base } from '@playwright/test';
+import { createMockServerTest } from '@nxgt/playwright/mock-server';
+
+export const test = createMockServerTest(base); // or createMockServerTest(createMswTest(handlers))
+export { expect } from '@playwright/test';
+```
+
+```ts
+// playwright/e2e/students.spec.ts
+import { expect, test } from '../config/playwright.setup';
+
+test('API down', async ({ page, mockServer }) => {
+	await mockServer.fail(503);
+	await page.goto('/students');
+	await expect(page.getByRole('alert')).toBeVisible();
+});
+
+test.describe('forbidden', () => {
+	test.use({
+		serverMocks: [{ operationName: 'GetStudents', status: 403, errors: [{ message: 'forbidden' }] }],
+	});
+	// or, in a test: await mockServer.scenario('remove', { id: 7 });
+});
+```
+
+The mocks are reset before and after every test. They are process-global:
+run these specs with `workers: 1`. See [docs/guide/mock-server.md](docs/guide/mock-server.md).
+
 ### Storybook
 
 ```ts
@@ -547,6 +585,8 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 - **`auth.setup.ts` belongs in `playwright/config/`** — the `setup` project
   looks only there — and `playwright/.auth/` holds live session cookies:
   add it to `.gitignore`.
+- **Server mocks are global to the app's server**: specs using `mockServer`
+  or `serverMocks` run with `workers: 1` (`overrides: { workers: 1, fullyParallel: false }`).
 - **`test.use({ handlers })` replaces the default handlers**; to add one, use
   `network.use(...)` or spread the defaults after it.
 - **`mobile` adds projects, it does not filter `browsers`**: `browsers: ['firefox'], mobile: true`
@@ -579,6 +619,6 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 
 ## Documentation
 
-- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md).
+- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md), [mock server](docs/guide/mock-server.md).
 - [Troubleshooting](docs/troubleshooting.md) — the error you are looking at, and its fix.
 - [Roadmap](docs/roadmap.md) — what is coming, and what is not planned.

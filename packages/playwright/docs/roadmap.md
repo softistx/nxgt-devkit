@@ -13,18 +13,10 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Next
 
-- **msw response helpers** — `ok`, `created`, `badRequest` and the other
-  common statuses, plus GraphQL `data` / `errors` bodies, so a handler is one
-  line instead of a hand-built `HttpResponse`. Whether these belong here or in
-  `@nxgt/openapi-msw` is decided before they are built.
-- **GraphQL mock server** — a schema and resolvers in, an `executeGraphQL`
-  out, so msw handlers answer GraphQL operations from resolvers rather than
-  fixed payloads.
-- **Dual SDL loader** — one way to load a `.graphql` schema that works both in
-  the browser (Vite `?raw`) and in Node (`node:fs`).
-- **Idempotent `setupServer` start** — start msw in an SSR app's server
-  process once, however many times the entry module is evaluated, so its
-  server-side requests are mocked too.
+- **Idempotent mock-server start** — for `@nxgt/msw-graphql`'s
+  `startMockServer`: start the server-side msw once, however many times an
+  SSR app's entry module is evaluated, so its server-side requests are mocked
+  too without a second listener.
 - **More responsive checks** — tap targets large enough on a phone, and text
   that does not overflow its box, beside `expectNoHorizontalScroll`.
 
@@ -52,6 +44,19 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Shipped
 
+- **Server-side mock control** — `createMockServerTest` and `./mock-server`:
+  a `mockServer` fixture (`reset`, `fail`, `scenario`, `use`) and the
+  `serverMocks` option drive the mocks of an SSR app's server over HTTP. Next
+  release.
+- **GraphQL mock server** — in `@nxgt/msw-graphql`:
+  a schema and resolvers in, handlers that answer the real operations out.
+  Next release.
+- **Dual SDL loader** — in `@nxgt/msw-graphql`: one way to
+  load a `.graphql` schema in the browser (Vite `?raw`) and in Node. Next
+  release.
+- **msw response helpers** — in `@nxgt/msw-graphql`: `ok`,
+  `created`, `badRequest` and the other common statuses, plus GraphQL
+  errors. Next release.
 - **Hydration-aware navigation** — `withHydration` makes every `goto` resolve
   once the page is interactive, `hydrated` waits on demand, and
   `hydrationWarnings` reports mismatches; `/react-router` adds a marker that
