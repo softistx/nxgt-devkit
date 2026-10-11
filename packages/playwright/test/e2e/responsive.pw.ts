@@ -38,3 +38,58 @@ test('a page wider than the viewport fails and names the widest element', async 
 		/^ {2}- table#data\.grid {2}right \d+px, width 900px$/,
 	);
 });
+
+// An app shell as tall as the viewport, whose `main` scrolls: its content
+// never widens the document.
+const shell = (content: string) =>
+	html(`<style>body{margin:0;overflow:hidden}</style>
+<div id="app" style="height:100vh;display:flex;flex-direction:column">
+	<header style="height:48px">Header</header>
+	<main id="content" style="flex:1;overflow:auto">${content}</main>
+</div>`);
+
+test.describe('an inner scroll container', () => {
+	test('the document check alone misses its overflow', async ({ page }) => {
+		await page.setContent(
+			shell('<pre id="log" style="width:900px">wide</pre>'),
+		);
+		await expectNoHorizontalScroll(page);
+	});
+
+	test('scroller: fails and names the container and the element', async ({
+		page,
+	}) => {
+		await page.setContent(
+			shell('<pre id="log" style="width:900px">wide</pre>'),
+		);
+		const error = await expectNoHorizontalScroll(page, {
+			scroller: 'main',
+		}).catch((e: Error) => e);
+		expect(error).toBeInstanceOf(Error);
+		const [first, , offender] = (error as Error).message.split('\n');
+		expect(first).toMatch(
+			/^The scroll container main#content scrolls horizontally: scrollWidth \d+px > clientWidth 412px\.$/,
+		);
+		expect(offender).toBe('  - pre#log  right 900px, width 900px');
+	});
+
+	test('scroller: a table in its own scroller inside passes', async ({
+		page,
+	}) => {
+		await page.setContent(
+			shell(
+				'<div style="overflow-x:auto"><table style="width:900px"><tr><td>a</td></tr></table></div>',
+			),
+		);
+		await expectNoHorizontalScroll(page, {
+			scroller: page.locator('main'),
+		});
+	});
+
+	test('scroller: a page without it checks the document only', async ({
+		page,
+	}) => {
+		await page.setContent(html('<p>No shell here.</p>'));
+		await expectNoHorizontalScroll(page, { scroller: 'main' });
+	});
+});

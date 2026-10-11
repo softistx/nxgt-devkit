@@ -1,9 +1,17 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
 	defineConfig,
 	devices,
 	type PlaywrightTestConfig,
 	type Project,
 } from '@playwright/test';
+import {
+	DEFAULT_SCREENS_DIR,
+	SCREENS_METADATA_KEY,
+	type ScreensMetadata,
+} from '../screens/dir';
+import { selectedProjects } from './selected-projects';
 
 export type Browser = 'chromium' | 'firefox' | 'webkit' | 'msedge' | 'chrome';
 
@@ -53,6 +61,14 @@ export type AppConfigOptions = {
 	testDir?: string;
 	/** Default `data-pw`. */
 	testIdAttribute?: string;
+	/**
+	 * Full-page screens saved by `saveScreen` (`@nxgt/playwright/screens`) on
+	 * a run whose `env` variable (default `SCREENS`) is `1`: the folder `dir`
+	 * (default `./playwright/screenshots`, relative to the config) is emptied
+	 * first by a global setup, and each screen saved under
+	 * `<dir>/<project>/`. `true` takes both defaults. Default `false`.
+	 */
+	screens?: boolean | { dir?: string; env?: string };
 	/** Merged last, over everything above. */
 	overrides?: PlaywrightTestConfig;
 };
@@ -103,6 +119,41 @@ export function mobileProjects(
 }
 
 /**
+ * The global setup that empties the screens folder: `dist/screens/clear.js`
+ * from the build (an entry point of its own, one folder below `dist` like
+ * this module and the chunks it may be bundled into), `src/screens/clear.ts`
+ * from the sources.
+ */
+export function clearScreensSetup(): string {
+	const extension = import.meta.url.endsWith('.ts') ? 'ts' : 'js';
+	const path = fileURLToPath(
+		new URL(`../screens/clear.${extension}`, import.meta.url),
+	);
+	if (!existsSync(path)) {
+		throw new Error(
+			`defineAppConfig: the screens' global setup is missing at ${path}. ` +
+				'Reinstall @nxgt/playwright.',
+		);
+	}
+	return path;
+}
+
+/** The `screens` option, as the config's metadata and global setup. */
+export function screensConfig(
+	screens: AppConfigOptions['screens'],
+	env: NodeJS.ProcessEnv = process.env,
+): Pick<PlaywrightTestConfig, 'metadata' | 'globalSetup'> {
+	if (!screens) return {};
+	const { dir = DEFAULT_SCREENS_DIR, env: variable = 'SCREENS' } =
+		screens === true ? {} : screens;
+	const metadata: ScreensMetadata = { dir, enabled: env[variable] === '1' };
+	return {
+		metadata: { [SCREENS_METADATA_KEY]: metadata },
+		...(metadata.enabled ? { globalSetup: clearScreensSetup() } : {}),
+	};
+}
+
+/**
  * The configuration every app's `playwright.config.ts` used to spell out:
  *
  * ```ts
@@ -111,6 +162,8 @@ export function mobileProjects(
  */
 export function defineAppConfig(options: AppConfigOptions) {
 	const ci = Boolean(process.env.CI);
+	// For the workers, which load this config without the command line.
+	selectedProjects();
 	const port = Number(process.env.PW_PORT) || options.port;
 	const baseURL =
 		process.env.PW_BASE_URL || options.baseURL || `http://localhost:${port}`;
@@ -165,6 +218,17 @@ export function defineAppConfig(options: AppConfigOptions) {
 					...(options.env ? { env: options.env } : {}),
 				});
 
+	const screens = screensConfig(options.screens);
+	// `defineConfig` replaces `metadata` wholesale: an app's own keys must not
+	// drop the screens' entry the workers read.
+	const overrides: PlaywrightTestConfig =
+		screens.metadata && options.overrides?.metadata
+			? {
+					...options.overrides,
+					metadata: { ...screens.metadata, ...options.overrides.metadata },
+				}
+			: (options.overrides ?? {});
+
 	return defineConfig(
 		{
 			testDir: options.testDir ?? './playwright/e2e',
@@ -176,6 +240,7 @@ export function defineAppConfig(options: AppConfigOptions) {
 			reporter: 'html',
 			projects,
 			...(webServer ? { webServer } : {}),
+			...screens,
 			use: {
 				testIdAttribute: options.testIdAttribute ?? 'data-pw',
 				baseURL,
@@ -184,6 +249,6 @@ export function defineAppConfig(options: AppConfigOptions) {
 				screenshot: 'only-on-failure',
 			},
 		},
-		options.overrides ?? {},
+		overrides,
 	);
 }

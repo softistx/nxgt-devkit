@@ -1,7 +1,7 @@
 {
 	"name": "@nxgt/playwright",
 	"version": "0.2.0",
-	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-safe fills, axe accessibility checks, phone projects, and Storybook stories as Vitest browser tests with preview capture",
+	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-aware navigation and fills, settled-page waits, axe accessibility checks, phone projects, full-page screens, PWA cache checks, and Storybook stories as Vitest browser tests with preview capture",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -45,6 +45,21 @@
 			"import": "./dist/a11y/index.js",
 			"default": "./dist/a11y/index.js"
 		},
+		"./pwa": {
+			"types": "./dist/pwa/index.d.ts",
+			"import": "./dist/pwa/index.js",
+			"default": "./dist/pwa/index.js"
+		},
+		"./screens": {
+			"types": "./dist/screens/index.d.ts",
+			"import": "./dist/screens/index.js",
+			"default": "./dist/screens/index.js"
+		},
+		"./react-router": {
+			"types": "./dist/react-router/index.d.ts",
+			"import": "./dist/react-router/index.js",
+			"default": "./dist/react-router/index.js"
+		},
 		"./msw": {
 			"types": "./dist/msw/index.d.ts",
 			"import": "./dist/msw/index.js",
@@ -76,7 +91,12 @@
 		"msw",
 		"storybook",
 		"vitest",
-		"fixtures"
+		"fixtures",
+		"hydration",
+		"screenshots",
+		"pwa",
+		"service-worker",
+		"react-router"
 	],
 	"repository": {
 		"type": "git",
@@ -100,6 +120,10 @@
 			"src/auth/index.ts",
 			"src/helpers/index.ts",
 			"src/a11y/index.ts",
+			"src/pwa/index.ts",
+			"src/screens/index.ts",
+			"src/screens/clear.ts",
+			"src/react-router/index.ts",
 			"src/msw/index.ts",
 			"src/storybook/index.ts",
 			"src/storybook/capture.ts",

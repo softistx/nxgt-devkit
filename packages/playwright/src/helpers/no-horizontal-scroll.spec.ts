@@ -24,3 +24,18 @@ describe('formatOverflow', () => {
 		).toContain('negative margin or a transform');
 	});
 });
+
+describe('formatOverflow for an inner scroll container', () => {
+	test('names the container', () => {
+		expect(
+			formatOverflow({
+				scrollWidth: 700,
+				clientWidth: 412,
+				container: 'div.shell',
+				elements: [{ selector: 'pre', right: 700, width: 680 }],
+			}).split('\n')[0],
+		).toBe(
+			'The scroll container div.shell scrolls horizontally: scrollWidth 700px > clientWidth 412px.',
+		);
+	});
+});
