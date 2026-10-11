@@ -2,7 +2,14 @@
 // load, the way hydration resets a controlled input, and a submit that calls
 // an API msw answers in the specs; pages that hydrate late, and a service
 // worker, for the hydration and PWA helpers.
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 const PORT = Number(process.env.PW_PORT) || 4599;
+// Where `/versioned-sw.js?id=<id>` is read from, per request: a spec writes
+// its own worker there and `nextWorkerVersion` edits it (e2e/pwa.pw.ts names
+// the same folder).
+const VERSIONED_DIR = join(tmpdir(), 'nxgt-playwright-probe');
 
 const form = /* html */ `<!doctype html>
 <title>Form</title>
@@ -62,7 +69,8 @@ const PAGES: Record<string, () => Response> = {
 	console.error('An unrelated error');
 </script>`),
 	'/data.json': () => Response.json({ ok: true }),
-	// A service worker that precaches two URLs and claims its clients.
+	// A service worker that precaches two URLs, claims its clients, and
+	// answers from its cache when the network fails (it stores nothing else).
 	'/sw-page': () =>
 		html(`<script>navigator.serviceWorker.register('/sw.js');</script>`),
 	'/sw.js': () =>
@@ -71,14 +79,21 @@ const PAGES: Record<string, () => Response> = {
 	event.waitUntil(caches.open('probe-v1').then((cache) => cache.addAll(['/sw-page', '/data.json?v=1'])));
 	self.skipWaiting();
 });
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));`,
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', (event) => {
+	event.respondWith(
+		fetch(event.request).catch(() =>
+			caches.match(event.request).then((cached) => cached ?? Response.error()),
+		),
+	);
+});`,
 			{ headers: { 'content-type': 'text/javascript' } },
 		),
 };
 
 Bun.serve({
 	port: PORT,
-	fetch(request) {
+	async fetch(request) {
 		const url = new URL(request.url);
 		if (url.pathname === '/login') {
 			return new Response(
@@ -87,6 +102,22 @@ Bun.serve({
 					headers: { 'content-type': 'text/html' },
 				},
 			);
+		}
+		const id = (url.searchParams.get('id') ?? '').replace(/[^\w-]/g, '');
+		if (url.pathname === '/versioned-page') {
+			return html(
+				`<script>navigator.serviceWorker.register('/versioned-sw.js?id=${id}');</script>`,
+			);
+		}
+		if (url.pathname === '/versioned-sw.js') {
+			const file = Bun.file(join(VERSIONED_DIR, `${id}.js`));
+			if (!(await file.exists())) return new Response('', { status: 404 });
+			return new Response(await file.text(), {
+				headers: {
+					'content-type': 'text/javascript',
+					'cache-control': 'no-cache',
+				},
+			});
 		}
 		const page = PAGES[url.pathname];
 		if (page) return page();

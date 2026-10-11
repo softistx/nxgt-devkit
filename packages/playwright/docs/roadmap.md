@@ -5,7 +5,11 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-Nothing in progress.
+- **PWA end-to-end helpers** — `pwaProject` and `isPwaRun` for a run against
+  a production build on a port of its own, `goOffline` / `goOnline` once the
+  worker controls the page, `nextWorkerVersion` for an update prompt's specs,
+  and `fillCaches` / `expectOnlyCaches` for what a sign-out or a new worker
+  leaves of the caches. Planned for 0.4.0.
 
 ## Next
 

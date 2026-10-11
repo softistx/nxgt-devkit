@@ -309,7 +309,11 @@ Apps grow a `playwright/support/` of their own. Each file maps to an export:
 | a `screens.ts` with a full-page saver and a `globalSetup` that empties the folder | [`saveScreen`](screens.md) and `defineAppConfig({ screens })` |
 | an `app.ts` with `nextFrames`, a wait for animations, a wait for toasts, an `isMobile` check | [`nextFrames`, `settled`, `toastsGone`, `isMobileProject`](helpers.md#nextframes-and-settled) |
 | a `pwa.ts` listing Cache Storage and waiting for the worker | [`serviceWorkerControlled`, `cachedUrls`, `expectNotCached`](pwa.md) |
+| a `caches.ts` that fills the app's caches and checks what a sign-out leaves | [`fillCaches`, `expectOnlyCaches`](pwa.md#fillcaches-and-expectonlycaches), given the app's cache names |
+| an offline spec's `context.setOffline` after waiting for the worker | [`goOffline`, `goOnline`](pwa.md#gooffline-and-goonline) |
+| an update spec that rewrites the built worker and calls `registration.update()` | [`nextWorkerVersion`](pwa.md#nextworkerversion) |
 | a config reading `process.argv` for `--project` | [`selectedProjects`](config.md#selectedprojects) |
+| a `pwa` branch of the config: a build on another port, one Chromium project, no setup | [`pwaProject`, `isPwaRun`](pwa.md#pwaproject-and-ispwarun) |
 
 Delete the file once its callers import from the package.
 
