@@ -113,20 +113,12 @@ export function mobileProjects(
 }
 
 /**
- * The configuration every app's `playwright.config.ts` used to spell out:
- *
- * ```ts
- * export default defineAppConfig({ port: 5174, setup: true });
- * ```
+ * The projects `defineAppConfig` builds: the auth `setup` project when asked,
+ * one per desktop browser, then the phones, each depending on `setup`.
  */
-export function defineAppConfig(options: AppConfigOptions) {
-	const ci = Boolean(process.env.CI);
-	// For the workers, which load this config without the command line.
-	selectedProjects();
-	const port = Number(process.env.PW_PORT) || options.port;
-	const baseURL =
-		process.env.PW_BASE_URL || options.baseURL || `http://localhost:${port}`;
-
+export function appProjects(
+	options: Pick<AppConfigOptions, 'setup' | 'browsers' | 'mobile'>,
+): Project[] {
 	const setup =
 		options.setup === true ? {} : options.setup ? options.setup : undefined;
 	const projects: Project[] = [];
@@ -166,6 +158,25 @@ export function defineAppConfig(options: AppConfigOptions) {
 			...(setup ? { dependencies: ['setup'] } : {}),
 		});
 	}
+	return projects;
+}
+
+/**
+ * The configuration every app's `playwright.config.ts` used to spell out:
+ *
+ * ```ts
+ * export default defineAppConfig({ port: 5174, setup: true });
+ * ```
+ */
+export function defineAppConfig(options: AppConfigOptions) {
+	const ci = Boolean(process.env.CI);
+	// For the workers, which load this config without the command line.
+	selectedProjects();
+	const port = Number(process.env.PW_PORT) || options.port;
+	const baseURL =
+		process.env.PW_BASE_URL || options.baseURL || `http://localhost:${port}`;
+
+	const projects = appProjects(options);
 
 	const webServer =
 		options.webServer === false

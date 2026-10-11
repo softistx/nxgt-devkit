@@ -116,3 +116,15 @@ describe('defineAppConfig with metadata of its own', () => {
 		});
 	});
 });
+
+describe('clearScreens and a folder named like a parent', () => {
+	test('a config under a "..cache" folder still guards its parents', () => {
+		const root = mkdtempSync(join(tmpdir(), 'screens-'));
+		const pw = join(root, '..cache', 'app', 'pw.ts');
+		mkdirSync(join(root, '..cache', 'app'), { recursive: true });
+		expect(() =>
+			clearScreens(config({ nxgtScreens: { dir: root, enabled: true } }, pw)),
+		).toThrow('defineAppConfig: screens.dir');
+		expect(existsSync(join(root, '..cache', 'app'))).toBe(true);
+	});
+});

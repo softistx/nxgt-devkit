@@ -75,3 +75,10 @@ Nothing in progress.
   previews of the stories tagged `preview`. 0.1.0.
 - **msw network fixtures** — `createMswTest` extends Playwright's `test` with
   msw handlers per test. 0.1.0.
+- **Hydration-safe fills** — `fillSettled` and `fillUntilEnabled` keep typing
+  from being lost to a page that is still hydrating. 0.1.0.
+- **Login and storage-state fixtures** — `authSetup`, `authFile` and
+  `withLoginFixture` sign in once and reuse the stored state. 0.1.0.
+- **Page object bases** — `BasePage` and `FormPage`. 0.1.0.
+- **Shared app config** — `defineAppConfig` for a Playwright config every app
+  would otherwise repeat. 0.1.0.

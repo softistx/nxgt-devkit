@@ -243,8 +243,8 @@ await elementHydrated(page.getByRole('button', { name: 'Continue' }));
 ### A page at rest
 
 `settled(page)` resolves once every animation and transition that ends has
-ended (a spinner is left running); `nextFrames(page, count = 2)` once React's
-commit and its effects have run. Call them before an axe scan, which reads
+ended (a spinner is left running); `nextFrames(page, count = 2)` once a render is
+committed and the effects it scheduled have run. Call them before an axe scan, which reads
 colours mid-fade, or a screenshot:
 
 ```ts

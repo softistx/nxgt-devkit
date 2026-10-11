@@ -1,12 +1,12 @@
 import { rmSync } from 'node:fs';
-import { dirname, relative } from 'node:path';
+import { dirname, isAbsolute, relative, sep } from 'node:path';
 import type { FullConfig } from '@playwright/test';
 import { screensDir } from './dir';
 
 /** Whether `dir` is `inside` or one of the folders holding it. */
 function holds(dir: string, inside: string): boolean {
 	const path = relative(dir, inside);
-	return path === '' || !path.startsWith('..');
+	return path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path);
 }
 
 /**
