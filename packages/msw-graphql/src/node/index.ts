@@ -23,11 +23,13 @@ export function startMockServer(
 	options: StartMockServerOptions = {},
 ) {
 	const { onUnhandledRequest = 'bypass', ...controlOptions } = options;
-	// First: under NODE_ENV=production this throws, and no server is left
-	// listening. `startMockServer` is dev and test only, as the control is.
+	// The control is built before the server listens: under production it
+	// throws, so no server is left listening. `setupServer` only creates the
+	// server; `listen()` below is what intercepts.
 	const server = setupServer(...handlers);
 	const control = createMockControl({ ...controlOptions, server });
-	// msw 3 renamed the option to `onUnhandledFrame`; each ignores the other.
+	// `as never`: msw 3 renamed the option to `onUnhandledFrame` and each major
+	// ignores the other's, so the options type fits neither.
 	server.listen({
 		onUnhandledFrame: onUnhandledRequest,
 		onUnhandledRequest,

@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
-import { enableMocking, resolveHandlers } from './index';
+import { enableMocking } from './index';
+import { resolveHandlers } from './resolve-handlers';
 
 test('does nothing, and loads nothing, when disabled', async () => {
 	let loaded = false;

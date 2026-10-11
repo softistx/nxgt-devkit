@@ -10,10 +10,18 @@ import {
 // spec drives it through the fixture and reads the effect back from /__state.
 const test = createMockServerTest(base);
 
-// The copied wire type and the control's own must stay the same type: this
-// line stops typechecking the day one of them changes alone.
+// The copied wire type and the control's own must stay the same type: these
+// lines stop typechecking the day one of them changes alone. `Same` on the
+// plain types lets an optional field added on one side pass (each side is
+// still assignable to the other), so the keys and the `Required` forms are
+// compared too.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 export const sameOverride: Same<Override, ServerOverride> = true;
+export const sameRequired: Same<
+	Required<Override>,
+	Required<ServerOverride>
+> = true;
+export const sameKeys: Same<keyof Override, keyof ServerOverride> = true;
 
 type State = {
 	failing: number | null;

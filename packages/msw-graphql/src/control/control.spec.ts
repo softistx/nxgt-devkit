@@ -115,6 +115,21 @@ describe('programmatic', () => {
 		expect(second.data.whoami).toBeNull();
 	});
 
+	test('a once override answers exactly one of two concurrent requests', async () => {
+		const { server, control } = setup();
+		control.override({
+			operationName: 'GetWho',
+			data: { whoami: 'fixed' },
+			once: true,
+		});
+		const answers = await Promise.all(
+			[1, 2].map(async () =>
+				(await ask(server, 'query GetWho { whoami }', 'GetWho')).json(),
+			),
+		);
+		expect(answers.filter((a) => a.data.whoami === 'fixed')).toHaveLength(1);
+	});
+
 	test('failing wins over an override', async () => {
 		const { server, control } = setup();
 		control.override({ operationName: 'GetWho', data: { whoami: 'fixed' } });
@@ -285,6 +300,24 @@ describe('review fixes', () => {
 		);
 		expect(response?.status).toBe(415);
 		expect(state.failing).toBeNull();
+	});
+
+	test('a POST without application/json is a 415 even with no body, and does not reset', async () => {
+		const { control } = setup();
+		const before = resets;
+		for (const headers of [{ 'content-type': 'text/plain' }, {}] as Record<
+			string,
+			string
+		>[]) {
+			const response = await control.handle(
+				new Request('http://app.test/__mocks/reset', {
+					method: 'POST',
+					headers,
+				}),
+			);
+			expect(response?.status).toBe(415);
+		}
+		expect(resets).toBe(before);
 	});
 
 	test('an error in the app reset is a 500 with its message, and failing is cleared first', async () => {

@@ -88,8 +88,14 @@ nothing (msw 2.15 does). `@nxgt/msw-graphql`'s specs therefore call handlers
 with `getResponse` under `bun test`, and `scripts/node-smoke.mjs` runs a real
 msw server under Node against the built `dist/`. `scripts/test-matrix.ts
 <graphql> <msw>` runs the whole bar against other majors in a scratch copy;
-CI runs it for graphql 16 and for msw 2. `scripts/bun-fetch-probe.ts` prints
-whether the installed msw sees Bun's fetch.
+CI runs it for graphql 16 and for msw 2, with full versions (`16 3.0.3`,
+`17 2.15.0`); on msw 2 it also runs `scripts/bun-fetch-probe.ts --expect
+intercepted`, which prints whether the installed msw sees Bun's fetch.
+
+`@nxgt/playwright/msw`'s lower peer range (msw 2.12+ with `@msw/playwright`
+0.6.7) is not exercised in CI; check it by hand before a release: in a scratch
+copy, `bun add -d msw@2.12.10 @msw/playwright@0.6.7` in `packages/playwright`,
+then `bun run test`.
 
 ## Browser-only subpaths
 

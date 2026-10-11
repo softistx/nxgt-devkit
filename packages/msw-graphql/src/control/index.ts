@@ -7,6 +7,7 @@ export type { Override } from './override';
 export { UnknownScenarioError } from './shared';
 
 /** The part of an msw server (node or worker) the control needs. */
+// `any` handlers: msw 2 and 3 name their handler types differently.
 export type ControlServer = {
 	use: (...handlers: any[]) => void;
 	resetHandlers: () => void;

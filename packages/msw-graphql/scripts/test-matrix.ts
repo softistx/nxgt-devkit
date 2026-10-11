@@ -4,8 +4,12 @@
  * Runs this package's whole green bar against one graphql and one msw version
  * other than the workspace's, in a scratch copy:
  *
- *   bun run scripts/test-matrix.ts 16 3      # graphql 16, msw 3
- *   bun run scripts/test-matrix.ts 17 2      # graphql 17, msw 2
+ *   bun run scripts/test-matrix.ts 16 3.0.3   # graphql 16, msw 3.0.3
+ *   bun run scripts/test-matrix.ts 17 2.15.0  # graphql 17, msw 2.15.0
+ *
+ * Pass full versions: the `ok:` line prints what was installed, and a range
+ * such as `^2` leaves room to doubt it. On msw 2 the copy also runs
+ * `scripts/bun-fetch-probe.ts --expect intercepted`.
  *
  * The workspace holds one version of each (graphql 17, msw 3), and the peers
  * promise `graphql ^16 || ^17`, so the other majors are measured here and in
@@ -66,6 +70,17 @@ try {
 	const installed = async (name: string) =>
 		(await Bun.file(join(copy, 'node_modules', name, 'package.json')).json())
 			.version;
+	// msw 2 must see Bun's fetch (msw 3 does not): the probe fails the run
+	// unless it prints `intercepted`, so a `^2` that resolved elsewhere shows.
+	if ((await installed('msw')).startsWith('2.'))
+		await run(
+			'bun fetch probe',
+			'bun',
+			'run',
+			'scripts/bun-fetch-probe.ts',
+			'--expect',
+			'intercepted',
+		);
 	console.log(
 		`\nok: graphql ${await installed('graphql')}, msw ${await installed('msw')}`,
 	);
