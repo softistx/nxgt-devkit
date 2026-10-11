@@ -116,6 +116,13 @@ const { startMockServer } = await import('@nxgt/msw-graphql/node');
 const { control } = startMockServer(handlers, { reset: () => resetMocks() });
 ```
 
+`startMockServer` is idempotent per process: a second call (an SSR entry
+module re-evaluated by Vite's HMR, say) returns the first call's
+`{ server, control }` and starts nothing, so listeners do not stack. The
+second call's `handlers` and options are ignored; to change them, use
+`server.use(...)` or `control.reset()` on the running server, or
+`server.close()`, after which the next call starts a new one.
+
 Then Playwright, with `@nxgt/playwright/mock-server` (it needs only
 `@playwright/test`):
 

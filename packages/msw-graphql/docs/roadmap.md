@@ -21,10 +21,6 @@ Nothing is in progress.
 - **`enableMocking` in a real browser** — only the disabled path and the
   handler-shape unwrapping are tested; a browser run is wanted.
 
-- **Idempotent mock-server start** — `startMockServer` starts the server-side
-  msw once, however many times an SSR app's entry module is evaluated, so its
-  server-side requests are mocked too without a second listener.
-
 ## Later
 
 - **`startMockServer` on msw 3 under Bun** — once
@@ -50,7 +46,8 @@ First release, 0.1.0, tested on graphql 16 and 17 and on msw 2 and 3:
 - **`/schema`** — `buildMockSchema`.
 - **`/sdl`** — `loadSdl`, one loader for Vite and Node.
 - **`/browser`** — `enableMocking`.
-- **`/node`** — `startMockServer`.
+- **`/node`** — `startMockServer`, idempotent per process (a second call
+  returns the running server and control; its arguments are ignored).
 - **`/fetch`** — `createMockFetch`: a `fetch` answered by the handlers with
   no global patch, for an SSR/BFF client that takes a fetch; works on msw 2
   and 3, Node and Bun.
