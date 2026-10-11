@@ -41,7 +41,11 @@ The peer is `msw ^2.12.10 || ^3.0.0`.
 ## Node and Bun
 
 - **Node >= 22.12**: msw 2 and 3 both intercept `fetch`.
-- **Bun**: msw 2 intercepts Bun's native `fetch`; **msw 3 does not**. Its Node interceptors patch `node:net`; Bun logs `Failed to replace a global value at "_wrapHandle": not a global value.` and the request goes to the network (`ENOTFOUND`). Consequence: an SSR/BFF app whose **server runs on Bun** and uses `startMockServer` stays on `msw ^2.12.10`; one run by Node can use msw 3. Check yours:
+- **Bun**: msw 2 intercepts Bun's native `fetch`; **msw 3 does not** ([mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811)). Its Node interceptors patch `node:net`; Bun logs `Failed to replace a global value at "_wrapHandle": not a global value.` and the request goes to the network (`ENOTFOUND`). Consequence: an SSR/BFF app whose **server runs on Bun** has two ways out:
+  - `createMockFetch` from `@nxgt/msw-graphql/fetch`, on msw 2 or 3. It patches nothing, so the bug does not matter; the API client must take an injected `fetch`.
+  - `startMockServer` from `/node`, on `msw ^2.12.10`, for a client that cannot take a fetch.
+
+  A server run by Node can use either, on msw 2 or 3. Check whether `startMockServer` works on yours:
 
 ```bash
 bun -e "import{setupServer}from'msw/node';import{http,HttpResponse}from'msw';const s=setupServer(http.get('http://probe.test/x',()=>HttpResponse.json({ok:true})));s.listen({onUnhandledFrame:'bypass',onUnhandledRequest:'bypass'});fetch('http://probe.test/x').then(()=>console.log('intercepted'),()=>console.log('NOT intercepted')).finally(()=>s.close())"    # prints `intercepted` or `NOT intercepted`

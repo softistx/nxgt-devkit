@@ -8,6 +8,7 @@ were reproduced while writing this page.
   [Node >= 22.12](#msw-3-needs-node--2212)
 - Runtime: [not intercepted under Bun](#failed-to-replace-a-global-value-at-_wraphandle-not-a-global-value),
   [production](#createmockcontrol-is-dev-and-test-only-node_env-is-production),
+  [`createMockFetch: no handler`](#createmockfetch-no-handler-for-method-url),
   [control answers](#the-control-answers-415-404-405-or-400),
   [parallel specs](#mock-server-specs-fail-when-run-in-parallel),
   [`loadSdl`](#loadsdl-needs-a-vite-callback-a-file-or-both),
@@ -75,8 +76,20 @@ bun add -d msw@^2.12.10
 request is not mocked and goes to the network (`ENOTFOUND`). Measured.
 **Why:** msw 3's Node server patches `node:net`, which does not intercept
 Bun's native `fetch`. msw 2.15 does intercept under Bun.
-**Fix:** on a server that runs on Bun, use msw 2; a server run by Node
->= 22.12 can use msw 3.
+This is [mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811).
+**Fix:** when the API client takes a `fetch`, use `createMockFetch` from
+`@nxgt/msw-graphql/fetch`, which works on msw 3 under Bun. Otherwise use
+msw 2 on a server that runs on Bun; a server run by Node >= 22.12 can use
+msw 3 with `startMockServer`.
+
+```ts
+import { createMockFetch } from '@nxgt/msw-graphql/fetch';
+
+const { fetch, control } = createMockFetch(handlers);
+const client = createClient({ url, fetch }); // your API client
+```
+
+Or, for a client that cannot take a fetch:
 
 ```bash
 bun add -d msw@^2.12.10
@@ -85,15 +98,30 @@ bun -e "import{setupServer}from'msw/node';import{http,HttpResponse}from'msw';con
 
 The probe lives in this package's `scripts/` folder in the repository.
 
+## `createMockFetch: no handler for <METHOD> <url>.`
+
+**When:** `createMockFetch(handlers, { strict: true })` gets a request that no
+handler answers.
+**Why:** with `strict`, an unhandled request throws instead of going to the
+real `fetch` (or to `fallback`).
+**Fix:** add a handler for that URL, or drop `strict` so that it passes through:
+
+```ts
+const { fetch } = createMockFetch(
+	[...handlers, http.get('https://cdn.example.test/*', () => new Response(null, { status: 204 }))],
+	{ strict: true },
+);
+```
+
 ## `createMockControl is dev and test only: NODE_ENV is "production"`
 
-**When:** calling `createMockControl` or `startMockServer` (which builds the
-control first) with `NODE_ENV=production` or in a Vite production build
+**When:** calling `createMockControl`, `startMockServer` or `createMockFetch`
+(both build the control first) with `NODE_ENV=production` or in a Vite production build
 (`import.meta.env.PROD`). The guard fails open when `NODE_ENV` is unset, as under Bun. A mounted control also answers
 `404` to every `/__mocks` route in production.
 **Why:** the control can reset, fail and reseed the API; it must never run in
 a production build.
-**Fix:** import `/node` and `/control` only behind your mocks flag, with a
+**Fix:** import `/node`, `/fetch` and `/control` only behind your mocks flag, with a
 dynamic import (on a server; in a Vite client build the condition must be
 statically false, see the Production section of the control guide):
 

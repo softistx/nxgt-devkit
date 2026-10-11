@@ -24,6 +24,10 @@ const control = createMockControl({
 `setupServer`, the `createMockControl` and `server.listen()` in one call and
 returns `{ server, control }`.
 
+`createMockFetch` from `@nxgt/msw-graphql/fetch` returns the same `control`
+(`fail`, `reset`, `scenario`, `override`, `handle`) with the same options and
+behaviour; only the server differs. See [fetch](fetch.md).
+
 ## Options
 
 | Option | Type | Default | Effect |
@@ -34,6 +38,7 @@ returns `{ server, control }`.
 | `path` | `string` | `'/__mocks'` | Where the HTTP routes are mounted |
 | `state` | `MockState` | `mockState` | The state shared with the executor: pass the same one to both, or neither |
 
+`createMockFetch` takes these options (without `server`) too.
 `startMockServer` adds `onUnhandledRequest` (`'bypass'` default, `'warn'`,
 `'error'`).
 

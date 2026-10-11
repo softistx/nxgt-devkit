@@ -16,7 +16,9 @@ export type StartMockServerOptions = Omit<MockControlOptions, 'server'> & {
  * ```
  *
  * `control` is the HTTP/programmatic channel for e2e specs (`./control`).
- * Under Bun, use msw 2: msw 3's interceptors do not see Bun's `fetch`.
+ * Under Bun with msw 3 it intercepts nothing: msw 3's interceptors do not see
+ * Bun's native `fetch` (mswjs/msw#2811). There, give the client
+ * `createMockFetch`'s fetch (`./fetch`), or stay on msw 2.
  */
 export function startMockServer(
 	handlers: AnyHandler[],

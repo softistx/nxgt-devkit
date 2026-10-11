@@ -6,6 +6,7 @@
 // it also proves the built subpaths load. Build first.
 import assert from 'node:assert/strict';
 import { http } from 'msw';
+import { createMockFetch } from '../dist/fetch/index.js';
 import {
 	createExecutor,
 	GraphQLHttpError,
@@ -84,7 +85,34 @@ try {
 
 	// onUnhandledRequest 'error' is honoured by both msw majors.
 	await assert.rejects(fetch('http://api.test/unhandled'));
-	console.log('node smoke: ok');
 } finally {
 	server.close();
 }
+
+// The built /fetch: no interception at all, so it answers the same anywhere.
+{
+	const { fetch: mockFetch, control: fetchControl } = createMockFetch(
+		[graphqlEndpoint('http://api.test/graphql', createExecutor({ schema }))],
+		{ strict: true },
+	);
+	const answered = await mockFetch('http://api.test/graphql', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ query: '{ hello }' }),
+	});
+	assert.deepEqual(await answered.json(), { data: { hello: 'world' } });
+	fetchControl.fail(503);
+	assert.equal(
+		(
+			await mockFetch('http://api.test/graphql', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ query: '{ hello }' }),
+			})
+		).status,
+		503,
+	);
+	await fetchControl.reset();
+	await assert.rejects(mockFetch('http://api.test/unhandled'));
+}
+console.log('node smoke: ok');

@@ -78,26 +78,42 @@ for mocks that live in a server.
 
 The loaders call the API from the server, so the mocks live in the server.
 
+When your API client takes a `fetch`, use `createMockFetch`: it answers
+through the handlers with no global patch, on Node or Bun, msw 2 or 3 (see
+[runtimes](runtimes.md#node-and-bun)).
+
 ```ts
 // server.ts
 import { Hono } from 'hono';
 
 const app = new Hono();
+let apiFetch: typeof fetch = fetch; // hand this to your API client
 
 if (process.env.MOCKS === 'true') {
 	const { handlers } = await import('./mocks/handlers');
-	const { startMockServer } = await import('@nxgt/msw-graphql/node');
+	const { createMockFetch } = await import('@nxgt/msw-graphql/fetch');
 
-	const { control } = startMockServer(handlers, {
+	const mock = createMockFetch(handlers, {
 		reset: () => resetMocks(),
 		scenarios: {
 			empty: () => emptyMocks(),
 			remove: ({ id }: { id: string }) => removeRecord(id),
 		},
 	});
+	apiFetch = mock.fetch;
+	const { control } = mock;
 
 	app.all('/__mocks/*', async ({ req }) => (await control.handle(req.raw)) ?? new Response(null, { status: 404 }));
 }
+```
+
+For a client that cannot take a `fetch`, replace the `createMockFetch` lines
+with `startMockServer` from `@nxgt/msw-graphql/node`, which patches the process
+(Node, or Bun on msw 2 only) and returns the same `control`:
+
+```ts
+const { startMockServer } = await import('@nxgt/msw-graphql/node');
+const { control } = startMockServer(handlers, { reset: () => resetMocks() });
 ```
 
 Then Playwright, with `@nxgt/playwright/mock-server` (it needs only

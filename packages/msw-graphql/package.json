@@ -1,7 +1,6 @@
 {
 	"name": "@nxgt/msw-graphql",
 	"version": "0.0.0",
-	"private": true,
 	"description": "Mock a GraphQL API with msw by executing the real operations against your schema: one executor for the browser worker and the Node server, a control channel to reset, fail or reseed it from an e2e test, and a dual Vite/Node SDL loader",
 	"license": "MIT",
 	"type": "module",
@@ -40,6 +39,11 @@
 			"types": "./dist/node/index.d.ts",
 			"import": "./dist/node/index.js",
 			"default": "./dist/node/index.js"
+		},
+		"./fetch": {
+			"types": "./dist/fetch/index.d.ts",
+			"import": "./dist/fetch/index.js",
+			"default": "./dist/fetch/index.js"
 		},
 		"./response": {
 			"types": "./dist/response/index.d.ts",
@@ -84,6 +88,7 @@
 			"src/sdl/index.ts",
 			"src/browser/index.ts",
 			"src/node/index.ts",
+			"src/fetch/index.ts",
 			"src/response/index.ts",
 			"src/control/index.ts"
 		]
