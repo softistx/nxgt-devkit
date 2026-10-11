@@ -1,4 +1,4 @@
-import { defineAppConfig } from '../src/config';
+import { defineAppConfig, selectedProjects } from '../src/config';
 
 // The package's own config helper, driving its own specs.
 export default defineAppConfig({
@@ -12,8 +12,12 @@ export default defineAppConfig({
 		url: 'http://localhost:4599',
 		reuseExistingServer: !process.env.CI,
 	},
+	// `saveScreen`'s default folder; saving is on with `SCREENS=1`.
+	screens: { dir: '../.probe-screens' },
 	// `.pw.ts`, so `bun test` never picks these up.
 	overrides: {
+		// The runner's answer, for `config.pw.ts` to compare its worker's with.
+		metadata: { selectedInRunner: selectedProjects() },
 		testMatch: /\.pw\.ts$/,
 		reporter: 'list',
 		outputDir: '../.probe-results',

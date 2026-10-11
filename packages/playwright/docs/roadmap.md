@@ -42,9 +42,27 @@ Nothing in progress.
   and the network it mocks are the application's, not the library's. The
   package ships the bases (`BasePage`, `FormPage`, `withLoginFixture`,
   `createMswTest`) they are built from.
+- **Off-canvas menu and date-picker helpers** — they depend on a component
+  library's labels and markup; a page object in the app wraps them in two
+  lines, and a package-wide version would fit no library.
 
 ## Shipped
 
+- **Hydration-aware navigation** — `withHydration` makes every `goto` resolve
+  once the page is interactive, `hydrated` waits on demand, and
+  `hydrationWarnings` reports mismatches; `/react-router` adds a marker that
+  needs nothing from the app and `elementHydrated` for late elements. 0.3.0.
+- **Settled-page waits and toasts** — `nextFrames`, `settled` (finite
+  animations and transitions ended), `toastsGone` and `isMobileProject`. 0.3.0.
+- **Inner-scroller check** — `expectNoHorizontalScroll` takes a `scroller`, so
+  an app shell whose `main` scrolls sideways is caught. 0.3.0.
+- **Full-page screens** — `saveScreen` captures an inner-scrolling app shell
+  whole, per project, and `defineAppConfig({ screens })` empties the folder on
+  a `SCREENS=1` run. 0.3.0.
+- **`--project` in workers** — `selectedProjects` gives a config the same
+  answer in the runner and in its workers. 0.3.0.
+- **PWA cache checks** — `serviceWorkerControlled`, `cachedUrls` and
+  `expectNotCached`. 0.3.0.
 - **Accessibility checks** — `expectAccessible` runs axe with the WCAG 2.2
   A/AA rules and fails with each rule, its impact, help link and first nodes,
   the full report attached; `accessibilityScan` and the `a11y` fixture for

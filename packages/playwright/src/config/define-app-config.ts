@@ -4,6 +4,8 @@ import {
 	type PlaywrightTestConfig,
 	type Project,
 } from '@playwright/test';
+import { type ScreensOption, withScreens } from './screens';
+import { selectedProjects } from './selected-projects';
 
 export type Browser = 'chromium' | 'firefox' | 'webkit' | 'msedge' | 'chrome';
 
@@ -53,6 +55,14 @@ export type AppConfigOptions = {
 	testDir?: string;
 	/** Default `data-pw`. */
 	testIdAttribute?: string;
+	/**
+	 * Full-page screens saved by `saveScreen` (`@nxgt/playwright/screens`) on
+	 * a run whose `env` variable (default `SCREENS`) is `1`: the folder `dir`
+	 * (default `./playwright/screenshots`, relative to the config) is emptied
+	 * first by a global setup, and each screen saved under
+	 * `<dir>/<project>/`. `true` takes both defaults. Default `false`.
+	 */
+	screens?: ScreensOption;
 	/** Merged last, over everything above. */
 	overrides?: PlaywrightTestConfig;
 };
@@ -103,18 +113,12 @@ export function mobileProjects(
 }
 
 /**
- * The configuration every app's `playwright.config.ts` used to spell out:
- *
- * ```ts
- * export default defineAppConfig({ port: 5174, setup: true });
- * ```
+ * The projects `defineAppConfig` builds: the auth `setup` project when asked,
+ * one per desktop browser, then the phones, each depending on `setup`.
  */
-export function defineAppConfig(options: AppConfigOptions) {
-	const ci = Boolean(process.env.CI);
-	const port = Number(process.env.PW_PORT) || options.port;
-	const baseURL =
-		process.env.PW_BASE_URL || options.baseURL || `http://localhost:${port}`;
-
+export function appProjects(
+	options: Pick<AppConfigOptions, 'setup' | 'browsers' | 'mobile'>,
+): Project[] {
 	const setup =
 		options.setup === true ? {} : options.setup ? options.setup : undefined;
 	const projects: Project[] = [];
@@ -154,6 +158,25 @@ export function defineAppConfig(options: AppConfigOptions) {
 			...(setup ? { dependencies: ['setup'] } : {}),
 		});
 	}
+	return projects;
+}
+
+/**
+ * The configuration every app's `playwright.config.ts` used to spell out:
+ *
+ * ```ts
+ * export default defineAppConfig({ port: 5174, setup: true });
+ * ```
+ */
+export function defineAppConfig(options: AppConfigOptions) {
+	const ci = Boolean(process.env.CI);
+	// For the workers, which load this config without the command line.
+	selectedProjects();
+	const port = Number(process.env.PW_PORT) || options.port;
+	const baseURL =
+		process.env.PW_BASE_URL || options.baseURL || `http://localhost:${port}`;
+
+	const projects = appProjects(options);
 
 	const webServer =
 		options.webServer === false
@@ -164,6 +187,11 @@ export function defineAppConfig(options: AppConfigOptions) {
 					reuseExistingServer: !ci,
 					...(options.env ? { env: options.env } : {}),
 				});
+
+	const { screens, overrides } = withScreens(
+		options.screens,
+		options.overrides,
+	);
 
 	return defineConfig(
 		{
@@ -176,6 +204,7 @@ export function defineAppConfig(options: AppConfigOptions) {
 			reporter: 'html',
 			projects,
 			...(webServer ? { webServer } : {}),
+			...screens,
 			use: {
 				testIdAttribute: options.testIdAttribute ?? 'data-pw',
 				baseURL,
@@ -184,6 +213,6 @@ export function defineAppConfig(options: AppConfigOptions) {
 				screenshot: 'only-on-failure',
 			},
 		},
-		options.overrides ?? {},
+		overrides,
 	);
 }

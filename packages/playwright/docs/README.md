@@ -4,7 +4,10 @@
 | --- | --- |
 | [guide/config.md](guide/config.md) | you are writing `playwright.config.ts`: ports, browsers, phone projects, the web server, the auth setup project, CI defaults |
 | [guide/pages-and-fixtures.md](guide/pages-and-fixtures.md) | you are writing page objects, signing accounts in once with storage state, or adding a `login` fixture |
-| [guide/helpers.md](guide/helpers.md) | a fill is lost after the page loads, a submit button flickers enabled, a phone layout scrolls sideways, or you need screenshot file names |
+| [guide/helpers.md](guide/helpers.md) | a fill is lost after the page loads, a submit button flickers enabled, a check runs mid-animation, a toast must be gone, a phone layout scrolls sideways, or you need screenshot file names |
+| [guide/hydration.md](guide/hydration.md) | a click is lost because the page has not hydrated yet, or you want every `goto` to wait for hydration |
+| [guide/screens.md](guide/screens.md) | you want full-page screens of each page on desktop and phone, to review the design |
+| [guide/pwa.md](guide/pwa.md) | the app has a service worker and a spec must check it controls the page or what its caches hold |
 | [guide/a11y.md](guide/a11y.md) | you want axe accessibility checks (WCAG 2.2 A/AA) in your specs |
 | [guide/msw.md](guide/msw.md) | the app's API should be mocked in the browser, per file or per test |
 | [guide/storybook.md](guide/storybook.md) | you want every story rendered as a test, or WebP previews of your components captured from stories |

@@ -33,6 +33,7 @@ type AppConfigOptions = {
 	env?: Record<string, string>;
 	testDir?: string;
 	testIdAttribute?: string;
+	screens?: boolean | { dir?: string; env?: string };
 	overrides?: PlaywrightTestConfig;
 };
 
@@ -54,6 +55,7 @@ function defineAppConfig(options: AppConfigOptions): PlaywrightTestConfig;
 | `env` | `Record<string, string>` | none | Extra environment for the **default** web server only. |
 | `testDir` | `string` | `./playwright/e2e` | Where the browser projects look for specs. |
 | `testIdAttribute` | `string` | `data-pw` | What `getByTestId` matches. |
+| `screens` | `boolean \| { dir?, env? }` | `false` | Full-page screens on a `SCREENS=1` run: [screens.md](screens.md). |
 | `overrides` | `PlaywrightTestConfig` | `{}` | Merged last with Playwright's `defineConfig`. |
 
 ### `port`, `baseURL` and the environment
@@ -261,6 +263,95 @@ export default defineAppConfig({
   amends the chromium project, a new name is appended;
 - `webServer` is **appended**, not replaced. Use the `webServer` option to
   change the server.
+
+### `screens`
+
+```ts
+export default defineAppConfig({ port: 5174, screens: true });
+```
+
+Stores the screens folder and whether this run saves in the config's
+`metadata`, and on a `SCREENS=1` run empties the folder first. Everything
+about it, including the `globalSetup` it sets, is in [screens.md](screens.md).
+
+## `selectedProjects`
+
+The `--project` names on the command line, from `@nxgt/playwright/config` (also
+the root).
+
+```ts
+function selectedProjects(argv?: readonly string[], env?: NodeJS.ProcessEnv): string[];
+function projectsFromArgv(argv: readonly string[]): string[];
+const PROJECTS_ENV = 'PW_PROJECTS';
+```
+
+```ts
+import { selectedProjects } from '@nxgt/playwright/config';
+
+selectedProjects(); // bunx playwright test --project=chromium --project mobile-chromium
+// ['chromium', 'mobile-chromium']; [] when no --project was given
+```
+
+Names come in order, as written (`--project x` and `--project=x`; a wildcard
+such as `*chromium` is returned as is).
+
+**Why not read `process.argv`?** Playwright's workers load the config again,
+without the command line. A config that branches on `process.argv` builds one
+thing in the runner and another in each worker. `selectedProjects` writes the
+runner's answer to `PW_PROJECTS` (a JSON array) and, in a worker
+(`TEST_WORKER_INDEX` set), reads it back. `defineAppConfig` calls it too, so
+the variable is always there. `projectsFromArgv` is the pure parser, without
+the environment.
+
+### A project that runs alone
+
+A `pwa` project that runs by itself against a production build on a port of
+its own, while the other projects keep the dev server:
+
+```ts
+// playwright.config.ts
+import { devices } from '@playwright/test';
+import { defineAppConfig, selectedProjects } from '@nxgt/playwright/config';
+
+const pwa = process.env.PWA === '1' || selectedProjects().includes('pwa');
+
+export default defineAppConfig({
+	port: pwa ? 5274 : 5273,
+	browsers: pwa ? [] : ['chromium', 'firefox'],
+	mobile: !pwa,
+	setup: !pwa,
+	...(pwa && {
+		webServer: {
+			command: 'bun run build && PORT=5274 bun run start',
+			url: 'http://localhost:5274',
+			timeout: 180_000,
+		},
+	}),
+	overrides: pwa
+		? {
+				projects: [
+					{
+						name: 'pwa',
+						testDir: './playwright/pwa',
+						use: { ...devices['Desktop Chrome'], serviceWorkers: 'allow' },
+					},
+				],
+			}
+		: {},
+});
+```
+
+```bash
+bunx playwright test --project=pwa
+```
+
+An absent (or `undefined`) `webServer` gives the default dev server; the
+spread above sets one only for the `pwa` run. The specs
+are in [pwa.md](pwa.md).
+
+It reads the command line only: UI mode (`--ui`) and editor extensions pick
+projects without `--project`, and give `[]`. Keep an environment switch
+(`PWA=1`) beside it for those.
 
 ## Defaults
 

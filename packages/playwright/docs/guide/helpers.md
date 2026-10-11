@@ -1,9 +1,11 @@
 # Helpers
 
-Fills that survive hydration (`fillSettled`, `fillUntilEnabled`), a check
-that a layout does not scroll sideways (`expectNoHorizontalScroll`), and the
-screenshot file name `BasePage` uses (`screenshotName`), from
-`@nxgt/playwright/helpers` or the root.
+Fills that survive hydration (`fillSettled`, `fillUntilEnabled`), waits for a
+page at rest (`nextFrames`, `settled`, `toastsGone`), a check that a layout
+does not scroll sideways (`expectNoHorizontalScroll`), and the screenshot file
+name `BasePage` uses (`screenshotName`), from `@nxgt/playwright/helpers` or the
+root. Waiting for the page itself to hydrate (`hydrated`, `withHydration`) has
+its own page: [hydration.md](hydration.md).
 
 ```ts
 import { expect, test } from '@playwright/test';
@@ -97,6 +99,97 @@ test('signs up', async ({ page }) => {
 In a page object, pass `FormPage`'s `submitButton` — see
 [pages-and-fixtures.md](pages-and-fixtures.md#formpage).
 
+## `nextFrames` and `settled`
+
+A check made while the page is still moving reads what was never shown: axe
+measures the colour of a box half-way through a fade, a screenshot catches a
+menu mid-slide.
+
+```ts
+function nextFrames(page: Page, count?: number): Promise<void>; // count default 2
+function settled(page: Page): Promise<void>;
+```
+
+- `nextFrames` resolves after `count` animation frames. After a render, the
+  first frame commits it and the second has run the effects it scheduled.
+- `settled` resolves once every finite CSS animation, CSS transition and Web
+  Animation in the document has ended (`document.getAnimations()`). An
+  infinite one, such as a spinner, is left running; a cancelled one counts as
+  ended.
+
+```ts
+import { expectAccessible } from '@nxgt/playwright/a11y';
+import { settled } from '@nxgt/playwright/helpers';
+
+test('projects are accessible', async ({ page }) => {
+	await page.goto('/projects');
+	await page.getByRole('button', { name: 'Filters' }).click();
+	await settled(page);
+	await expectAccessible(page);
+});
+```
+
+`settled` does **not** wait for web fonts. A font that arrives late changes
+widths and metrics, so wait for it first when a check depends on them:
+
+```ts
+await page.evaluate(() => document.fonts.ready);
+await settled(page);
+```
+
+## `toastsGone`
+
+Waits for the toast saying `text` to show, then for every toast to go.
+
+```ts
+type ToastsGoneOptions = {
+	selector?: string; // default '[data-sonner-toast]'
+	timeout?: number; // default 15_000
+};
+
+function toastsGone(page: Page, text: string | RegExp, options?: ToastsGoneOptions): Promise<void>;
+```
+
+| Option | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `selector` | `string` | `[data-sonner-toast]` | What a toast is. The default is sonner's; pass your library's. |
+| `timeout` | `number` (ms) | `15_000` | How long the toasts may take to go. |
+
+```ts
+import { toastsGone } from '@nxgt/playwright/helpers';
+
+await page.getByRole('button', { name: 'Save' }).click();
+await toastsGone(page, 'Project saved');
+```
+
+It waits for the toast to show first, because a toast mounts a moment after
+the action that raised it and "no toast" alone would pass before it did. It
+then moves the mouse to the top-left corner: a pointer resting on a toast
+pauses its timer, and the pointer is usually still on the button that raised
+it. Use it before a check that a toast would cover or colour, such as an axe
+scan.
+
+## `isMobileProject`
+
+```ts
+function isMobileProject(testInfo: TestInfo): boolean; // testInfo.project.use.isMobile
+```
+
+```ts
+import { isMobileProject } from '@nxgt/playwright/helpers';
+
+test('opens the menu', async ({ page }, testInfo) => {
+	await page.goto('/projects');
+	if (isMobileProject(testInfo)) {
+		await page.getByRole('button', { name: 'Menu' }).click();
+	}
+	await page.getByRole('link', { name: 'Projects' }).click();
+});
+```
+
+True for the phone projects `mobile` adds ([config.md](config.md#mobile)), and
+for any project built on an `isMobile` device.
+
 ## `expectNoHorizontalScroll`
 
 Fails when the page is wider than its viewport — the phone layout that makes
@@ -104,7 +197,10 @@ the reader scroll sideways. Meant for the phone projects `mobile` adds
 ([config.md](config.md#mobile)), and useful at any viewport.
 
 ```ts
-type NoHorizontalScrollOptions = { max?: number }; // default 5
+type NoHorizontalScrollOptions = {
+	max?: number; // default 5
+	scroller?: string | Locator;
+};
 
 function expectNoHorizontalScroll(page: Page, options?: NoHorizontalScrollOptions): Promise<void>;
 function formatOverflow(overflow: HorizontalOverflow): string;
@@ -132,6 +228,35 @@ Widest elements past the right edge:
   - table#projects.grid  right 640px, width 624px
   - div.toolbar  right 520px, width 504px
 ```
+
+| Option | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `max` | `number` | `5` | How many offending elements the message lists. |
+| `scroller` | `string \| Locator` | none | An inner scroll container to check as well as the document. |
+
+### An app shell that scrolls inside
+
+An app shell as tall as the viewport, whose `main` scrolls, never widens the
+document: its sideways overflow is inside the shell, and the document's check
+alone passes. Name the container:
+
+```ts
+await page.goto('/projects');
+await expectNoHorizontalScroll(page, { scroller: 'main' });
+```
+
+The first element the selector (or locator) matches is checked after the
+document. When nothing matches, such as an error page without the shell, only
+the document is checked. A failure names the container:
+
+```
+The scroll container main#content.grid scrolls horizontally: scrollWidth 640px > clientWidth 412px.
+Widest elements past the right edge:
+  - table#projects.grid  right 640px, width 624px
+```
+
+`HorizontalOverflow`, the shape `formatOverflow` takes, has an optional
+`container` for it.
 
 It checks once, as the page is now: wait for the content (and web fonts,
 which change widths) before calling it.
