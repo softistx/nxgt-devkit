@@ -89,12 +89,15 @@ Every field without a resolver is generated from its type. Details:
 
 ```ts
 // src/main.tsx
-import { enableMocking } from '@nxgt/msw-graphql/browser';
-
-await enableMocking({
-	enabled: import.meta.env.VITE_MOCKS === 'true',
-	handlers: () => import('../mocks/handlers'),
-});
+// import.meta.env.DEV is `false` in a production build: Vite removes the
+// branch and its imports, so no msw or handlers chunk is emitted.
+if (import.meta.env.DEV && import.meta.env.VITE_MOCKS === 'true') {
+	const { enableMocking } = await import('@nxgt/msw-graphql/browser');
+	await enableMocking({
+		enabled: true,
+		handlers: () => import('../mocks/handlers'),
+	});
+}
 
 const { render } = await import('./render'); // your app's entry
 render();

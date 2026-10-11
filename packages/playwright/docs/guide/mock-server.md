@@ -179,8 +179,8 @@ For example, `mockServer.scenario('nope')` rejects with `/__mocks/scenario answe
 followed by the control's body, which says no such scenario is registered.
 See [troubleshooting](../troubleshooting.md#mock-server). Mounting the
 control on the app side, in Hono, Elysia or a plain fetch handler, is
-`@nxgt/msw-graphql`'s `createMockControl`; the control answers 404 under
-`NODE_ENV=production`, so a production build never obeys a spec.
+`@nxgt/msw-graphql`'s `createMockControl`; the control answers 404 in production
+(`NODE_ENV=production` or `import.meta.env.PROD`), so a production build never obeys a spec.
 
 ## One worker: `workers: 1`
 

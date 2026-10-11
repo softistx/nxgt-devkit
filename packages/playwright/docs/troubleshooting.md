@@ -636,7 +636,7 @@ test, so it can fail a test that never touches `mockServer`.
 **When:** a spec using `createMockServerTest`.
 **Why:** the status says which. 404 on every route: the app does not mount the
 control at that path, the `path` option differs from the app's, or the server
-runs with `NODE_ENV=production` (the control refuses to exist there). 404 on
+runs in production, `NODE_ENV=production` or a Vite production build (the control refuses to exist there). 404 on
 `scenario`, with a body naming the scenario: no such name is registered.
 405, 415: the route was not called with a JSON `POST`. 400: bad input, such as
 a `fail` status outside 100-599. 500: the app's `reset` or scenario threw.

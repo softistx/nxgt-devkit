@@ -116,7 +116,7 @@ Run the mocked server (and the e2e suite) with `NODE_ENV` not `production`.
 | Answer | Message | Cause |
 | --- | --- | --- |
 | `415` | `The body must be application/json.` | any POST without a `content-type: application/json` header, an empty `reset` included |
-| `404` | empty | an unknown route (only `reset`, `fail`, `scenario`, `override`), or any route under production |
+| `404` | empty | an unknown route (only `reset`, `fail`, `scenario`, `override`), or any route in production (`NODE_ENV=production` or `import.meta.env.PROD`) |
 | `404` | `No scenario "x". Registered: a, b.` | the scenario name is not in the `scenarios` you passed (`none` when there are none) |
 | `405` | `POST only.` | any method other than `POST` |
 | `400` | `The body is not JSON.` | the body does not parse |

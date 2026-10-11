@@ -66,6 +66,10 @@ const execute = createExecutor({
 });
 ```
 
+An override set through the control (`/__mocks/override`) answers before the
+executor, so it skips the guard too: it is a static answer, not a request the
+API would judge (see [the control](./control.md)).
+
 ## The context
 
 ```ts
