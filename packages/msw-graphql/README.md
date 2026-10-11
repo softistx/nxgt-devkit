@@ -7,8 +7,6 @@ real API gives, errors and HTTP statuses included. One executor serves the
 browser worker and the Node server, and a control channel lets an e2e test
 reset, fail or reseed the mocks.
 
-> Not published to npm yet. The install lines below are what they will be.
-
 ## Install
 
 ```bash
