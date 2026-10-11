@@ -1,6 +1,6 @@
 {
 	"name": "@nxgt/msw-graphql",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Mock a GraphQL API with msw by executing the real operations against your schema: one executor for the browser worker and the Node server, a control channel to reset, fail or reseed it from an e2e test, and a dual Vite/Node SDL loader",
 	"license": "MIT",
 	"type": "module",

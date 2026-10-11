@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.5.1
+
+### Patch Changes
+
+- [#21](https://github.com/softistx/nxgt-devkit/pull/21) [`6c13c0c`](https://github.com/softistx/nxgt-devkit/commit/6c13c0cc978a34a987860f54e6aee4fc5cb6fd7d) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The `typescript` peer accepts TypeScript 7 (`^6.0.3 || ^7.0.0`); the package builds and typechecks under 7.0.2.
+
 ## 0.5.0
 
 ### Minor Changes
