@@ -36,6 +36,14 @@ throws itself are quoted exactly.
 - [PWA](#pwa)
   - [`No service worker controls <url> after <timeout>ms`](#no-service-worker-controls-url-after-timeoutms)
   - [`<url> is cached: <cache> (<urls>)`](#url-is-cached-cache-urls)
+  - [`cachedUrls: <url> has no Cache Storage`](#cachedurls-url-has-no-cache-storage)
+  - [`Unexpected Cache Storage (caches left: …; caches missing: …)`](#unexpected-cache-storage-caches-left--caches-missing-)
+  - [Offline, the page shows the browser's error page, not the app's](#offline-the-page-shows-the-browsers-error-page-not-the-apps)
+  - [`nextWorkerVersion: no service worker is registered for <url>`](#nextworkerversion-no-service-worker-is-registered-for-url)
+  - [`nextWorkerVersion: the browser found no new worker after editing <path>`](#nextworkerversion-the-browser-found-no-new-worker-after-editing-path)
+  - [`nextWorkerVersion: the new worker failed to install (redundant)`](#nextworkerversion-the-new-worker-failed-to-install-redundant)
+  - [`Timed out waiting 180000ms from config.webServer` on the PWA run](#timed-out-waiting-180000ms-from-configwebserver-on-the-pwa-run)
+  - [`--project=pwa` starts the dev server, or finds no tests](#--projectpwa-starts-the-dev-server-or-finds-no-tests)
 - [Accessibility](#accessibility)
   - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
@@ -492,13 +500,124 @@ See [guide/pwa.md](guide/pwa.md) and the project that runs alone in
 
 ### `<url> is cached: <cache> (<urls>)`
 
-**When:** `expectNotCached(page, url)`.
+**When:** `expectNotCached(page, url)`. `<url>` is the string or pattern
+you passed (`/^\/acc/ is cached: pages (/account)`), not the page's URL.
 **Why:** the service worker stored a response that must not be kept. The
 message names each cache and the entries that matched.
 **Fix:** make the worker's caching rule skip that URL (a signed-in page, an
 API answer). `cachedUrls(page)` lists everything cached, as path and query for
 the page's origin. Cache Storage exists in a secure context only:
 `http://localhost` is one, `about:blank` is not.
+
+### `cachedUrls: <url> has no Cache Storage`
+
+Also `fillCaches: <url> has no Cache Storage` and
+`expectOnlyCaches: <url> has no Cache Storage`. The message continues `Open a page of the app first, on a secure origin
+(https, or http://localhost); about:blank and page.setContent have none.` The
+first word is the helper called: `cachedUrls`, `fillCaches` or
+`expectOnlyCaches` (`expectNotCached` reports `cachedUrls`).
+
+**When:** one of them runs before the spec opened a page of the app, on a
+`page.setContent` document, or on an origin that is not secure (a dev server
+opened by its LAN address, `http://192.168.…`).
+**Why:** Cache Storage exists only in a secure context with a real origin.
+**Fix:** `await page.goto('/')` first, on `localhost` or https.
+
+### `Unexpected Cache Storage (caches left: …; caches missing: …)`
+
+The message ends `present: <every cache name>`.
+
+**When:** `expectOnlyCaches(page, keep)`.
+**Why:** `caches left` are caches no matcher in `keep` keeps — the step under
+test did not delete them; `caches missing` are exact names in `keep` that are
+not there — the step deleted what it should have kept.
+**Fix:** fix the app's clean-up, or `keep`. A string is an exact name that
+must be there; use a pattern for a cache that may be absent:
+
+```ts
+await expectOnlyCaches(page, ['app-precache-v2', /^app-fonts-/]);
+```
+
+When the app deletes the caches after the step the spec awaited (a sign-out
+that redirects first), retry: `await expect(() => expectOnlyCaches(page, keep)).toPass()`.
+
+### Offline, the page shows the browser's error page, not the app's
+
+No error from the package: a spec expecting the offline page sees
+`ERR_INTERNET_DISCONNECTED`, or `page.goto` throws it.
+
+**When:** the context went offline before a service worker controlled the
+page — `context.setOffline(true)` by hand, or `goOffline(page, { worker: false })`
+— or in a browser where offline does not reach the worker.
+**Why:** an uncontrolled page's requests go straight to the network, which
+is cut. The worker answers only for pages it controls.
+**Fix:** use `goOffline(page)`, which waits for `serviceWorkerControlled`
+first, in the Chromium project `pwaProject` builds.
+
+### `nextWorkerVersion: no service worker is registered for <url>`
+
+The message continues `Wait for it first: serviceWorkerControlled(page).`
+
+**When:** `nextWorkerVersion` on a page whose worker has not registered yet,
+or in a context that never opened the app (a new `browser.newPage()`).
+**Fix:** open the app and `await serviceWorkerControlled(page)` before it.
+
+### `nextWorkerVersion: the browser found no new worker after editing <path>`
+
+The message continues `Is it the file the server sends for the registered
+script, read anew per request (not kept in memory, nor cached by a CDN)?`
+
+**When:** `registration.update()` fetched the worker and found the bytes it
+already has.
+**Why:** `file` is not the script the server sends (another build folder, a
+source file the build copies), or the server keeps static files in memory.
+**Fix:** point `file` at the built script, relative to the folder Playwright
+runs in (usually the config's), and serve the build with a server that reads
+files per request. The file was restored either way.
+
+```ts
+await nextWorkerVersion(page, { file: 'build/client/service-worker.js' });
+```
+
+### `nextWorkerVersion: the new worker failed to install (redundant)`
+
+Or `nextWorkerVersion: the new worker did not install within <timeout>ms:
+still installing.`
+
+**When:** the new version was found, but its `install` handler rejected (a
+precache request failed, often against a server with no backend) or took
+longer than `timeout`.
+**Why:** a worker whose `install` rejects is discarded; the old one stays.
+**Fix:** read the worker's errors (DevTools, `page.context().serviceWorkers()`),
+make every precached URL answer without a backend, or raise `timeout`. An
+`edit` that breaks the script fails the same way: the default only appends a
+comment.
+
+### `Timed out waiting 180000ms from config.webServer` on the PWA run
+
+**When:** `pwaProject`'s server was built but never answered `readyPath`
+(`/` by default) with a 2xx or 3xx status.
+**Why:** the build failed (its output is above the message), the start
+script ignores `PORT`, or `/` needs a backend nobody started and answers 500.
+**Fix:** make `start` listen on `PORT`, and await a path that needs nothing
+else:
+
+```ts
+pwaProject({ port: 5274, readyPath: '/manifest.webmanifest', webServer: { stderr: 'ignore' } });
+```
+
+### `--project=pwa` starts the dev server, or finds no tests
+
+**When:** the config builds the PWA run on something that differs between
+the runner and its workers (`process.argv`), or `pwaProject`'s `name` is not
+the one `isPwaRun` looks for.
+**Fix:** pick the run with `isPwaRun()` (it reads `--project` through
+`selectedProjects`, and `PWA=1` for UI mode), and give both the same name:
+
+```ts
+const offline = isPwaRun({ project: 'offline' });
+export default defineAppConfig(offline ? pwaProject({ port: 5274, name: 'offline' }) : { port: 5273 });
+```
 
 ## Accessibility
 

@@ -5,7 +5,8 @@ The Playwright boilerplate every app ends up writing, written once: a shared
 storage-state fixtures, msw network fixtures, navigation and fills that wait
 for hydration, waits for a page at rest, axe accessibility checks, phone
 projects and a no-sideways-scroll check, full-page screens of every state,
-PWA cache checks, and Storybook stories run as Vitest browser tests that can also capture WebP
+PWA specs against a production build (offline, a new worker version, what the
+caches keep), and Storybook stories run as Vitest browser tests that can also capture WebP
 previews of your components.
 
 ## Install
@@ -44,7 +45,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
 | `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
 | `@nxgt/playwright/screens` | `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR` | Node |
-| `@nxgt/playwright/pwa` | `serviceWorkerControlled`, `cachedUrls`, `expectNotCached` | Node |
+| `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
 | `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
@@ -101,6 +102,9 @@ export default defineAppConfig({
 	...(pwa ? { webServer: { command: 'bun run build && PORT=5274 bun run start', url: 'http://localhost:5274' } } : {}),
 });
 ```
+
+For that PWA run, `pwaProject` and `isPwaRun` (from `/pwa`) write these
+options for you: see [PWA](#pwa).
 
 ### Pages
 
@@ -352,16 +356,50 @@ SCREENS=1 bunx playwright test   # playwright/screenshots/chromium/projects.png,
 
 See [docs/guide/screens.md](docs/guide/screens.md).
 
-### PWA caches
+### PWA
 
-For a service worker's specs, against a build that registers it:
-`serviceWorkerControlled` waits for it to control the page, `cachedUrls` lists
-every Cache Storage entry by cache, and `expectNotCached` fails when a URL
-that must never be kept is:
+A service worker registers in a production build only, so its specs run as a
+project of their own against `build && start` on another port, with no mocks;
+every other project keeps the dev server:
 
 ```ts
+// playwright.config.ts
+import { defineAppConfig } from '@nxgt/playwright/config';
+import { isPwaRun, pwaProject } from '@nxgt/playwright/pwa';
+
+// `--project=pwa` (or PWA=1): bun run build && bun run start, PORT=5274, ./playwright/pwa in Chromium.
+export default defineAppConfig(
+	isPwaRun() ? pwaProject({ port: 5274 }) : { port: 5273, setup: true, mobile: true },
+);
+```
+
+```ts
+// playwright/pwa/worker.spec.ts
 import { expect, test } from '@playwright/test';
-import { cachedUrls, expectNotCached, serviceWorkerControlled } from '@nxgt/playwright/pwa';
+import {
+	cachedUrls,
+	expectNotCached,
+	goOffline,
+	goOnline,
+	nextWorkerVersion,
+	serviceWorkerControlled,
+} from '@nxgt/playwright/pwa';
+
+test('offline, a load shows the offline page', async ({ page }) => {
+	await page.goto('/');
+	await goOffline(page); // once the worker controls the page
+	await page.goto('/projects');
+	await expect(page.getByRole('heading', { level: 1 })).toHaveText('You are offline');
+	await goOnline(page);
+});
+
+test('a new version is offered', async ({ page }) => {
+	await page.goto('/');
+	await serviceWorkerControlled(page);
+	// Edits the script on disk, asks for an update, restores it; resolves once the new worker installed.
+	await nextWorkerVersion(page, { file: 'build/client/service-worker.js' });
+	await expect(page.getByRole('status')).toContainText('New version available');
+});
 
 test('keeps no signed-in page', async ({ page }) => {
 	await page.goto('/');
@@ -369,6 +407,18 @@ test('keeps no signed-in page', async ({ page }) => {
 	expect(await cachedUrls(page)).toHaveProperty('precache-v1');
 	await expectNotCached(page, /^\/account/);
 });
+```
+
+What a sign-out leaves needs no worker: `fillCaches` makes the caches, even
+under the dev server, and `expectOnlyCaches` fails on any cache but those it
+keeps (an exact name must be there; a pattern or a predicate may be):
+
+```ts
+import { expectOnlyCaches, fillCaches } from '@nxgt/playwright/pwa';
+
+await fillCaches(page, ['app-precache-v2', 'app-pages-v2']);
+await page.getByRole('button', { name: 'Sign out' }).click();
+await expectOnlyCaches(page, 'app-precache-v2');
 ```
 
 See [docs/guide/pwa.md](docs/guide/pwa.md).
@@ -512,6 +562,12 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 - **A run with `SCREENS=1` empties the screens folder**, which is
   `playwright/screenshots`, `BasePage.screenshot()`'s folder too: give one a
   `dir` of its own. An `overrides.globalSetup` replaces the emptying.
+- **`nextWorkerVersion` edits the worker's file on disk**: the server must
+  read it per request, and no two specs may run it at once — give the PWA run
+  `overrides: { workers: 1 }`.
+- **`goOffline` takes the whole context offline**, every page of it, until
+  `goOnline`. That it reaches a worker's own fetches is verified in Chromium,
+  where `pwaProject` runs.
 - **`settled` does not wait for web fonts**, which change widths:
   `await page.evaluate(() => document.fonts.ready)` first.
 - **Never import `/storybook/capture` or `/storybook/setup` from Node** — they

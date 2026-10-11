@@ -306,48 +306,44 @@ the environment.
 ### A project that runs alone
 
 A `pwa` project that runs by itself against a production build on a port of
-its own, while the other projects keep the dev server:
+its own, while the other projects keep the dev server. `/pwa`'s `isPwaRun`
+reads the selection (`selectedProjects().includes('pwa')`, or `PWA=1`) and
+`pwaProject` gives the run's options:
 
 ```ts
 // playwright.config.ts
-import { devices } from '@playwright/test';
-import { defineAppConfig, selectedProjects } from '@nxgt/playwright/config';
+import { defineAppConfig } from '@nxgt/playwright/config';
+import { isPwaRun, pwaProject } from '@nxgt/playwright/pwa';
 
-const pwa = process.env.PWA === '1' || selectedProjects().includes('pwa');
-
-export default defineAppConfig({
-	port: pwa ? 5274 : 5273,
-	browsers: pwa ? [] : ['chromium', 'firefox'],
-	mobile: !pwa,
-	setup: !pwa,
-	...(pwa && {
-		webServer: {
-			command: 'bun run build && PORT=5274 bun run start',
-			url: 'http://localhost:5274',
-			timeout: 180_000,
-		},
-	}),
-	overrides: pwa
-		? {
-				projects: [
-					{
-						name: 'pwa',
-						testDir: './playwright/pwa',
-						use: { ...devices['Desktop Chrome'], serviceWorkers: 'allow' },
-					},
-				],
-			}
-		: {},
-});
+export default defineAppConfig(
+	isPwaRun()
+		? pwaProject({ port: 5274 }) // bun run build && bun run start, PORT=5274
+		: { port: 5273, setup: true, browsers: ['chromium', 'firefox'], mobile: true },
+);
 ```
 
 ```bash
 bunx playwright test --project=pwa
 ```
 
+Another project that runs alone is the same switch by hand:
+
+```ts
+const smoke = process.env.SMOKE === '1' || selectedProjects().includes('smoke');
+
+export default defineAppConfig({
+	port: smoke ? 5275 : 5273,
+	...(smoke && {
+		browsers: [],
+		webServer: { command: 'bun run preview --port 5275', url: 'http://localhost:5275' },
+		overrides: { projects: [{ name: 'smoke', testDir: './playwright/smoke' }] },
+	}),
+});
+```
+
 An absent (or `undefined`) `webServer` gives the default dev server; the
-spread above sets one only for the `pwa` run. The specs
-are in [pwa.md](pwa.md).
+spread above sets one only for that run. The PWA specs and every
+`pwaProject` option are in [pwa.md](pwa.md#pwaproject-and-ispwarun).
 
 It reads the command line only: UI mode (`--ui`) and editor extensions pick
 projects without `--project`, and give `[]`. Keep an environment switch

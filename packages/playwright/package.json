@@ -1,7 +1,7 @@
 {
 	"name": "@nxgt/playwright",
 	"version": "0.3.0",
-	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-aware navigation and fills, settled-page waits, axe accessibility checks, phone projects, full-page screens, PWA cache checks, and Storybook stories as Vitest browser tests with preview capture",
+	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-aware navigation and fills, settled-page waits, axe accessibility checks, phone projects, full-page screens, PWA specs against a production build (offline, worker updates, cache checks), and Storybook stories as Vitest browser tests with preview capture",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
