@@ -10,6 +10,12 @@ runs:
       uses: oven-sh/setup-bun@v2
       with:
         bun-version: 1.4.2
+    # msw 3 needs Node >= 22.12, and @nxgt/msw-graphql's smoke test runs its
+    # Node server under Node; the runner's own Node may be older.
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 24
     - name: Install dependencies
       # No token: @nxgt/* are public on npmjs, and installing them needs no
       # authentication. Only the release job authenticates, through bunfig.toml
