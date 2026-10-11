@@ -92,10 +92,12 @@ CI runs it for graphql 16 and for msw 2, with full versions (`16 3.0.3`,
 `17 2.15.0`); on msw 2 it also runs `scripts/bun-fetch-probe.ts --expect
 intercepted`, which prints whether the installed msw sees Bun's fetch.
 
-`@nxgt/playwright/msw`'s lower peer range (msw 2.12+ with `@msw/playwright`
-0.6.7) is not exercised in CI; check it by hand before a release: in a scratch
-copy, `bun add -d msw@2.12.10 @msw/playwright@0.6.7` in `packages/playwright`,
-then `bun run test`.
+`@nxgt/playwright/msw`'s lower peer range (msw 2.12.10 with `@msw/playwright`
+0.6.7) is measured by `packages/playwright/scripts/test-lower-peers.ts` (`bun
+run test:lower-peers` there; CI runs it): in a scratch copy of the workspace it
+installs those two, builds, typechecks the package and runs `test/e2e/msw.pw.ts`.
+It keeps `bun.lock`, so the Chromium the lockfile's Playwright installed is
+the one it uses.
 
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (not a required check) run
