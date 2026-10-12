@@ -1,5 +1,11 @@
 # @nxgt/msw-graphql
 
+## 0.2.1
+
+### Patch Changes
+
+- [#33](https://github.com/softistx/nxgt-devkit/pull/33) [`2747587`](https://github.com/softistx/nxgt-devkit/commit/27475877c3c9e3dd4308b9ce4d2dcfea9e8f760f) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Docs: `@graphql-codegen/typescript-msw` 4.0.2 fixes the graphql 17 crash, so the temporary `bun patch` is gone from troubleshooting; on msw 3, generate handlers with `@nxgt/graphql-codegen-msw`.
+
 ## 0.2.0
 
 ### Minor Changes
