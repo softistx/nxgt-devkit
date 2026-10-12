@@ -9,13 +9,7 @@ Nothing is in progress.
 
 ## Next
 
-- **Generated handlers on msw 3** — `@graphql-codegen/typescript-msw` emits
-  `graphql.query(...)` handlers that msw 3 removed. Until a generator targets
-  `graphql.link(url).query(...)`, use `graphqlEndpoint` on msw 3. See
-  [troubleshooting](./troubleshooting.md).
-- **Drop the generator patch** — once
-  [graphql-code-generator-community#1653](https://github.com/dotansimha/graphql-code-generator-community/pull/1653)
-  is released and adopted, the `bun patch` in troubleshooting goes away.
+Nothing is planned yet.
 
 ## Later
 
@@ -32,6 +26,11 @@ Nothing is in progress.
 - **Concrete schemas, handlers and mock data** — they are the app's.
 
 ## Shipped
+
+- **Generated handlers on msw 3, without a patch** (docs, next patch) —
+  `@nxgt/graphql-codegen-msw` generates msw 3 handlers per operation, and
+  `typescript-msw` 4.0.2 runs on graphql 17, so troubleshooting no longer
+  carries a `bun patch`.
 
 Tests only, no release:
 

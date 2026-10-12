@@ -198,7 +198,8 @@ await control.reset();
   `startMockServer` on `msw ^2.12.10`; check with the one-line probe in
   [docs/guide/runtimes.md](docs/guide/runtimes.md).
 - **`typescript-msw` handlers do not work on msw 3.** `graphql.query` is gone
-  from `msw`; use `graphqlEndpoint(url, execute)`.
+  from `msw`; generate them with `@nxgt/graphql-codegen-msw`, or use
+  `graphqlEndpoint(url, execute)`.
 - **The control and `/node` throw under `NODE_ENV=production`.** Import them
   behind the mocks flag. A dynamic `import()` alone still emits a Vite chunk
   unless the condition is statically false (`import.meta.env.DEV`); the guard
