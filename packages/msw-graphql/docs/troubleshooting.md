@@ -20,7 +20,7 @@ were reproduced while writing this page.
 **When:** running `graphql-codegen` with `@graphql-codegen/typescript-msw`
 4.0.1 on graphql 17, for an operation that has no variables. Reproduced with
 graphql 17.0.2.
-**Why:** the plugin calls `node.variableDefinitions.map(...)` unguarded; in
+**Why:** 4.0.1 called `node.variableDefinitions.map(...)` unguarded; in
 graphql 17 that field is `undefined`, not `[]`, for such an operation.
 **Fix:** upgrade to `@graphql-codegen/typescript-msw` 4.0.2 or later, which
 guards the field

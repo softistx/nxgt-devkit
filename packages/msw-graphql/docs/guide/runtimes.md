@@ -73,7 +73,8 @@ whose peer is `msw ^2.0.0`) import `graphql` from `msw` and call
 | `@nxgt/graphql-codegen-msw` handlers | no (peer `msw ^3.0.3`) | work |
 | `graphqlEndpoint(url, execute)` | works | works |
 
-On msw 3, generate per-operation handlers with `@nxgt/graphql-codegen-msw`, or
+On msw 3, generate per-operation handlers with
+[`@nxgt/graphql-codegen-msw`](https://www.npmjs.com/package/@nxgt/graphql-codegen-msw), or
 use `graphqlEndpoint` and no generated handlers.
 
 On **graphql 17**, `typescript-msw` 4.0.1 crashes for an operation with no

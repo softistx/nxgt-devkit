@@ -27,7 +27,7 @@ Nothing is planned yet.
 
 ## Shipped
 
-- **Generated handlers on msw 3, without a patch** (docs, next patch) —
+- **Generated handlers on msw 3, without a patch** (docs, 0.2.1) —
   `@nxgt/graphql-codegen-msw` generates msw 3 handlers per operation, and
   `typescript-msw` 4.0.2 runs on graphql 17, so troubleshooting no longer
   carries a `bun patch`.
