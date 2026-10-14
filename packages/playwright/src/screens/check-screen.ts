@@ -1,4 +1,4 @@
-import type { Page, TestInfo } from '@playwright/test';
+import type { Locator, Page, TestInfo } from '@playwright/test';
 import type { A11yOptions } from '../a11y/options';
 import { expectAccessible } from '../a11y/scan';
 import { settled } from '../helpers/frames';
@@ -23,10 +23,13 @@ export type CheckScreenOptions = {
 	a11y?: A11yOptions | false | ((page: Page) => Promise<unknown>);
 	/**
 	 * The inner scroll container `expectNoHorizontalScroll` checks as well as
-	 * the document: a selector, or a function of the test, so that a phone
+	 * the document: a selector or a locator, or a function of the test, so that a phone
 	 * project can name another one (`undefined` checks the document only).
 	 */
-	scroller?: string | ((testInfo: TestInfo) => string | undefined);
+	scroller?:
+		| string
+		| Locator
+		| ((testInfo: TestInfo) => string | Locator | undefined);
 	/** `false` skips the sideways-scroll check. Default `true`. */
 	horizontalScroll?: boolean;
 	/** `saveScreen`'s options, used when the run saves screens. */

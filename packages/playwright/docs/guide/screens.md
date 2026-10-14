@@ -3,7 +3,8 @@
 Save a full-page PNG of what a page looks like, per project, for a review of
 the design on desktop and phone: `saveScreen` and `savingScreens` from
 `@nxgt/playwright/screens` (also the root), switched on by
-`defineAppConfig({ screens })`.
+`defineAppConfig({ screens })`. `checkScreen` does the whole round for a
+screen in one call: save, accessibility scan, no sideways scroll.
 
 ```ts
 // playwright.config.ts
@@ -131,19 +132,21 @@ test('students list', async ({ page }, testInfo) => {
 | Option | Default | What it does |
 | --- | --- | --- |
 | `a11y` | `expectAccessible(page, { testInfo })` | An options object is `expectAccessible`'s own (`exclude`, `disableRules`, …). A function `(page) => Promise<unknown>` replaces the scan, for an app's wrapper around `expectAccessible`. `false` skips it. |
-| `scroller` | none | The inner scroll container `expectNoHorizontalScroll` checks too: a selector, or a function of the `testInfo` returning one (or `undefined` for the document only). |
+| `scroller` | none | The inner scroll container `expectNoHorizontalScroll` checks too: a selector or a locator, or a function of the `testInfo` returning one (or `undefined` for the document only). |
 | `horizontalScroll` | `true` | `false` skips the sideways-scroll check. |
 | `max` | `5` | How many offending elements the sideways-scroll message lists. |
 | `save` | none | `saveScreen`'s options (`dir`, `maxGrowth`, `screenshot`), used when the run saves screens. |
 
-`@axe-core/playwright` is loaded only when the default or an options-object scan
-runs: with `a11y: false` or a function, `/screens` needs nothing beyond
+`@axe-core/playwright` is needed when the scan runs (the default, or an options
+object), and loaded only then: with `a11y: false` or a function, `/screens` needs nothing beyond
 `@playwright/test`. A failure is the failure of the check that raised it
 (`expectAccessible`'s or `expectNoHorizontalScroll`'s message), unchanged.
 
 ## A check you compose yourself
 
-When the screen goes through other steps, build it from the parts. Save first,
+Compose it from the parts when a screen needs a step `checkScreen` lacks, or
+the steps in another order; otherwise its options (`a11y`, `scroller`, …) are
+enough. Save first,
 so a failing check still leaves the image to look at, then check:
 
 ```ts
@@ -153,7 +156,7 @@ import { expectAccessible } from '@nxgt/playwright/a11y';
 import { expectNoHorizontalScroll, settled } from '@nxgt/playwright/helpers';
 import { saveScreen, savingScreens } from '@nxgt/playwright/screens';
 
-export async function checkScreen(page: Page, testInfo: TestInfo, name: string) {
+export async function myCheckScreen(page: Page, testInfo: TestInfo, name: string) {
 	await page.evaluate(() => document.fonts.ready);
 	await settled(page);
 	if (savingScreens(testInfo)) await saveScreen(page, testInfo, name);

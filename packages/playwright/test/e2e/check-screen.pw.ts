@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { checkScreen } from '../../src/screens';
+import { SCREENS_METADATA_KEY } from '../../src/screens/dir';
 
 test.use({ viewport: { width: 412, height: 800 } });
 
@@ -100,12 +101,13 @@ test('scroller, as a selector or a function of the test, is checked', async ({
 
 test('saves the screen before a failing check', async ({ page }, testInfo) => {
 	await page.setContent(NO_ALT);
-	// The run's own variable is not touched: the metadata says saving is on.
+	// A derived testInfo whose config says saving is on: the run's own SCREENS
+	// variable and config stay untouched, and the test needs no SCREENS=1.
 	const saving = Object.create(testInfo, {
 		config: {
 			value: {
 				...testInfo.config,
-				metadata: { nxgtScreens: { dir: 'unused', enabled: true } },
+				metadata: { [SCREENS_METADATA_KEY]: { dir: 'unused', enabled: true } },
 			},
 		},
 	});

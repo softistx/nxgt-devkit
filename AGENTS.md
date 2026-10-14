@@ -67,7 +67,7 @@ Every peer is **optional** and each subpath needs only its own:
 | --- | --- |
 | `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./pwa`, `./csp`, `./react-router` | `@playwright/test` |
 | `./a11y` | + `@axe-core/playwright`, loaded on the first scan so a missing peer is named |
-| `./screens` | `@playwright/test`; `checkScreen` reaches `@axe-core/playwright` through `a11y/scan`'s lazy `loadAxe`, only when its default scan runs (never imported statically, never with `a11y: false` or a function) |
+| `./screens` | `@playwright/test`; `checkScreen` needs `@axe-core/playwright` when the scan runs (the default, or an options object), reached through `a11y/scan`'s lazy `loadAxe` (never imported statically, never loaded with `a11y: false` or a function); the root re-exports it, so the same holds from `.` |
 | `./msw` | + `msw` (2.12.10+ or 3), `@msw/playwright` (0.6.7 to 0.7; 0.7 needs msw 3) |
 | `./mock-server` | `@playwright/test`; no msw import, it talks HTTP |
 | `./storybook` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |

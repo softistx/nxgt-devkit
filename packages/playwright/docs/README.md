@@ -6,7 +6,7 @@
 | [guide/pages-and-fixtures.md](guide/pages-and-fixtures.md) | you are writing page objects, signing accounts in once with storage state, or adding a `login` fixture |
 | [guide/helpers.md](guide/helpers.md) | a fill is lost after the page loads, a submit button flickers enabled, a check runs mid-animation, a toast must be gone, a phone layout scrolls sideways, or you need screenshot file names |
 | [guide/hydration.md](guide/hydration.md) | a click is lost because the page has not hydrated yet, or you want every `goto` to wait for hydration |
-| [guide/screens.md](guide/screens.md) | you want full-page screens of each page on desktop and phone, to review the design |
+| [guide/screens.md](guide/screens.md) | you want full-page screens of each page on desktop and phone, to review the design, or one `checkScreen` call that saves, scans and checks each screen |
 | [guide/pwa.md](guide/pwa.md) | the app has a service worker: running its specs against a production build, offline, a new worker version, or what its caches hold and what a sign-out leaves |
 | [guide/a11y.md](guide/a11y.md) | you want axe accessibility checks (WCAG 2.2 A/AA) in your specs, and Focus Not Obscured (2.4.11) checks against sticky form actions |
 | [guide/csp.md](guide/csp.md) | a page must run without a Content-Security-Policy refusal, or its policy must carry a fresh nonce on every script |

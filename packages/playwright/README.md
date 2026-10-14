@@ -21,9 +21,9 @@ subpaths you import:
 
 | Subpath | Peers to add |
 | --- | --- |
-| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`) |
+| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`); the root re-exports `/screens`, so `checkScreen` imported from it needs `@axe-core/playwright` when the scan runs (the default, or an options object) |
 | `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
-| `/screens` | `@playwright/test`; `@axe-core/playwright` too, only when `checkScreen` runs its default accessibility scan |
+| `/screens` | `@playwright/test`, plus `@axe-core/playwright` when the scan runs (the default, or an options object) |
 | `/csp` | `@playwright/test` |
 | `/msw` | `@playwright/test`, `msw` (`^2.12.10 \|\| ^3.0.0`), `@msw/playwright` (`>=0.6.7 <0.8`; 0.7 needs msw 3) |
 | `/mock-server` | `@playwright/test` only (it talks HTTP) |
