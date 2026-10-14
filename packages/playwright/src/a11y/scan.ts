@@ -1,7 +1,13 @@
 import type { AxeBuilder } from '@axe-core/playwright';
 import { type Page, type TestInfo, test } from '@playwright/test';
 import { formatViolations } from './format';
-import { type A11yOptions, assertDisabledRules, DEFAULT_TAGS } from './options';
+import {
+	type A11yOptions,
+	assertDisabledRules,
+	DEFAULT_TAGS,
+	DEFAULT_UNSTICK,
+} from './options';
+import { withOverlaysInFlow } from './unstick';
 
 /** What axe returns: `violations`, `passes`, `incomplete`, `inapplicable`, … */
 export type AccessibilityResults = Awaited<ReturnType<AxeBuilder['analyze']>>;
@@ -65,7 +71,11 @@ export async function accessibilityScan(
 		builder = builder.exclude(selector);
 	const disabled = (options.disableRules ?? []).map(({ rule }) => rule);
 	if (disabled.length > 0) builder = builder.disableRules(disabled);
-	return builder.analyze();
+	return withOverlaysInFlow(
+		page,
+		options.unstick === undefined ? DEFAULT_UNSTICK : list(options.unstick),
+		() => builder.analyze(),
+	);
 }
 
 function currentTestInfo(): TestInfo | undefined {

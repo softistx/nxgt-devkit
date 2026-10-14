@@ -7,6 +7,14 @@ export const DEFAULT_TAGS: readonly string[] = [
 	'wcag22aa',
 ];
 
+/**
+ * The overlays `unstick` puts back in the flow by default: a form's actions,
+ * which `@nxgt/material` keeps `position: sticky` at the bottom of the scroll.
+ */
+export const DEFAULT_UNSTICK: readonly string[] = [
+	'[data-slot="form-actions"]',
+];
+
 /** A rule turned off, and why: the reason is what a reviewer reads. */
 export type DisabledRule = {
 	/** The axe rule id, such as `color-contrast` or `region`. */
@@ -24,6 +32,18 @@ export type A11yOptions = {
 	disableRules?: readonly DisabledRule[];
 	/** The axe tags to run instead of the default WCAG 2.2 A/AA set. */
 	tags?: readonly string[];
+	/**
+	 * CSS selectors of sticky or fixed overlays to put back in the flow
+	 * (`position: static`) while axe runs, then restore. Default:
+	 * `DEFAULT_UNSTICK`; `[]` turns it off.
+	 *
+	 * Why: `target-size` (WCAG 2.5.8) measures a control's size, but a bar stuck
+	 * over half of it makes axe measure what is left, a result that depends on
+	 * where the page stops scrolling. A control hidden under a sticky bar is
+	 * Focus Not Obscured (2.4.11), which axe does not check: the app checks that
+	 * on its own. Every rule still reads the overlays themselves.
+	 */
+	unstick?: string | readonly string[];
 };
 
 /**
