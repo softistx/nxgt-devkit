@@ -166,7 +166,8 @@ before `bun run typecheck` or `bun run test`. `@nxgt/playwright`'s specs import
 the same errors as tsc 6.0.3, word for word (a clean tree, a tree without
 `dist/`, seeded errors), about ten times faster. It is not used, for three
 reasons: it checks with Bun's own bundled TypeScript 6.0.3 and ignores
-`node_modules/typescript`, so the newest-peers leg, which installs
+`node_modules/typescript` (shown in nxgt-graphql with a broken fake
+`typescript` package; not re-measured here), so the newest-peers leg, which installs
 TypeScript 7 (the peer is `^6.0.3 || ^7.0.0`), would silently check against
 6; at the root, `bun check` runs this repository's `check` script (Biome)
 instead of the built-in; and it emits nothing, so `build.ts` needs tsc for
