@@ -50,6 +50,10 @@ throws itself are quoted exactly.
 - [Accessibility](#accessibility)
   - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
   - [`target-size [serious]` on a control a sticky bar half covers](#target-size-serious-on-a-control-a-sticky-bar-half-covers)
+  - [`no element matches <actions>: the check cannot run`](#no-element-matches-actions-the-check-cannot-run)
+  - [`the focused control ends <n>px under the sticky bar`](#the-focused-control-ends-npx-under-the-sticky-bar)
+  - [`nothing is focused: focus a control before checking`](#nothing-is-focused-focus-a-control-before-checking)
+  - [`the submit was not reached in <n> tabs`](#the-submit-was-not-reached-in-n-tabs)
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
   - [`The scroll container <tag#id.class> scrolls horizontally`](#the-scroll-container-tagidclass-scrolls-horizontally)
@@ -724,6 +728,58 @@ import { DEFAULT_UNSTICK, expectAccessible } from '@nxgt/playwright/a11y';
 
 await expectAccessible(page, {
 	unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar'],
+});
+```
+
+### `no element matches <actions>: the check cannot run`
+
+**When:** `expectFocusAboveActions` or `expectFieldsAboveActions` finds no
+element for the `actions` selector (default `[data-slot="form-actions"]`).
+**Why:** a page with no bar has nothing to be obscured by, but a check that
+passes there would hide a renamed or not yet rendered bar. It fails instead.
+**Fix:** wait for the form to render, or pass your bar's selector.
+
+```ts
+await expectFieldsAboveActions(page, { actions: '.app-bottom-bar' });
+```
+
+### `the focused control ends <n>px under the sticky bar`
+
+```
+the focused control ends 10px under the sticky bar [data-slot="form-actions"] (WCAG 2.4.11 Focus Not Obscured): input #f2 name="f2" <input id="f2" name="f2">. Give the scroll container a scroll-padding-bottom the height of the bar, and the control (or its field) a scroll-margin-bottom for the error line beneath it.
+```
+
+**When:** the focused control, or its field (an error line under it), is
+hidden under the sticky bar.
+**Why:** the browser scrolls a focused control only until it is in view, and
+the bar covers the bottom of the view.
+**Fix:** reserve the bar's height where the page scrolls, in your CSS, not in
+the spec. If the control is the problem and its field's error is not, set
+`field` to the right wrapper.
+
+```css
+html { scroll-padding-bottom: 6rem; } /* the bar's height */
+input, select, textarea { scroll-margin-bottom: 4rem; } /* room for the error line */
+```
+
+### `nothing is focused: focus a control before checking`
+
+**When:** `expectFocusAboveActions` runs while the page itself has focus.
+**Fix:** focus a control first (`await page.getByLabel('Name').focus()`).
+`expectFieldsAboveActions` may start there: its first Tab lands on the first control.
+
+### `the submit was not reached in <n> tabs`
+
+**When:** `expectFieldsAboveActions` pressed Tab `limit` times (40) without
+focusing the `until` control (by default the first `[type="submit"]` in the bar).
+**Why:** a longer form, a submit that is not a `[type="submit"]`, or a focus
+that leaves the form (a focus trap or a control outside it).
+**Fix:** raise `limit`, or name where to stop. The message names the locator.
+
+```ts
+await expectFieldsAboveActions(page, {
+	limit: 80,
+	until: page.getByRole('button', { name: 'Save' }),
 });
 ```
 

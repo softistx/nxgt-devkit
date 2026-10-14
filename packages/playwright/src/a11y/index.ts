@@ -8,6 +8,12 @@ export {
 	type ViolationSummary,
 } from './format';
 export {
+	expectFieldsAboveActions,
+	expectFocusAboveActions,
+	type FocusFieldsOptions,
+	type FocusOptions,
+} from './obscured';
+export {
 	type A11yOptions,
 	DEFAULT_TAGS,
 	DEFAULT_UNSTICK,
