@@ -7,13 +7,14 @@ export const DEFAULT_TAGS: readonly string[] = [
 	'wcag22aa',
 ];
 
+/** The sticky bar the focus checks measure by default. */
+export const DEFAULT_ACTIONS = '[data-slot="form-actions"]';
+
 /**
  * The overlays `unstick` puts back in the flow by default: a form's actions,
  * which `@nxgt/material` keeps `position: sticky` at the bottom of the scroll.
  */
-export const DEFAULT_UNSTICK: readonly string[] = [
-	'[data-slot="form-actions"]',
-];
+export const DEFAULT_UNSTICK: readonly string[] = [DEFAULT_ACTIONS];
 
 /** A rule turned off, and why: the reason is what a reviewer reads. */
 export type DisabledRule = {

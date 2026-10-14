@@ -8,7 +8,7 @@
 | [guide/hydration.md](guide/hydration.md) | a click is lost because the page has not hydrated yet, or you want every `goto` to wait for hydration |
 | [guide/screens.md](guide/screens.md) | you want full-page screens of each page on desktop and phone, to review the design |
 | [guide/pwa.md](guide/pwa.md) | the app has a service worker: running its specs against a production build, offline, a new worker version, or what its caches hold and what a sign-out leaves |
-| [guide/a11y.md](guide/a11y.md) | you want axe accessibility checks (WCAG 2.2 A/AA) in your specs |
+| [guide/a11y.md](guide/a11y.md) | you want axe accessibility checks (WCAG 2.2 A/AA) in your specs, and Focus Not Obscured (2.4.11) checks against sticky form actions |
 | [guide/msw.md](guide/msw.md) | the app's API should be mocked in the browser, per file or per test |
 | [guide/mock-server.md](guide/mock-server.md) | the mocks live in the app's server (an SSR/BFF app calling its API), and a spec must fail it, reseed it or change its answers, one worker at a time |
 | [guide/storybook.md](guide/storybook.md) | you want every story rendered as a test, or WebP previews of your components captured from stories |

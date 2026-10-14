@@ -52,6 +52,7 @@ throws itself are quoted exactly.
   - [`target-size [serious]` on a control a sticky bar half covers](#target-size-serious-on-a-control-a-sticky-bar-half-covers)
   - [`no element matches <actions>: the check cannot run`](#no-element-matches-actions-the-check-cannot-run)
   - [`the focused control ends <n>px under the sticky bar`](#the-focused-control-ends-npx-under-the-sticky-bar)
+  - [`nothing is focused: focus a control before checking`](#nothing-is-focused-focus-a-control-before-checking)
   - [`the submit was not reached in <n> tabs`](#the-submit-was-not-reached-in-n-tabs)
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
@@ -742,11 +743,11 @@ await expectFieldsAboveActions(page, { actions: '.app-bottom-bar' });
 ### `the focused control ends <n>px under the sticky bar`
 
 ```
-the focused control ends 10px under the sticky bar [data-slot="form-actions"] (WCAG 2.4.11 Focus Not Obscured): input #f2 name="f2" <input id="f2" name="f2">.
+the focused control ends 10px under the sticky bar [data-slot="form-actions"] (WCAG 2.4.11 Focus Not Obscured): input #f2 name="f2" <input id="f2" name="f2">. Give the scroll container a scroll-padding-bottom the height of the bar, and the control (or its field) a scroll-margin-bottom for the error line beneath it.
 ```
 
-**When:** the focused control, or its field (an error line under it), ends
-below the top of the sticky bar.
+**When:** the focused control, or its field (an error line under it), is
+hidden under the sticky bar.
 **Why:** the browser scrolls a focused control only until it is in view, and
 the bar covers the bottom of the view.
 **Fix:** reserve the bar's height where the page scrolls, in your CSS, not in
@@ -757,6 +758,12 @@ the spec. If the control is the problem and its field's error is not, set
 html { scroll-padding-bottom: 6rem; } /* the bar's height */
 input, select, textarea { scroll-margin-bottom: 4rem; } /* room for the error line */
 ```
+
+### `nothing is focused: focus a control before checking`
+
+**When:** `expectFocusAboveActions` runs while the page itself has focus.
+**Fix:** focus a control first (`await page.getByLabel('Name').focus()`).
+`expectFieldsAboveActions` may start there: its first Tab lands on the first control.
 
 ### `the submit was not reached in <n> tabs`
 

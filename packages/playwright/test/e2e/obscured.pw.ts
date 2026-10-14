@@ -129,3 +129,72 @@ withA11y(test)(
 		await a11y.fieldsAboveActions();
 	},
 );
+
+test('padding alone leaves the error line under the bar', async ({ page }) => {
+	await page.setContent(
+		form({ padded: true }).replace(
+			'input { scroll-margin-bottom: 100px; }',
+			'',
+		),
+	);
+	await page.locator('#f0').focus();
+	await expect(expectFieldsAboveActions(page)).rejects.toThrow(
+		/scroll-margin-bottom for the error line beneath it/,
+	);
+});
+
+test('a static bar mid-page does not obscure a later field', async ({
+	page,
+}) => {
+	await page.setContent(
+		`<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}[data-slot="form-actions"]{height:60px}</style>
+<input id="a"><div data-slot="form-actions"><button type="submit">Save</button></div>
+<div style="height:100px"></div><div data-slot="text-field"><input id="b"></div>`,
+	);
+	await page.locator('#b').focus();
+	await expectFocusAboveActions(page);
+});
+
+test('a bar that does not render is ignored; the control is measured against the rendered one', async ({
+	page,
+}) => {
+	await page.setContent(
+		form({ padded: false }).replace(
+			'</form>',
+			'</form><div data-slot="form-actions" style="display:none"></div>',
+		),
+	);
+	await page.locator('#f0').focus();
+	await expect(expectFieldsAboveActions(page)).rejects.toThrow(
+		/under the sticky bar/,
+	);
+	await page.setContent(
+		form({ padded: true }).replace(
+			'</form>',
+			'</form><div data-slot="form-actions" style="display:none"></div>',
+		),
+	);
+	await page.locator('#f0').focus();
+	await expectFieldsAboveActions(page);
+});
+
+test('only hidden bars match: nothing to be obscured by passes the rectangle test', async ({
+	page,
+}) => {
+	await page.setContent(
+		'<div data-slot="form-actions" style="display:none"></div><input id="a">',
+	);
+	await page.locator('#a').focus();
+	await expectFocusAboveActions(page);
+});
+
+test('nothing focused is an error; the tabbing starts from the page', async ({
+	page,
+}) => {
+	await page.setContent(form({ padded: true }));
+	await expect(expectFocusAboveActions(page)).rejects.toThrow(
+		'nothing is focused: focus a control before checking',
+	);
+	await expectFieldsAboveActions(page);
+});
