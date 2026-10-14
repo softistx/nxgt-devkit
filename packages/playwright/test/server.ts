@@ -133,7 +133,10 @@ const FIXED_NONCE = 'Zml4ZWQtbm9uY2UtdmFsdWU=';
 function cspPage(name: string): Response | undefined {
 	const nonce =
 		name === 'fixed' ? FIXED_NONCE : randomBytes(16).toString('base64');
-	const policy = `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+	const policy =
+		name === 'short'
+			? "script-src 'nonce-abc'"
+			: `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
 	const bodies: Record<string, string> = {
 		good: `<link rel="modulepreload" href="/csp/module.js" nonce="${nonce}">
 <script nonce="${nonce}">document.title = 'ran';</script>`,
@@ -143,6 +146,8 @@ function cspPage(name: string): Response | undefined {
 <script>document.title = 'refused';</script>`,
 		inline: `<script>document.title = 'refused';</script>`,
 		bare: '<p>No scripts.</p>',
+		// A nonce under 16 characters.
+		short: '<script nonce="abc">1</script>',
 	};
 	const body = bodies[name];
 	if (body === undefined) return undefined;

@@ -24,6 +24,21 @@ import { withCspGuard } from '@nxgt/playwright/csp';
 export const test = withCspGuard(base);
 ```
 
+The guard also gives the test a `cspViolations` fixture, the array it will
+assert on, so a spec can poll it. A spec that expects a refusal turns the
+guard off with `test.use({ cspGuard: false })`:
+
+```ts
+test.describe('a blocked widget', () => {
+	test.use({ cspGuard: false });
+
+	test('the inline script is refused', async ({ page, cspViolations }) => {
+		await page.goto('/widget');
+		await expect.poll(() => cspViolations.length).toBeGreaterThan(0);
+	});
+});
+```
+
 After the test, the guard asserts `expect(violations,
 'Content-Security-Policy refusals').toEqual([])`. A line reads
 `script-src-elem refused inline in http://localhost/ (file:3 sample)`, or
@@ -31,9 +46,15 @@ After the test, the guard asserts `expect(violations,
 (errors only: Firefox also logs an info-level warning about `'self'` beside
 `'strict-dynamic'`, which is not a refusal).
 
+One refusal can appear twice in Chromium: once from the
+`securitypolicyviolation` event and once as the console error. Both are kept,
+since another browser may report only the console line. A second `watchCsp`
+call for the same context returns the same array and adds no listener.
+
 ## Read the refusals yourself
 
 ```ts
+import { expect, test } from '@playwright/test';
 import { watchCsp } from '@nxgt/playwright/csp';
 
 test('the widget loads', async ({ context, page }) => {
@@ -49,6 +70,7 @@ test('the widget loads', async ({ context, page }) => {
 ## Check the nonce
 
 ```ts
+import { test } from '@playwright/test';
 import { expectNoncedPage } from '@nxgt/playwright/csp';
 
 test('the home page is nonced', async ({ request }) => {
@@ -68,14 +90,31 @@ It loads the path twice and checks that:
 
 `scriptSrc` is optional: with it, the whole `script-src` value must equal it,
 the nonce written `{nonce}`. The policy's shape is yours; the helper never
-assumes one. `loadPolicy(request, path)` returns `{ policy, nonce, html }` and
-`cspNonce(policy)` reads the nonce of a policy string, for your own checks.
+assumes one. It reads the server-rendered HTML (what `request.get` returns), not the DOM,
+and `script-src` only: not `script-src-elem` nor `default-src`. Several
+policies (repeated headers, which Playwright joins) are each searched.
+
+`loadPolicy(request, path)` returns a `LoadedPolicy` (`{ policy, nonce, html }`)
+and `cspNonce(policy)` reads the nonce of a policy string, for your own checks:
+
+```ts
+import { expect, test } from '@playwright/test';
+import { cspNonce, loadPolicy } from '@nxgt/playwright/csp';
+
+test('the policy forbids unsafe-inline', async ({ request }) => {
+	const { policy, nonce } = await loadPolicy(request, '/');
+	expect(nonce).toBeDefined();
+	expect(policy).not.toContain("'unsafe-inline'");
+	expect(cspNonce(policy)).toBe(nonce);
+});
+```
 
 ## Signatures
 
 ```ts
 function watchCsp(context: BrowserContext): Promise<string[]>;
-function withCspGuard<T, W>(test: TestType<T, W>): TestType<T & { cspGuard: undefined }, W>;
+type CspGuardFixtures = { cspViolations: string[]; cspGuard: boolean };
+function withCspGuard<T, W>(test: TestType<T, W>): TestType<T & CspGuardFixtures, W>;
 const cspTest: ReturnType<typeof withCspGuard>;
 function expectNoncedPage(
 	request: APIRequestContext,

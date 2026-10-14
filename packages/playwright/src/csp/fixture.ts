@@ -8,11 +8,16 @@ import {
 } from '@playwright/test';
 import { watchCsp } from './watch';
 
-export type CspGuardFixtures = { cspGuard: undefined };
+export type CspGuardFixtures = {
+	/** The refusals this test's pages met so far; poll it to wait for one. */
+	cspViolations: string[];
+	/** `test.use({ cspGuard: false })` for a spec that expects a refusal. */
+	cspGuard: boolean;
+};
 
 /**
- * Adds an automatic `cspGuard` fixture to a `test`: it watches the context
- * and, after the test, fails it when a page met a Content-Security-Policy
+ * Adds `cspViolations` and an automatic `cspGuard` to a `test`: the context is
+ * watched, and after the test it fails when a page met a Content-Security-Policy
  * refusal.
  *
  * ```ts
@@ -23,14 +28,17 @@ export function withCspGuard<T extends PlaywrightTestArgs, W extends object>(
 	test: TestType<T, W>,
 ) {
 	const fixtures = {
-		cspGuard: [
+		cspGuard: [true, { option: true }],
+		cspViolations: [
 			async (
-				{ context }: { context: BrowserContext },
-				use: (value: undefined) => Promise<void>,
+				{ context, cspGuard }: { context: BrowserContext; cspGuard: boolean },
+				use: (value: string[]) => Promise<void>,
 			) => {
 				const violations = await watchCsp(context);
-				await use(undefined);
-				expect(violations, 'Content-Security-Policy refusals').toEqual([]);
+				await use(violations);
+				if (cspGuard) {
+					expect(violations, 'Content-Security-Policy refusals').toEqual([]);
+				}
 			},
 			{ auto: true },
 		],

@@ -36,21 +36,43 @@ base(
 
 // The guard's assertion runs in fixture teardown, so a refusal fails the test
 // after its body. `test.fail()` inverts that: this test passes only when the
-// guard fails it, and a clean page below proves the guard is not always red.
+// guard fails it, and the clean page below proves the guard is not always red.
 const guarded = withCspGuard(base);
 
 guarded.describe('withCspGuard', () => {
-	guarded.fail('fails a test whose page met a refusal', async ({ page }) => {
-		await page.goto('/csp/inline');
-		await expect.poll(() => page.title()).toBe('Csp');
-		// Let the event reach the binding before the teardown reads it.
-		await page.waitForTimeout(200);
-	});
+	guarded.fail(
+		'fails a test whose page met a refusal',
+		async ({ page, cspViolations }) => {
+			await page.goto('/csp/inline');
+			await expect.poll(() => cspViolations.length).toBeGreaterThan(0);
+		},
+	);
 
-	guarded('passes a clean page', async ({ page }) => {
+	guarded('passes a clean page', async ({ page, cspViolations }) => {
 		await page.goto('/csp/good');
 		await expect(page).toHaveTitle('ran');
+		expect(cspViolations).toEqual([]);
 	});
+
+	guarded.describe('with the guard off', () => {
+		guarded.use({ cspGuard: false });
+		guarded(
+			'a spec may expect the refusal',
+			async ({ page, cspViolations }) => {
+				await page.goto('/csp/inline');
+				await expect.poll(() => cspViolations.length).toBeGreaterThan(0);
+			},
+		);
+	});
+});
+
+base('watchCsp is idempotent per context', async ({ context, page }) => {
+	const first = await watchCsp(context);
+	expect(await watchCsp(context)).toBe(first);
+	await page.goto('/csp/inline');
+	await expect.poll(() => first.length).toBeGreaterThan(0);
+	// One listener: the event is reported once (the console line is separate).
+	expect(first.filter((line) => !line.startsWith('console:'))).toHaveLength(1);
 });
 
 base.describe('expectNoncedPage', () => {
@@ -89,6 +111,12 @@ base.describe('expectNoncedPage', () => {
 
 	base('fails without a nonce in the policy', async ({ request }) => {
 		await expect(expectNoncedPage(request, '/csp-none')).rejects.toThrow(
+			/has no 'nonce-…'/,
+		);
+	});
+
+	base('fails on a nonce shorter than 16 characters', async ({ request }) => {
+		await expect(expectNoncedPage(request, '/csp/short')).rejects.toThrow(
 			/has no 'nonce-…'/,
 		);
 	});

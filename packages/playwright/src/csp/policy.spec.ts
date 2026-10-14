@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { cspNonce, directive, scriptSrcTemplate, scriptTags } from './policy';
-import { isCspError } from './watch';
+import { formatViolation, isCspError } from './watch';
 
 const NONCE = 'aGVsbG8gd29ybGQgbm9uY2U';
 
@@ -35,6 +35,15 @@ describe('cspNonce', () => {
 	});
 });
 
+describe('several policies', () => {
+	test('repeated headers joined by a comma or a newline', () => {
+		const joined = `default-src 'self'\nscript-src 'self' 'nonce-${NONCE}'`;
+		expect(cspNonce(joined)).toBe(NONCE);
+		expect(cspNonce(`img-src *, script-src 'nonce-${NONCE}'`)).toBe(NONCE);
+		expect(scriptSrcTemplate(joined)).toBe("'self' 'nonce-{nonce}'");
+	});
+});
+
 describe('directive and scriptSrcTemplate', () => {
 	test('finds a directive by name, case-insensitively', () => {
 		expect(directive("Script-Src 'self'; img-src *", 'script-src')).toBe(
@@ -64,6 +73,39 @@ describe('scriptTags', () => {
 			undefined,
 			undefined,
 		]);
+	});
+});
+
+describe('scriptTags edge cases', () => {
+	test('a > inside an attribute does not end the tag', () => {
+		const tags = scriptTags(`<script data-x="a>b" nonce="n1">1</script>`);
+		expect(tags.map((tag) => tag.nonce)).toEqual(['n1']);
+	});
+	test('a tag inside a comment is not a tag', () => {
+		const tags = scriptTags(
+			`<!-- <script>old()</script> --><script nonce="n2"></script>`,
+		);
+		expect(tags.map((tag) => tag.nonce)).toEqual(['n2']);
+	});
+});
+
+describe('formatViolation', () => {
+	const violation = {
+		directive: 'script-src-elem',
+		blocked: 'https://x.test/a.js',
+		source: 'https://x.test/:3',
+		page: 'https://x.test/',
+		sample: '',
+	};
+	test('one line per refusal', () => {
+		expect(formatViolation(violation)).toBe(
+			'script-src-elem refused https://x.test/a.js in https://x.test/ (https://x.test/:3 )',
+		);
+	});
+	test('an empty blocked URI reads inline', () => {
+		expect(formatViolation({ ...violation, blocked: '' })).toContain(
+			'refused inline in',
+		);
 	});
 });
 

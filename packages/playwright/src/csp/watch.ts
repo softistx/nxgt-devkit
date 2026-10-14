@@ -8,12 +8,6 @@ type Violation = {
 	sample: string;
 };
 
-declare global {
-	interface Window {
-		__nxgtCspViolation?: (violation: Violation) => void;
-	}
-}
-
 // Errors only: Firefox logs an info-level warning about 'self' beside
 // 'strict-dynamic' that is not a refusal.
 const CSP_ERROR = /Content[- ]Security[- ]Policy|Refused to /i;
@@ -28,20 +22,29 @@ export function isCspError(text: string): boolean {
 	return CSP_ERROR.test(text);
 }
 
+const watched = new WeakMap<BrowserContext, string[]>();
+
 /**
  * Collects every Content-Security-Policy refusal in the pages of a context
  * from now on: each `securitypolicyviolation` event, and each console error
  * that reports one. The returned array fills as the pages run; call it before
- * the first `goto`.
+ * the first `goto`. A second call for the same context returns the same array.
  */
 export async function watchCsp(context: BrowserContext): Promise<string[]> {
+	const known = watched.get(context);
+	if (known) return known;
 	const violations: string[] = [];
+	watched.set(context, violations);
 	await context.exposeFunction('__nxgtCspViolation', (violation: Violation) => {
 		violations.push(formatViolation(violation));
 	});
 	await context.addInitScript(() => {
 		document.addEventListener('securitypolicyviolation', (event) => {
-			window.__nxgtCspViolation?.({
+			(
+				window as unknown as {
+					__nxgtCspViolation?: (violation: Violation) => void;
+				}
+			).__nxgtCspViolation?.({
 				directive: event.effectiveDirective,
 				blocked: event.blockedURI || 'inline',
 				source: event.sourceFile
