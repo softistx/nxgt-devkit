@@ -102,9 +102,49 @@ Three things to know:
   screens a `dir` of their own when you keep both.
 - Add the folder to `.gitignore`.
 
-## A check that leaves its image
+## One call per screen: `checkScreen`
 
-Save first, so a failing check still leaves the image to look at, then check:
+`checkScreen(page, testInfo, name, options?)` is what a screen goes through, in
+this order: web fonts loaded (`document.fonts.ready`), motion over (`settled`),
+the screen saved when the run saves them (before the checks, so a failing one
+still leaves the image to look at), the accessibility scan, then the
+no-sideways-scroll check.
+
+```ts
+// playwright/e2e/quality-students.spec.ts
+import { test } from '@playwright/test';
+import { isMobileProject } from '@nxgt/playwright/helpers';
+import { checkScreen } from '@nxgt/playwright/screens';
+
+test.use({ locale: 'en-US', reducedMotion: 'reduce' });
+
+test('students list', async ({ page }, testInfo) => {
+	await page.clock.install({ time: new Date('2026-01-15T09:00:00Z') });
+	await page.goto('/students');
+	await checkScreen(page, testInfo, 'students-list', {
+		// A phone project scrolls the table inside its wrapper.
+		scroller: (info) => (isMobileProject(info) ? '[data-slot="table-wrapper"]' : undefined),
+	});
+});
+```
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `a11y` | `expectAccessible(page, { testInfo })` | An options object is `expectAccessible`'s own (`exclude`, `disableRules`, …). A function `(page) => Promise<unknown>` replaces the scan, for an app's wrapper around `expectAccessible`. `false` skips it. |
+| `scroller` | none | The inner scroll container `expectNoHorizontalScroll` checks too: a selector, or a function of the `testInfo` returning one (or `undefined` for the document only). |
+| `horizontalScroll` | `true` | `false` skips the sideways-scroll check. |
+| `max` | `5` | How many offending elements the sideways-scroll message lists. |
+| `save` | none | `saveScreen`'s options (`dir`, `maxGrowth`, `screenshot`), used when the run saves screens. |
+
+`@axe-core/playwright` is loaded only when the default or an options-object scan
+runs: with `a11y: false` or a function, `/screens` needs nothing beyond
+`@playwright/test`. A failure is the failure of the check that raised it
+(`expectAccessible`'s or `expectNoHorizontalScroll`'s message), unchanged.
+
+## A check you compose yourself
+
+When the screen goes through other steps, build it from the parts. Save first,
+so a failing check still leaves the image to look at, then check:
 
 ```ts
 // playwright/support/check-screen.ts

@@ -21,8 +21,9 @@ subpaths you import:
 
 | Subpath | Peers to add |
 | --- | --- |
-| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`) |
+| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`) |
 | `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
+| `/screens` | `@playwright/test`; `@axe-core/playwright` too, only when `checkScreen` runs its default accessibility scan |
 | `/csp` | `@playwright/test` |
 | `/msw` | `@playwright/test`, `msw` (`^2.12.10 \|\| ^3.0.0`), `@msw/playwright` (`>=0.6.7 <0.8`; 0.7 needs msw 3) |
 | `/mock-server` | `@playwright/test` only (it talks HTTP) |
@@ -47,7 +48,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
 | `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
-| `@nxgt/playwright/screens` | `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR` | Node |
+| `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
 | `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `expectFocusAboveActions`, `expectFieldsAboveActions`, `formatViolations`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `FocusOptions`, `FocusFieldsOptions`, `DisabledRule`, `AccessibilityResults` | Node |
@@ -343,15 +344,13 @@ export default defineAppConfig({ port: 5174, mobile: true, screens: true }); // 
 
 ```ts
 // playwright/e2e/projects.spec.ts
-import { expectAccessible } from '@nxgt/playwright/a11y';
-import { settled } from '@nxgt/playwright/helpers';
-import { saveScreen, savingScreens } from '@nxgt/playwright/screens';
+import { checkScreen } from '@nxgt/playwright/screens';
 
 test('projects', async ({ page }, testInfo) => {
 	await page.goto('/projects');
-	await settled(page);
-	if (savingScreens(testInfo)) await saveScreen(page, testInfo, 'projects');
-	await expectAccessible(page);
+	// Fonts and motion settled, screen saved when SCREENS=1, then the axe scan
+	// and the no-sideways-scroll check. Options: `a11y`, `scroller`, …
+	await checkScreen(page, testInfo, 'projects');
 });
 ```
 
