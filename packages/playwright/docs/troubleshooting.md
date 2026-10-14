@@ -49,6 +49,7 @@ throws itself are quoted exactly.
   - [Mock-server specs pass alone and fail in parallel](#mock-server-specs-pass-alone-and-fail-in-parallel)
 - [Accessibility](#accessibility)
   - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
+  - [`target-size [serious]` on a control a sticky bar half covers](#target-size-serious-on-a-control-a-sticky-bar-half-covers)
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
   - [`The scroll container <tag#id.class> scrolls horizontally`](#the-scroll-container-tagidclass-scrolls-horizontally)
@@ -693,6 +694,33 @@ JavaScript caller and a blank reason.
 ```ts
 await expectAccessible(page, {
 	disableRules: [{ rule: 'color-contrast', reason: 'brand palette under review, #42' }],
+});
+```
+
+### `target-size [serious]` on a control a sticky bar half covers
+
+```
+1. target-size [serious] All touch targets must be 24px large, or leave sufficient space
+```
+
+The node is a control near the bottom of a form, and the failure comes and goes
+with where the page stopped scrolling.
+
+**When:** a form's actions bar is `position: sticky` or `fixed` at the bottom
+(`@nxgt/material` 2.20 does it on `[data-slot="form-actions"]`) and covers
+part of a control.
+**Why:** axe measures what is left of the control around the bar, under 24x24
+CSS pixels. The control's own size is fine (WCAG 2.5.8); that it can hide
+under a bar is Focus Not Obscured (2.4.11), which axe does not check.
+**Fix:** none needed for form actions: since 0.6.0 the scan puts
+`DEFAULT_UNSTICK` back in the flow while axe runs and restores it. List your
+own bars beside it; check 2.4.11 in your own spec.
+
+```ts
+import { DEFAULT_UNSTICK, expectAccessible } from '@nxgt/playwright/a11y';
+
+await expectAccessible(page, {
+	unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar'],
 });
 ```
 

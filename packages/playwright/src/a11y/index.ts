@@ -7,7 +7,12 @@ export {
 	formatViolations,
 	type ViolationSummary,
 } from './format';
-export { type A11yOptions, DEFAULT_TAGS, type DisabledRule } from './options';
+export {
+	type A11yOptions,
+	DEFAULT_TAGS,
+	DEFAULT_UNSTICK,
+	type DisabledRule,
+} from './options';
 export {
 	type AccessibilityResults,
 	accessibilityScan,
