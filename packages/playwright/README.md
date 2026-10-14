@@ -49,7 +49,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/screens` | `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
-| `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
+| `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `expectFocusAboveActions`, `expectFieldsAboveActions`, `formatViolations`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `FocusOptions`, `FocusFieldsOptions`, `DisabledRule`, `AccessibilityResults` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
@@ -458,6 +458,17 @@ Add your own sticky bars, or turn it off with `unstick: []`:
 import { DEFAULT_UNSTICK, expectAccessible } from '@nxgt/playwright/a11y';
 
 await expectAccessible(page, { unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar'] });
+```
+
+axe does not check WCAG 2.4.11 (Focus Not Obscured), so a control hidden under
+that sticky bar is yours to check: `expectFocusAboveActions` for the focused
+control, `expectFieldsAboveActions` to tab from it up to the submit:
+
+```ts
+import { expectFieldsAboveActions } from '@nxgt/playwright/a11y';
+
+await page.getByLabel('Name').focus();
+await expectFieldsAboveActions(page); // or { actions: '.app-bottom-bar', until: page.getByRole('button', { name: 'Save' }) }
 ```
 
 ### msw
