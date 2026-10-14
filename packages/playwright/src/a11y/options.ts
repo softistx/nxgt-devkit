@@ -41,7 +41,8 @@ export type A11yOptions = {
 	 * over half of it makes axe measure what is left, a result that depends on
 	 * where the page stops scrolling. A control hidden under a sticky bar is
 	 * Focus Not Obscured (2.4.11), which axe does not check: the app checks that
-	 * on its own. Every rule still reads the overlays themselves.
+	 * on its own. Every rule still reads the overlays themselves. Top document
+	 * only: a bar inside an iframe or a shadow root is not reached.
 	 */
 	unstick?: string | readonly string[];
 };

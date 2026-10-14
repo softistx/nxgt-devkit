@@ -38,6 +38,10 @@ Nothing is in progress.
 
 Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
 
+- **Sticky bars in accessibility scans** — `expectAccessible` puts sticky form
+  actions back in the flow while axe runs, so `target-size` no longer flags a
+  control half under the bar; `unstick` adds an app's own bars
+  (`DEFAULT_UNSTICK`). 0.6.0.
 - **A CI leg for `/msw`'s lower peers** — the `/msw` specs run on msw 2.12.10
   with `@msw/playwright` 0.6.7, the bottom of the supported range, in every
   CI run (`scripts/test-lower-peers.ts`). CI only, no release.

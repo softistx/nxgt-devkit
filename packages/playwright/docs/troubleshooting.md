@@ -712,7 +712,7 @@ part of a control.
 **Why:** axe measures what is left of the control around the bar, under 24x24
 CSS pixels. The control's own size is fine (WCAG 2.5.8); that it can hide
 under a bar is Focus Not Obscured (2.4.11), which axe does not check.
-**Fix:** none needed for form actions: since this version the scan puts
+**Fix:** none needed for form actions: since 0.6.0 the scan puts
 `DEFAULT_UNSTICK` back in the flow while axe runs and restores it. List your
 own bars beside it; check 2.4.11 in your own spec.
 

@@ -169,9 +169,37 @@ base(
 	},
 );
 
-base('a selector that matches nothing is fine', async ({ page }) => {
-	await page.setContent(CLEAN);
-	await expectAccessible(page, { unstick: ['.nothing-here'] });
+const unstickKey = (page: Page) =>
+	page.evaluate(() => Symbol.for('@nxgt/playwright/a11y/unstick') in window);
+
+base(
+	'a selector that matches nothing leaves the page untouched',
+	async ({ page }) => {
+		await page.setContent(CLEAN);
+		await expectAccessible(page, { unstick: ['.nothing-here', ''] });
+		expect(await unstickKey(page)).toBe(false);
+	},
+);
+
+base('the bar is restored when axe throws', async ({ page }) => {
+	await page.setContent(STICKY_INLINE);
+	const before = await barStyle(page);
+	// axe refuses an include that matches nothing.
+	await expect(
+		accessibilityScan(page, { include: '#missing' }),
+	).rejects.toThrow();
+	expect(await barStyle(page)).toBe(before);
+	expect(await unstickKey(page)).toBe(false);
+});
+
+base('overlapping scans on one page restore the original', async ({ page }) => {
+	await page.setContent(STICKY_INLINE);
+	const before = await barStyle(page);
+	// axe itself refuses the second run ("Axe is already running"); the bar
+	// must still come back as it was once both are done.
+	await Promise.allSettled([accessibilityScan(page), accessibilityScan(page)]);
+	expect(await barStyle(page)).toBe(before);
+	expect(await unstickKey(page)).toBe(false);
 });
 
 const test = withA11y(base);

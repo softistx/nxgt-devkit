@@ -49,7 +49,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/screens` | `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
-| `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
+| `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
@@ -446,13 +446,19 @@ test('projects page is accessible', async ({ page }) => {
 });
 ```
 
-A disabled rule without a `reason` is a type error. Sticky form actions
-(`DEFAULT_UNSTICK`) are put back in the flow while axe runs, so `target-size`
-does not depend on the scroll position; list your own bars with
-`unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar']`, or turn it off with
-`unstick: []`. `accessibilityScan`
+A disabled rule without a `reason` is a type error. `accessibilityScan`
 returns the results without asserting; `withA11y(test)` adds an `a11y`
 fixture. See [docs/guide/a11y.md](docs/guide/a11y.md).
+
+Sticky form actions (`DEFAULT_UNSTICK`) are put back in the flow while axe
+runs, so `target-size` does not depend on where the page stopped scrolling.
+Add your own sticky bars, or turn it off with `unstick: []`:
+
+```ts
+import { DEFAULT_UNSTICK, expectAccessible } from '@nxgt/playwright/a11y';
+
+await expectAccessible(page, { unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar'] });
+```
 
 ### msw
 
