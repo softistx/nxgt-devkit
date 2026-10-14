@@ -161,6 +161,18 @@ specs) it resolves to `src/screens/clear.ts`. A spec asserts the file exists.
 before `bun run typecheck` or `bun run test`. `@nxgt/playwright`'s specs import
 `@nxgt/msw-graphql` through its `dist/` types, which only the build writes.
 
+**Typecheck stays `tsc`, not `bun check`.** Bun 1.4.3's built-in checker
+(there is no `bun tsc`: that runs `node_modules/.bin/tsc`) was measured here:
+the same errors as tsc 6.0.3, word for word (a clean tree, a tree without
+`dist/`, seeded errors), about ten times faster. It is not used, for three
+reasons: it checks with Bun's own bundled TypeScript 6.0.3 and ignores
+`node_modules/typescript` (shown in nxgt-graphql with a broken fake
+`typescript` package; not re-measured here), so the newest-peers leg, which installs
+TypeScript 7 (the peer is `^6.0.3 || ^7.0.0`), would silently check against
+6; at the root, `bun check` runs this repository's `check` script (Biome)
+instead of the built-in; and it emits nothing, so `build.ts` needs tsc for
+the declarations anyway.
+
 - `bun test src` — the pure logic: names, config, the Storybook project shape.
 - `playwright test -c test/playwright.config.ts` — the pages, fixtures, fills
   and msw against `test/server.ts`, a Bun server whose form resets its input
