@@ -19,14 +19,16 @@
  * `test/e2e/msw.pw.ts`, the one spec that imports `./msw`.
  *
  *
- *   bun run scripts/test-lower-peers.ts --playwright 1.55.1
+ *   bun run scripts/test-lower-peers.ts --playwright 1.61.1
  *
- * The other leg: `@playwright/test` is promised as `^1.55.0` and the workspace
+ * The other leg: `@playwright/test` is promised as `^1.61.0` and the workspace
  * holds a newer one, so the bottom of that range is measured the same way.
  * Only `@playwright/test` moves (msw stays where the lockfile has it); the
  * Chromium that version needs is installed (it is not the workspace's), and the
  * whole package runs: build, typecheck, the unit specs and both Playwright
- * configs. Pass the newest patch of the floor's minor.
+ * configs. Pass the newest patch of the floor's minor. `--grep <title>` runs
+ * only the e2e tests that match, to find which minor a failing one starts to
+ * pass on.
  *
  * Modelled on `@nxgt/msw-graphql`'s `scripts/test-matrix.ts`.
  */
@@ -37,13 +39,22 @@ import { basename, join } from 'node:path';
 import { $ } from 'bun';
 
 const args = Bun.argv.slice(2);
-const flag = args.indexOf('--playwright');
-const playwright = flag === -1 ? undefined : args[flag + 1];
-if (flag !== -1 && !playwright) {
-	throw new Error('--playwright needs a version, e.g. --playwright 1.55.1');
-}
+// `--name value` options are taken out of the positional msw versions.
+const taken = new Set<number>();
+const option = (name: string) => {
+	const at = args.indexOf(name);
+	if (at === -1) return undefined;
+	const value = args[at + 1];
+	if (!value) throw new Error(`${name} needs a value`);
+	taken.add(at).add(at + 1);
+	return value;
+};
+const playwright = option('--playwright');
+// With `--playwright`, runs only the e2e tests whose title matches (to bisect
+// a floor); the unit and mock-server steps are skipped.
+const grep = option('--grep');
 const [msw = '2.12.10', mswPlaywright = '0.6.7'] = args.filter(
-	(_, i) => flag === -1 || (i !== flag && i !== flag + 1),
+	(_, i) => !taken.has(i),
 );
 const rootDir = new URL('../../..', import.meta.url).pathname.replace(
 	/\/$/,
@@ -109,7 +120,7 @@ try {
 			'install',
 			'chromium',
 		);
-		await run('unit specs', pkg, 'bun', 'test', 'src');
+		if (!grep) await run('unit specs', pkg, 'bun', 'test', 'src');
 		await run(
 			'e2e specs',
 			pkg,
@@ -118,16 +129,19 @@ try {
 			'test',
 			'-c',
 			'test/playwright.config.ts',
+			...(grep ? ['-g', grep] : []),
 		);
-		await run(
-			'mock-server spec',
-			pkg,
-			'bunx',
-			'playwright',
-			'test',
-			'-c',
-			'test/playwright.mock-server.config.ts',
-		);
+		if (!grep) {
+			await run(
+				'mock-server spec',
+				pkg,
+				'bunx',
+				'playwright',
+				'test',
+				'-c',
+				'test/playwright.mock-server.config.ts',
+			);
+		}
 	} else {
 		await run(
 			'msw specs',

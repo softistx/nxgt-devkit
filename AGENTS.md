@@ -99,14 +99,18 @@ installs those two, builds, typechecks the package and runs `test/e2e/msw.pw.ts`
 It keeps `bun.lock`, so the Chromium the lockfile's Playwright installed is
 the one it uses.
 
-The `@playwright/test` floor (`^1.55.0`) is measured by the same script with
-`--playwright 1.55.1` (`bun run test:lower-peers --playwright 1.55.1`; a second
+The `@playwright/test` floor (`^1.61.0`) is measured by the same script with
+`--playwright 1.61.1` (`bun run test:lower-peers --playwright 1.61.1`; a second
 CI step): only `@playwright/test` moves, with a root `overrides` entry for
 `playwright-core` (`@axe-core/playwright` takes it as a peer, and the lockfile's
 copy would be a second `Page` type). That Chromium is not the workspace's, so it
 runs `playwright install chromium` after the install, then builds, typechecks
 and runs the unit specs and both Playwright configs. Bump the version it is
-given only to the newest patch of the floor's minor.
+given only to the newest patch of the floor's minor. The floor is 1.61 because
+`goOffline` needs `context.setOffline` to reach the service worker's fetches:
+`pwa.pw.ts` "offline, the worker answers from its cache" fails on 1.55.1, 1.56.1,
+1.57.0, 1.58.2, 1.59.1 and 1.60.0, and passes on 1.61.0 and every later minor
+tried. `--grep <title>` bisects a failing spec across versions.
 
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
