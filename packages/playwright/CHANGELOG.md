@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.6.0
+
+### Minor Changes
+
+- [#35](https://github.com/softistx/nxgt-devkit/pull/35) [`af7fb47`](https://github.com/softistx/nxgt-devkit/commit/af7fb47a4f96ee623e8f6ebd6d82dd1ea5bc0181) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `expectAccessible` and `accessibilityScan` put sticky form actions (`[data-slot="form-actions"]`) back in the flow while axe runs, then restore them, so `target-size` no longer reports a control half covered by the bar wherever the page stops scrolling. Add your own bars with the new `unstick` option (`[...DEFAULT_UNSTICK, '.app-bottom-bar']`); `unstick: []` turns it off.
+
 ## 0.5.1
 
 ### Patch Changes
