@@ -65,7 +65,7 @@ Every peer is **optional** and each subpath needs only its own:
 
 | subpath | needs |
 | --- | --- |
-| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
+| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./csp`, `./react-router` | `@playwright/test` |
 | `./a11y` | + `@axe-core/playwright`, loaded on the first scan so a missing peer is named |
 | `./msw` | + `msw` (2.12.10+ or 3), `@msw/playwright` (0.6.7 to 0.7; 0.7 needs msw 3) |
 | `./mock-server` | `@playwright/test`; no msw import, it talks HTTP |

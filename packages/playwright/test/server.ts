@@ -2,6 +2,7 @@
 // load, the way hydration resets a controlled input, and a submit that calls
 // an API msw answers in the specs; pages that hydrate late, and a service
 // worker, for the hydration and PWA helpers.
+import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { mockState } from '@nxgt/msw-graphql';
@@ -125,6 +126,36 @@ const control = createMockControl({
 	},
 });
 
+// Pages under a Content-Security-Policy for e2e/csp.pw.ts: the nonce is new on
+// each request (`/csp/fixed` never changes it), and `/csp/inline` runs a script
+// the policy refuses.
+const FIXED_NONCE = 'Zml4ZWQtbm9uY2UtdmFsdWU=';
+function cspPage(name: string): Response | undefined {
+	const nonce =
+		name === 'fixed' ? FIXED_NONCE : randomBytes(16).toString('base64');
+	const policy =
+		name === 'short'
+			? "script-src 'nonce-abc'"
+			: `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+	const bodies: Record<string, string> = {
+		good: `<link rel="modulepreload" href="/csp/module.js" nonce="${nonce}">
+<script nonce="${nonce}">document.title = 'ran';</script>`,
+		fixed: `<script nonce="${nonce}">document.title = 'ran';</script>`,
+		// The second script has no nonce: the policy refuses it, the page is fine.
+		missing: `<script nonce="${nonce}">document.title = 'ran';</script>
+<script>document.title = 'refused';</script>`,
+		inline: `<script>document.title = 'refused';</script>`,
+		bare: '<p>No scripts.</p>',
+		// A nonce under 16 characters.
+		short: '<script nonce="abc">1</script>',
+	};
+	const body = bodies[name];
+	if (body === undefined) return undefined;
+	return new Response(`<!doctype html><title>Csp</title>${body}`, {
+		headers: { 'content-type': 'text/html', 'content-security-policy': policy },
+	});
+}
+
 Bun.serve({
 	port: PORT,
 	async fetch(request) {
@@ -163,6 +194,16 @@ Bun.serve({
 				},
 			});
 		}
+		if (url.pathname === '/csp/module.js') {
+			return new Response('export const csp = true;', {
+				headers: { 'content-type': 'text/javascript' },
+			});
+		}
+		if (url.pathname.startsWith('/csp/')) {
+			const csp = cspPage(url.pathname.slice('/csp/'.length));
+			if (csp) return csp;
+		}
+		if (url.pathname === '/csp-none') return html('<script>1</script>');
 		const page = PAGES[url.pathname];
 		if (page) return page();
 		if (url.pathname === '/api/greeting') {

@@ -57,6 +57,9 @@ throws itself are quoted exactly.
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
   - [`The scroll container <tag#id.class> scrolls horizontally`](#the-scroll-container-tagidclass-scrolls-horizontally)
+- [Content-Security-Policy](#content-security-policy)
+  - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
+  - [`expectNoncedPage` failures](#expectnoncedpage-failures)
 - [Auth and forms](#auth-and-forms)
   - [`Error reading storage state from playwright/.auth/<account>.json`](#error-reading-storage-state-from-playwrightauthaccountjson)
   - [`page.waitForURL: Test timeout of 30000ms exceeded.`](#pagewaitforurl-test-timeout-of-30000ms-exceeded)
@@ -831,6 +834,48 @@ see it: an inner scroller never widens the document.
 **Fix:** narrow the listed elements, or wrap a wide table in its own
 `overflow-x: auto` box. A selector that matches nothing (an error page without
 the shell) checks the document only.
+
+## Content-Security-Policy
+
+### `Content-Security-Policy refusals`
+
+The report of a test using `withCspGuard` or `cspTest`:
+`expect(received).toEqual(expected)` with the message
+`Content-Security-Policy refusals` and an array of lines.
+
+A page of the test ran something its policy refuses. A line is either
+`<directive> refused <blocked URL or inline> in <page> (<file:line> <sample>)`,
+from a `securitypolicyviolation` event, or `console: <text> (<url>)`, a
+console error that names the policy (the same refusal is usually reported
+twice). Add the nonce to the inline script or load it from an allowed source;
+do not loosen the policy to silence the test. A refusal that comes from a
+browser extension or a third-party widget you cannot change belongs to a test
+that uses plain `test`, not `cspTest`.
+
+```ts
+import { test as base } from '@playwright/test';
+import { withCspGuard } from '@nxgt/playwright/csp';
+
+export const test = withCspGuard(base); // every test of this file is guarded
+```
+
+The guard only sees pages opened after the fixture starts, and a refusal
+that happens after the test body ended is not reported.
+
+### `expectNoncedPage` failures
+
+- `content-security-policy has no 'nonce-…' of 16+ base64 characters in script-src`:
+  the response has no header, or its `script-src` names no nonce (a nonce in
+  `style-src` does not count). The message prints the policy it got.
+- `no <script> or <link rel="modulepreload"> to carry the nonce`: the HTML
+  holds nothing to check; point the check at a page that loads scripts.
+- `tags without the policy's nonce`: the array lists the tags whose `nonce`
+  attribute is missing or differs from the policy's. The raw HTML is read, since
+  browsers hide `nonce` from the DOM.
+- `the nonce is the same on a second load`: the nonce is cached or built once.
+  It must be new on every response, so a cached HTML page cannot be nonced.
+- `script-src`: with the `scriptSrc` option, the directive differs; the
+  nonce is written `{nonce}` in the expected value.
 
 ## Auth and forms
 
