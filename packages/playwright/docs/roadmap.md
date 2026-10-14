@@ -5,7 +5,8 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-Nothing is in progress.
+- **Application checks lifted from a consumer** — `./csp`, the 2.4.11 focus
+  check, `checkScreen`.
 
 ## Next
 
