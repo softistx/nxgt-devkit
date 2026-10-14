@@ -18,14 +18,14 @@
  * the two peers move. It then builds, typechecks the package and runs
  * `test/e2e/msw.pw.ts`, the one spec that imports `./msw`.
  *
- *
  *   bun run scripts/test-lower-peers.ts --playwright 1.61.1
  *
  * The other leg: `@playwright/test` is promised as `^1.61.0` and the workspace
  * holds a newer one, so the bottom of that range is measured the same way.
- * Only `@playwright/test` moves (msw stays where the lockfile has it); the
- * Chromium that version needs is installed (it is not the workspace's), and the
- * whole package runs: build, typecheck, the unit specs and both Playwright
+ * Only `@playwright/test` and `@nxgt/msw-graphql`'s copy of it move (msw stays
+ * where the lockfile has it). This leg downloads its own browser, the
+ * headless shell that version needs, into the shared cache (it is not the
+ * workspace's), and the whole package runs: build, typecheck, the unit specs and both Playwright
  * configs. Pass the newest patch of the floor's minor. `--grep <title>` runs
  * only the e2e tests that match, to find which minor a failing one starts to
  * pass on.
@@ -79,6 +79,11 @@ try {
 	const manifest = await Bun.file(path).json();
 	if (playwright) {
 		manifest.devDependencies['@playwright/test'] = playwright;
+		// One Playwright pair across the workspace.
+		const graphqlPath = join(work, 'packages', 'msw-graphql', 'package.json');
+		const graphql = await Bun.file(graphqlPath).json();
+		graphql.devDependencies['@playwright/test'] = playwright;
+		await Bun.write(graphqlPath, `${JSON.stringify(graphql, null, '\t')}\n`);
 		// `@axe-core/playwright` takes `playwright-core` as a peer, and the
 		// lockfile holds the workspace's: a second copy, whose `Page` type is
 		// not the one `@playwright/test` exports.
@@ -118,7 +123,7 @@ try {
 			'bunx',
 			'playwright',
 			'install',
-			'chromium',
+			'chromium-headless-shell',
 		);
 		if (!grep) await run('unit specs', pkg, 'bun', 'test', 'src');
 		await run(

@@ -619,7 +619,8 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
   `overrides: { workers: 1 }`.
 - **`goOffline` takes the whole context offline**, every page of it, until
   `goOnline`. That it reaches a worker's own fetches is verified in Chromium,
-  where `pwaProject` runs.
+  where `pwaProject` runs. It needs `@playwright/test` 1.61 or newer
+  ([troubleshooting](./docs/troubleshooting.md#offline-a-fetch-from-the-page-still-answers-200-on-an-older-playwright)).
 - **`settled` does not wait for web fonts**, which change widths:
   `await page.evaluate(() => document.fonts.ready)` first.
 - **Never import `/storybook/capture` or `/storybook/setup` from Node** — they
