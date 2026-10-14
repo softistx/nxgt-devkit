@@ -147,6 +147,8 @@ worker's answer — the wait is what makes the spec test the worker.
 - `{ worker: false }` skips the wait, for an app without a worker (an
   offline banner, a failed fetch's message).
 - `timeout` is the worker wait's (15 s).
+- It needs `@playwright/test` 1.61 or newer: before that, `setOffline` does
+  not reach the worker's own fetches (see [troubleshooting](../troubleshooting.md#offline-a-fetch-from-the-page-still-answers-200-on-an-older-playwright)).
 
 ```ts
 test('a client-side navigation says the app is offline', async ({ page }) => {

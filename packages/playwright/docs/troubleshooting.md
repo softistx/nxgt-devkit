@@ -39,6 +39,7 @@ throws itself are quoted exactly.
   - [`cachedUrls: <url> has no Cache Storage`](#cachedurls-url-has-no-cache-storage)
   - [`Unexpected Cache Storage (caches left: …; caches missing: …)`](#unexpected-cache-storage-caches-left--caches-missing-)
   - [Offline, the page shows the browser's error page, not the app's](#offline-the-page-shows-the-browsers-error-page-not-the-apps)
+  - [Offline, a fetch from the page still answers 200 on an older Playwright](#offline-a-fetch-from-the-page-still-answers-200-on-an-older-playwright)
   - [`nextWorkerVersion: no service worker is registered for <url>`](#nextworkerversion-no-service-worker-is-registered-for-url)
   - [`nextWorkerVersion: the browser found no new worker after editing <path>`](#nextworkerversion-the-browser-found-no-new-worker-after-editing-path)
   - [`nextWorkerVersion: the new worker failed to install (redundant)`](#nextworkerversion-the-new-worker-failed-to-install-redundant)
@@ -558,6 +559,18 @@ page — `context.setOffline(true)` by hand, or `goOffline(page, { worker: false
 is cut. The worker answers only for pages it controls.
 **Fix:** use `goOffline(page)`, which waits for `serviceWorkerControlled`
 first, in the Chromium project `pwaProject` builds.
+
+### Offline, a fetch from the page still answers 200 on an older Playwright
+
+No error from the package: after `goOffline(page)`, a `fetch` of a URL the
+worker has not cached resolves with `200` instead of failing, and a spec that
+expects `'failed'` (or the offline page) fails on it.
+
+**When:** `@playwright/test` is older than 1.61 (the peer range starts there).
+**Why:** before 1.61, `context.setOffline(true)` does not reach the service
+worker's own fetches, so the worker keeps reaching the network. Measured here:
+1.55.1, 1.56.1, 1.57.0, 1.58.2, 1.59.1 and 1.60.0 fail, 1.61.0 and later pass.
+**Fix:** upgrade `@playwright/test` to 1.61 or newer.
 
 ### `nextWorkerVersion: no service worker is registered for <url>`
 

@@ -22,6 +22,7 @@ jobs:
     name: CI
     # GitHub-hosted: this repository is public, so the minutes are free.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,6 +67,12 @@ jobs:
       - name: playwright/msw on the lowest msw and @msw/playwright
         working-directory: packages/playwright
         run: bun run scripts/test-lower-peers.ts 2.12.10 0.6.7
+      # @nxgt/playwright promises @playwright/test ^1.61.0; the workspace holds
+      # 1.64, so the floor's newest patch runs the whole package in a scratch
+      # copy (install, Chromium for that version, build, typecheck, every spec).
+      - name: playwright on the lowest @playwright/test
+        working-directory: packages/playwright
+        run: bun run scripts/test-lower-peers.ts --playwright 1.61.1
       # The build exits 0 on packages that throw the instant they are imported.
       # This packs them, installs them as a consumer does and imports every
       # declared subpath but the browser-only ones.
