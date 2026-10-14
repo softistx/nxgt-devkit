@@ -99,6 +99,15 @@ installs those two, builds, typechecks the package and runs `test/e2e/msw.pw.ts`
 It keeps `bun.lock`, so the Chromium the lockfile's Playwright installed is
 the one it uses.
 
+The `@playwright/test` floor (`^1.55.0`) is measured by the same script with
+`--playwright 1.55.1` (`bun run test:lower-peers --playwright 1.55.1`; a second
+CI step): only `@playwright/test` moves, with a root `overrides` entry for
+`playwright-core` (`@axe-core/playwright` takes it as a peer, and the lockfile's
+copy would be a second `Page` type). That Chromium is not the workspace's, so it
+runs `playwright install chromium` after the install, then builds, typechecks
+and runs the unit specs and both Playwright configs. Bump the version it is
+given only to the newest patch of the floor's minor.
+
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
 `scripts/newest-peers.ts`. That script and its spec come from the graphql repository's

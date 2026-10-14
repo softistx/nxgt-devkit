@@ -146,7 +146,7 @@
 		"@axe-core/playwright": "4.13.0",
 		"@msw/playwright": "^0.7.0",
 		"@nxgt/msw-graphql": "workspace:^",
-		"@playwright/test": "1.63.0",
+		"@playwright/test": "1.64.0",
 		"@storybook/addon-vitest": "10.6.0",
 		"@types/bun": "^1.4.0",
 		"@vitest/browser-playwright": "4.1.10",
