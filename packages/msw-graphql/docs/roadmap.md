@@ -24,6 +24,14 @@ Nothing is parked.
 
 ## Shipped
 
+- **`startMockServer` on msw 3 under Bun** (0.3.0) — it patches
+  `globalThis.fetch` and answers with msw's public `getResponse` (shared with
+  `createMockFetch`) where `setupServer` intercepts nothing, with the same `{ server, control }`.
+  `fetch` only; `server.events` and `server.boundary()` throw there. Node and
+  msw 2 are unchanged.
+- **Idempotent `startMockServer`** (0.3.0) — a second call in the same
+  process returns the running server and control (its arguments are
+  ignored), so an SSR entry re-evaluated under HMR does not stack listeners.
 - **Generated handlers on msw 3, without a patch** (docs, 0.2.1) —
   `@nxgt/graphql-codegen-msw` generates msw 3 handlers per operation, and
   `typescript-msw` 4.0.2 runs on graphql 17, so troubleshooting no longer
@@ -35,17 +43,6 @@ Tests only, no release:
   inlines the SDL and the built module resolves it.
 - **`enableMocking` in a real browser** — Chromium, a test server serving
   msw's worker script, a handler answering a fetch.
-
-Next minor, unreleased (0.3.0):
-
-- **`startMockServer` on msw 3 under Bun** — it patches `globalThis.fetch` and
-  answers with msw's public `getResponse` (shared with `createMockFetch`)
-  where `setupServer` intercepts nothing, with the same `{ server, control }`.
-  `fetch` only; `server.events` and `server.boundary()` throw there. Node and
-  msw 2 are unchanged.
-- **Idempotent `startMockServer`** — a second call in the same process returns
-  the running server and control (its arguments are ignored), so an SSR entry
-  re-evaluated under HMR does not stack listeners.
 
 First release, 0.1.0, tested on graphql 16 and 17 and on msw 2 and 3:
 
