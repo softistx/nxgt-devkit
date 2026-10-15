@@ -33,7 +33,13 @@ export function parseOptions(args: string[]): Options {
 	// With `--playwright`, runs only the e2e tests whose title matches (to
 	// bisect a floor); the unit and mock-server steps are skipped.
 	const grep = option('--grep');
+	if (grep && !playwright) throw new Error('--grep goes with --playwright');
 	const positional = args.filter((_, i) => !taken.has(i));
+	if (positional.length > 0 && (vitest || playwright)) {
+		throw new Error(
+			'msw versions (positional) belong to the msw leg: drop them, or drop --vitest and --playwright',
+		);
+	}
 	if (vitest && storybook) {
 		return {
 			leg: 'storybook',
