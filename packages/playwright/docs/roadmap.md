@@ -39,7 +39,6 @@ Nothing is planned yet.
   `webkit` in `browsers` throws at config time, and the capture throws if a
   browser answers with a non-WebP image, instead of writing PNG data under a
   `.webp` name. Capture with `chromium` or `firefox`. 0.8.1.
-
 - **Stories proven at both ends of the peer ranges** — a real Vitest browser
   run of the stories on `vitest` 4.0.18 with `@storybook/addon-vitest` 10.3.6,
   the bottom of the supported range, and on the newest peers. Tests only, no
@@ -47,7 +46,6 @@ Nothing is planned yet.
 - **Stories checked in Firefox and WebKit in CI** — the same stories run in
   both, in a job of their own that is not a required check. Tests only, no
   release.
-
 - **Responsive checks** — `expectNoTextOverflow` fails on a label clipped
   without its full text or spilling out of its box, `expectTapTargets` on a
   control under 44x44px on a phone (24px stays axe's `target-size`), and
