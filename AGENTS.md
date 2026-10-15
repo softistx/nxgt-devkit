@@ -216,7 +216,9 @@ CI runs on Ubuntu and uses `--with-deps`.
 As in nxgt-data: `bun changeset`, merge to `develop`, merge the "Version
 packages" pull request. `scripts/publish.ts` publishes with `bun publish` and
 re-reads the registry before tagging. The token is `NPM_TOKEN`, read by
-`bunfig.toml`, and must be set as a repository secret.
+`bunfig.toml`. It lives in the GitHub environment `npm` (deployment branches:
+`develop` only), never as a repository or organization secret, and the release
+job declares `environment: npm`.
 
 A new package starts `"private": true`; removing it is a commit of its own.
 
