@@ -37,6 +37,25 @@ that matches the installed `playwright`:
 bunx playwright install chromium-headless-shell
 ```
 
+## Tested versions
+
+The stories are run in a real Vitest browser run on `vitest` 4.0.18 to 4.1 and
+`@storybook/addon-vitest` 10.3.6 to 10.6, the two ends of the peer ranges.
+Chromium runs in CI on every change; Firefox and WebKit run in a job of their
+own that is not a required check.
+
+## Run `vitest` where `.storybook` lives
+
+`@storybook/addon-vitest` resolves `configDir` from `process.cwd()`, not from
+the Vite root. Start `vitest run` in the folder that holds `.storybook`, or
+give `configDir` as an absolute path:
+
+```ts
+import { resolve } from 'node:path';
+
+storybookProject({ configDir: resolve(import.meta.dirname, '.storybook') });
+```
+
 ## `storybookProject`
 
 ```ts

@@ -1,8 +1,9 @@
 import { storybookProject } from '@nxgt/playwright/storybook';
 import { defineConfig } from 'vitest/config';
-import { fixtureBrowsers } from './browsers';
+import { captureBrowser, fixtureBrowsers } from './browsers';
 
 const browsers = fixtureBrowsers();
+const capturing = captureBrowser(browsers);
 
 export default defineConfig({
 	test: {
@@ -16,12 +17,13 @@ export default defineConfig({
 				browsers,
 				tags: { include: ['expected-failure'] },
 			}),
-			// Chromium-only (WebKit cannot encode WebP), and left out when the
-			// run names no chromium, so it never needs a browser the run lacks.
-			...(browsers.includes('chromium')
+			// One browser that encodes WebP (WebKit cannot): chromium, else
+			// firefox. Left out when the run names neither, so it never needs a
+			// browser the run lacks.
+			...(capturing
 				? [
 						storybookProject({
-							browsers: ['chromium'],
+							browsers: [capturing],
 							capture: { dir: '.probe-previews', settle: 0 },
 						}),
 					]

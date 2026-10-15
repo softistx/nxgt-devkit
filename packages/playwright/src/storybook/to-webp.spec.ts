@@ -11,4 +11,10 @@ describe('assertWebp', () => {
 			'This browser cannot encode WebP previews',
 		);
 	});
+
+	test('names the canvas, not the browser, for an empty data URL', () => {
+		expect(() => assertWebp('data:,', { width: 0, height: 120 })).toThrow(
+			'The preview canvas is 0x120: canvas.toDataURL returned "data:,"',
+		);
+	});
 });

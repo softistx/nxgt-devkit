@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { fixtureBrowsers } from './browsers';
+import { captureBrowser, fixtureBrowsers } from './browsers';
 
 // A real Vitest browser run of `storybookProject` from the BUILT package
 // (`bun run build` first). `storybookTest` narrows each project's `include` to
@@ -11,9 +11,9 @@ const fixture = import.meta.dir;
 const out = join(fixture, '.probe-results', 'vitest.json');
 const preview = join(fixture, '.probe-previews', 'fixture-button.webp');
 const browsers = fixtureBrowsers();
-// The capture project is chromium-only: it runs, and writes the preview, only
-// when the run names chromium.
-const captures = browsers.includes('chromium');
+// The capture project runs in one browser that encodes WebP (chromium, else
+// firefox): it writes the preview only when the run names one of them.
+const captures = captureBrowser(browsers) !== undefined;
 const vitest = join(import.meta.dir, '../../node_modules/.bin/vitest');
 
 type Assertion = {
@@ -80,7 +80,7 @@ describe('storybookProject in a real Vitest browser run', () => {
 		}
 	});
 
-	test('Previewed passes once per browser, plus once in previews with chromium', () => {
+	test('Previewed passes once per browser, plus once in the previews project', () => {
 		expect(
 			named('Previewed').filter((a) => a.status === 'passed'),
 		).toHaveLength(browsers.length + (captures ? 1 : 0));

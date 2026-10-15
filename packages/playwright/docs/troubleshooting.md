@@ -82,6 +82,7 @@ throws itself are quoted exactly.
   - [`Cannot modify file "…". File writing is disabled`](#cannot-modify-file--file-writing-is-disabled)
   - [`EncodingError: The source image cannot be decoded.`](#encodingerror-the-source-image-cannot-be-decoded)
   - [`This browser cannot encode WebP previews: canvas.toDataURL("image/webp") returned another format (WebKit does this). Capture with chromium or firefox.`](#this-browser-cannot-encode-webp-previews-canvastodataurlimagewebp-returned-another-format-webkit-does-this-capture-with-chromium-or-firefox)
+  - [`The preview canvas is <width>x<height>: canvas.toDataURL returned "data:," because it is empty or beyond the browser's canvas size limit. Capture a smaller crop, or check that the story renders something.`](#the-preview-canvas-is-widthxheight-canvastodataurl-returned-data-because-it-is-empty-or-beyond-the-browsers-canvas-size-limit-capture-a-smaller-crop-or-check-that-the-story-renders-something)
 
 ## Install
 
@@ -1204,7 +1205,8 @@ await image.decode();
 
 The config-time twin of this error is [``storybookProject: `capture` cannot use 'webkit' …``](#storybookproject-capture-cannot-use-webkit-browsers-is-list-webkit-cannot-encode-webp-previews-capture-with-chromium-or-firefox).
 
-**When:** a `storybookProject({ capture })` runs in WebKit.
+**When:** a `storybookProject({ capture })` runs in a browser that cannot encode
+WebP (WebKit).
 **Why:** the preview is encoded with `canvas.toDataURL('image/webp')`. WebKit
 cannot encode WebP and silently returns PNG data, which would be saved under a
 `.webp` name. Chromium and Firefox encode it.
@@ -1217,3 +1219,15 @@ projects: [
 	storybookProject({ capture: true, browsers: ['chromium'] }),
 ]
 ```
+
+### `The preview canvas is <width>x<height>: canvas.toDataURL returned "data:," because it is empty or beyond the browser's canvas size limit. Capture a smaller crop, or check that the story renders something.`
+
+**When:** a `storybookProject({ capture })` run, in any browser, on a story whose
+cropped preview is empty or very large.
+**Why:** `canvas.toDataURL` answers `"data:,"` for a canvas with a zero width or
+height (the story rendered nothing, or the crop is empty) and for one beyond the
+browser's canvas size limit. That is not the browser's fault, so it is not the
+[WebP error](#this-browser-cannot-encode-webp-previews-canvastodataurlimagewebp-returned-another-format-webkit-does-this-capture-with-chromium-or-firefox).
+**Fix:** read the width and height in the message. `0` means the story renders
+nothing: check it renders, and that `play` has finished. A very large value
+means a crop to shrink: capture a smaller area.
