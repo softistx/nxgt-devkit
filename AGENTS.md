@@ -138,8 +138,9 @@ src/storybook` and the `test/storybook/` fixture. Measured on 2026-10-15: all
 green on vitest 4.0.18 with addon-vitest 10.3.6, so both floors hold as declared.
 Give it the newest patch of each floor's minor.
 
-`test-matrix.ts` and `test-lower-peers.ts` carry the same SIGINT/SIGTERM
-handler (a signal skips their `finally`): it removes the scratch folder and
+`packages/msw-graphql/scripts/test-matrix.ts` and
+`packages/playwright/scripts/lower-peers/index.ts` (behind the
+`test-lower-peers.ts` entry) carry the same SIGINT/SIGTERM handler (a signal skips their `finally`): it removes the scratch folder and
 re-raises the signal. Change both; a shared helper would cross the package
 boundary.
 
