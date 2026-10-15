@@ -127,6 +127,17 @@ given only to the newest patch of the floor's minor. The floor is 1.61 because
 1.57.0, 1.58.2, 1.59.1 and 1.60.0, and passes on 1.61.0 and every later minor
 tried. `--grep <title>` bisects a failing spec across versions.
 
+The `@nxgt/playwright/storybook` floors (`vitest` and `@vitest/browser-playwright`
+`^4.0.0`, `@storybook/addon-vitest` `>=10.3.0 <11`) are measured by the same
+script with `--vitest 4.0.18 --storybook 10.3.6` (a third CI step; `--vite`
+defaults to 7.3.7, as vitest 4.0 accepts vite 6 or 7 only). In the scratch copy
+`vitest` and `@vitest/browser-playwright` move to the first, `@storybook/addon-vitest`,
+`storybook` and `@storybook/html-vite` to the second; Playwright stays at the
+lockfile's, so the cached Chromium is used. It builds, typechecks, runs `bun test
+src/storybook` and the `test/storybook/` fixture. Measured on 2026-10-15: all
+green on vitest 4.0.18 with addon-vitest 10.3.6, so both floors hold as declared.
+Give it the newest patch of each floor's minor.
+
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
 `scripts/newest-peers.ts`. That script and its spec come from the graphql repository's
