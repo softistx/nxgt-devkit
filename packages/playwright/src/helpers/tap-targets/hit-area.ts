@@ -12,7 +12,8 @@ import type { Measured } from './measure';
  * Self-contained: Playwright serialises it, so it imports nothing at run
  * time (the `Measured` import is a type) and every helper lives inside it.
  * ACCEPTED LENGTH EXCEPTION: it is long for that reason, as `measure` is.
- * Nothing is duplicated with `measure.ts` any more.
+ * `labelsOf` / `rectOf` copy `measure`'s label join (`boxOf`) because the
+ * rects are re-read after scrolling: a change to one is made in both.
  *
  * Unlike `measure` it scrolls: a target whose `size` square is not on screen
  * (or not inside the visible area of its scrolling ancestors) is scrolled to
@@ -62,10 +63,11 @@ export function probeHitAreas(
 	// The next ancestor along the flat tree: a slotted node continues in its
 	// slot, the top of a shadow tree in its host.
 	const flatParent = (p: Element): Element | null =>
-		p.assignedSlot ??
-		p.parentElement ??
-		(p.getRootNode() as ShadowRoot).host ??
-		null;
+		p.assignedSlot ?? p.parentElement ?? hostOf(p);
+	const hostOf = (p: Element): Element | null => {
+		const root = p.getRootNode();
+		return root instanceof ShadowRoot ? root.host : null;
+	};
 	// Whether the square is within the visible (client) area of every
 	// ancestor that clips or scrolls. The document's own scrolling is the
 	// viewport's, checked by `square`.

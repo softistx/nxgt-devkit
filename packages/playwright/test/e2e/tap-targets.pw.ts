@@ -500,6 +500,32 @@ test('a custom element with an open shadow tree drawing 44px passes', async ({
 	);
 });
 
+test('a custom element in a checkbox label, drawing 44px in its shadow tree, passes', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			'<label style="position:relative;display:inline-block;width:20px;height:20px"><input type="checkbox" style="width:20px;height:20px;margin:0" aria-label="Agree"><x-big></x-big></label>',
+		),
+	);
+	await page.evaluate(() => {
+		customElements.define(
+			'x-big',
+			class extends HTMLElement {
+				constructor() {
+					super();
+					this.attachShadow({ mode: 'open' }).innerHTML =
+						'<div style="position:absolute;left:-12px;top:-12px;width:44px;height:44px"></div>';
+				}
+			},
+		);
+	});
+	await expectTapTargets(page);
+	expect(await failure(expectTapTargets(page, { hitArea: false }))).toContain(
+		'20x20px',
+	);
+});
+
 test('a control scrolled out of its pane, inside the viewport, is scrolled in, probed and put back', async ({
 	page,
 }) => {

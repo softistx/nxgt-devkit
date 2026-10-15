@@ -76,10 +76,12 @@ Every peer is **optional** and each subpath needs only its own:
 `./mock-server` copies the wire types of `@nxgt/msw-graphql/control` (`ServerOverride`) on purpose, so it imports neither msw nor that package; `test/e2e/mock-server.pw.ts` imports both (`@nxgt/msw-graphql` is a devDependency) and fails to typecheck if the two types drift, and `test/server.ts` mounts the real control it drives. That spec runs in its own config (`test/playwright.mock-server.config.ts`, one worker): server mocks are process-global.
 
 The in-page `measure` functions (`src/helpers/text-overflow/measure.ts`, `src/helpers/tap-targets/measure.ts`, and `measure` in `src/helpers/no-horizontal-scroll.ts`) each carry their own `collapse` / `brief` / `describe` because Playwright serialises them; a change to one is made in all three.
-`src/helpers/tap-targets/hit-area.ts` (`probeHitAreas`) copies nothing from `measure.ts`:
+`src/helpers/tap-targets/hit-area.ts` (`probeHitAreas`) does not re-select:
 `expectTapTargets` runs `measure` with `page.evaluateHandle`, so the selected elements stay
 in the page, and the probe is run on that handle with `handle.evaluate(probeHitAreas, …)`
-(select once). Both in-page functions are long on purpose (Playwright serialises them, so
+(select once). It keeps its own `labelsOf` / `rectOf`, a copy of `measure`'s label join
+(`boxOf`: which inputs join their labels, and the union of their rects), because it re-reads
+the rects after scrolling; a change to one is made in both. Both in-page functions are long on purpose (Playwright serialises them, so
 every helper is a closure inside): an accepted exception to the function-length rule.
 
 The root barrel (`packages/playwright/src/index.ts`) re-exports `./auth`,

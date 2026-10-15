@@ -163,11 +163,16 @@ export async function measure(args: {
 	// closed ones included, which the page cannot look into: it is a candidate.
 	const custom = (e: Element) => e.tagName.includes('-') || !!e.shadowRoot;
 	const mayEnlarge = (el: Element, box: TapTargetBox): boolean => {
-		if (custom(el) || [...el.querySelectorAll('*')].some(custom)) return true;
 		const labels =
 			el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type)
 				? [...(el.labels ?? [])]
 				: [];
+		if (
+			[el, ...labels].some(
+				(r) => custom(r) || [...r.querySelectorAll('*')].some(custom),
+			)
+		)
+			return true;
 		const slack = args.tolerance;
 		const outside = (d: Element) => {
 			const r = d.getBoundingClientRect();
