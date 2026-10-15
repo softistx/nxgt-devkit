@@ -698,6 +698,10 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 - **`capture` takes a single browser**: every browser writes the same preview
   file, so `storybookProject({ capture: true, browsers: [...two or more] })`
   throws. Run the cross-browser smoke test as a second project without `capture`.
+- **`capture` cannot use `webkit`**: WebKit cannot encode WebP, so
+  `storybookProject({ capture: true, browsers: ['webkit'] })` throws. Capture in
+  `chromium` or `firefox`
+  ([troubleshooting](docs/troubleshooting.md#storybookproject-capture-cannot-use-webkit-browsers-is-list-webkit-cannot-encode-webp-previews-capture-with-chromium-or-firefox)).
 
 ## Documentation
 

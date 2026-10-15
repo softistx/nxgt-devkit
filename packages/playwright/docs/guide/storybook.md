@@ -37,6 +37,25 @@ that matches the installed `playwright`:
 bunx playwright install chromium-headless-shell
 ```
 
+## Tested versions
+
+The stories are run in a real Vitest browser run on `vitest` 4.0.18 to 4.1 and
+`@storybook/addon-vitest` 10.3.6 to 10.6, the two ends of the peer ranges.
+Chromium runs in CI on every change; Firefox and WebKit run in a job of their
+own that is not a required check.
+
+## Run `vitest` where `.storybook` lives
+
+`@storybook/addon-vitest` resolves `configDir` from `process.cwd()`, not from
+the Vite root. Start `vitest run` in the folder that holds `.storybook`, or
+give `configDir` as an absolute path:
+
+```ts
+import { resolve } from 'node:path';
+
+storybookProject({ configDir: resolve(import.meta.dirname, '.storybook') });
+```
+
 ## `storybookProject`
 
 ```ts
@@ -102,6 +121,12 @@ fails there. Download the browsers first (`bunx playwright install firefox
 webkit`). `capture` takes a single browser: every browser would write the same preview
 file, so `capture` with two or more `browsers` throws. Keep the cross-browser
 run in a project without `capture`.
+
+`capture` cannot use `webkit` either: WebKit cannot encode WebP, and its canvas
+answers with PNG data instead of failing. `storybookProject` throws when
+`capture` is set and `browsers` has `webkit`, and the capture itself throws if
+a browser returns anything but WebP. Capture with `chromium` (the default) or
+`firefox`.
 
 `executablePath` is a Chromium binary: it is applied to the `chromium`
 instance only, and Firefox and WebKit keep Playwright's downloads. Giving it

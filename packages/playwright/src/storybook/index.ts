@@ -20,7 +20,8 @@ export type StorybookProjectOptions = {
 	/**
 	 * Screenshot the stories carrying the capture tag into WebP previews. Only
 	 * those stories run. Default `false`: every story renders as a smoke test.
-	 * Throws with more than one of `browsers`: they would write the same file.
+	 * Throws with more than one of `browsers` (they would write the same
+	 * file) and with `webkit` (it cannot encode WebP).
 	 */
 	capture?: boolean | PreviewCaptureOptions;
 	/** Default `{ width: 1280, height: 800 }`. */
@@ -72,6 +73,11 @@ export function storybookProject(
 	if (options.executablePath && !browsers.includes('chromium')) {
 		throw new Error(
 			`storybookProject: \`executablePath\` is a Chromium binary but \`browsers\` is [${browsers.join(', ')}]. Add 'chromium' or drop \`executablePath\`.`,
+		);
+	}
+	if (options.capture && browsers.includes('webkit')) {
+		throw new Error(
+			`storybookProject: \`capture\` cannot use 'webkit' (\`browsers\` is [${browsers.join(', ')}]): WebKit cannot encode WebP previews. Capture with chromium or firefox.`,
 		);
 	}
 	if (options.capture && browsers.length > 1) {

@@ -38,7 +38,7 @@ jobs:
         run: bun scripts/newest-peers.ts && rm bun.lock && bun install
       # Which versions this run resolved, so a red run names the release.
       - name: Resolved peers
-        run: bun pm ls --all | grep -E '[ ─](graphql|msw|@msw/playwright|@playwright/test|typescript)@' | sort -u || true
+        run: bun pm ls --all | grep -E '[ ─](graphql|msw|@msw/playwright|@playwright/test|typescript|vitest|@vitest/browser-playwright|@storybook/addon-vitest|storybook)@' | sort -u || true
       - name: Build packages
         run: bun run build
       - name: Type checking

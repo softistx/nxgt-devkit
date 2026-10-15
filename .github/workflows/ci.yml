@@ -73,6 +73,12 @@ jobs:
       - name: playwright on the lowest @playwright/test
         working-directory: packages/playwright
         run: bun run scripts/test-lower-peers.ts --playwright 1.61.1
+      # The storybook entry promises vitest ^4.0.0 and @storybook/addon-vitest
+      # >=10.3.0; the workspace holds 4.1 and 10.6, so the floors' newest patches
+      # run the typecheck, the unit specs and the fixture in a scratch copy.
+      - name: playwright/storybook on the lowest vitest and addon-vitest
+        working-directory: packages/playwright
+        run: bun run scripts/test-lower-peers.ts --vitest 4.0.18 --storybook 10.3.6
       # The build exits 0 on packages that throw the instant they are imported.
       # This packs them, installs them as a consumer does and imports every
       # declared subpath but the browser-only ones.
@@ -113,7 +119,7 @@ jobs:
         run: bun scripts/newest-peers.ts && rm bun.lock && bun install
       # Which versions this run resolved, so a red run names the release.
       - name: Resolved peers
-        run: bun pm ls --all | grep -E '[ ─](graphql|msw|@msw/playwright|@playwright/test|typescript)@' | sort -u || true
+        run: bun pm ls --all | grep -E '[ ─](graphql|msw|@msw/playwright|@playwright/test|typescript|vitest|@vitest/browser-playwright|@storybook/addon-vitest|storybook)@' | sort -u || true
       - name: Build packages
         run: bun run build
       - name: Type checking
@@ -125,3 +131,34 @@ jobs:
         run: bun run test
       - name: Verify the built artifacts load
         run: bun run verify:artifacts
+
+  storybook-browsers:
+    # NOT a required check. @nxgt/playwright/storybook promises Firefox and
+    # WebKit, and the main job runs Chromium only. This runs the Storybook
+    # fixture there. Red means a real engine difference (or an upstream
+    # Playwright change): read it, do not retry it away.
+    name: Storybook in Firefox and WebKit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Build packages
+        run: bun run build
+      # Own key: the main job's cache holds Chromium only, and a shared key
+      # would let one job's save hide the other's browsers.
+      - name: Cache the Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-ffwk-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - name: Install Firefox and WebKit
+        working-directory: packages/playwright
+        run: bunx playwright install --with-deps firefox webkit
+      - name: Storybook fixture in Firefox and WebKit
+        working-directory: packages/playwright
+        env:
+          STORYBOOK_BROWSERS: firefox,webkit
+        run: bun test ./test/storybook/

@@ -127,8 +127,20 @@ given only to the newest patch of the floor's minor. The floor is 1.61 because
 1.57.0, 1.58.2, 1.59.1 and 1.60.0, and passes on 1.61.0 and every later minor
 tried. `--grep <title>` bisects a failing spec across versions.
 
-`test-matrix.ts` and `test-lower-peers.ts` carry the same SIGINT/SIGTERM
-handler (a signal skips their `finally`): it removes the scratch folder and
+The `@nxgt/playwright/storybook` floors (`vitest` and `@vitest/browser-playwright`
+`^4.0.0`, `@storybook/addon-vitest` `>=10.3.0 <11`) are measured by the same
+script with `--vitest 4.0.18 --storybook 10.3.6` (a third CI step; `--vite`
+defaults to 7.3.7, as vitest 4.0 accepts vite 6 or 7 only). In the scratch copy
+`vitest` and `@vitest/browser-playwright` move to the first, `@storybook/addon-vitest`,
+`storybook` and `@storybook/html-vite` to the second; Playwright stays at the
+lockfile's, so the cached Chromium is used. It builds, typechecks, runs `bun test
+src/storybook` and the `test/storybook/` fixture. Measured on 2026-10-15: all
+green on vitest 4.0.18 with addon-vitest 10.3.6, so both floors hold as declared.
+Give it the newest patch of each floor's minor.
+
+`packages/msw-graphql/scripts/test-matrix.ts` and
+`packages/playwright/scripts/lower-peers/index.ts` (behind the
+`test-lower-peers.ts` entry) carry the same SIGINT/SIGTERM handler (a signal skips their `finally`): it removes the scratch folder and
 re-raises the signal. Change both; a shared helper would cross the package
 boundary.
 
@@ -192,6 +204,13 @@ instead of the built-in; and it emits nothing, so `build.ts` needs tsc for
 the declarations anyway.
 
 - `bun test src` — the pure logic: names, config, the Storybook project shape.
+- `bun test ./test/storybook/` — a real-browser Storybook fixture (stories, a
+  `.storybook`, a Vitest browser project made by `storybookProject`). Part of
+  the package's `test` script. It imports the built `@nxgt/playwright/storybook`,
+  so `bun run build` comes first. `STORYBOOK_BROWSERS=chromium,firefox,webkit`
+  picks the browsers (chromium by default); ci.yml's non-required
+  `storybook-browsers` job runs Firefox and WebKit. The lower-peers leg below
+  runs it too.
 - `playwright test -c test/playwright.config.ts` — the pages, fixtures, fills
   and msw against `test/server.ts`, a Bun server whose form resets its input
   once 250 ms after load, the way hydration does. The config is written with
