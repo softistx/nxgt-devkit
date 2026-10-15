@@ -185,3 +185,106 @@ test('a label that fits on a desktop and clips on a phone', async ({
 	const message = await failure(expectNoTextOverflow(page));
 	expect(message).toContain('clipped with an ellipsis');
 });
+
+test('a fixed-height box of block children is not judged by its height', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<div style="width:180px;height:40px;overflow:hidden"><p style="margin:0;height:120px">Fits</p></div>`,
+		),
+	);
+	await expectNoTextOverflow(page);
+});
+
+test('a text pushed past the left edge by a negative indent is caught', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<p class="indent" style="width:180px;overflow:hidden;white-space:nowrap;text-indent:-120px">${'W'.repeat(20)}</p>`,
+		),
+	);
+	const message = await failure(expectNoTextOverflow(page));
+	expect(message.split('\n')[1]).toContain('p.indent  clipped');
+});
+
+test('a right-to-left text that runs out on the left is caught', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<p class="rtl" dir="rtl" style="width:180px;overflow:hidden;white-space:nowrap">${WIDE}</p>`,
+		),
+	);
+	const message = await failure(expectNoTextOverflow(page));
+	expect(message.split('\n')[1]).toContain('p.rtl  clipped');
+});
+
+test('overflow: clip counts as clipped', async ({ page }) => {
+	await page.setContent(
+		html(
+			`<span class="clip" style="display:block;width:180px;overflow:clip;white-space:nowrap">${WIDE}</span>`,
+		),
+	);
+	const message = await failure(expectNoTextOverflow(page));
+	expect(message.split('\n')[1]).toContain('span.clip  clipped');
+});
+
+test('too many lines for a fixed height spill on the y axis', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<p class="tall" style="width:180px;height:20px;margin:0;word-break:break-all">${WIDE}${WIDE}</p>`,
+		),
+	);
+	const message = await failure(expectNoTextOverflow(page));
+	expect(message.split('\n')[1]).toMatch(
+		/^ {2}- p\.tall {2}spills: .* {2}\d+px of text in a 20px-tall box$/,
+	);
+});
+
+test('form controls, svg text and contenteditable are not measured', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<input style="width:60px" value="${WIDE}">
+<textarea style="width:60px;white-space:nowrap;overflow:hidden">${WIDE}</textarea>
+<svg width="60" height="20"><text y="15">${WIDE}</text></svg>
+<div contenteditable style="${CLIP}">${WIDE}</div>`,
+		),
+	);
+	await expectNoTextOverflow(page);
+});
+
+test('include and exclude take lists', async ({ page }) => {
+	await page.setContent(
+		html(
+			['a', 'b', 'c']
+				.map((c) => `<span class="${c}" style="${CLIP}">${WIDE}</span>`)
+				.join(''),
+		),
+	);
+	const included = await failure(
+		expectNoTextOverflow(page, { include: ['.a', '.b'] }),
+	);
+	expect(included).toContain('in 2 elements');
+	expect(included).not.toContain('span.c');
+	const excluded = await failure(
+		expectNoTextOverflow(page, { exclude: ['.a', '.b'] }),
+	);
+	expect(excluded).toContain('in 1 element ');
+	expect(excluded).toContain('span.c');
+});
+
+test('a text under a transform is skipped', async ({ page }) => {
+	await page.setContent(
+		html(
+			`<div style="transform:scale(2);transform-origin:0 0;width:180px"><span style="${CLIP}">${WIDE}</span></div>
+<span style="${CLIP};rotate:10deg">${WIDE}</span>`,
+		),
+	);
+	await expectNoTextOverflow(page);
+});

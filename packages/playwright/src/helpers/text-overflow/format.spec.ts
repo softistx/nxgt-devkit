@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { formatTextOverflow, type OverflowingText } from './text-overflow';
+import { formatTextOverflow } from './format';
+import type { OverflowingText } from './types';
 
 const viewport = { width: 412, height: 839 };
 const clipped: OverflowingText = {

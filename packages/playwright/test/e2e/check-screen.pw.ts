@@ -90,6 +90,33 @@ test('textOverflow: true fails on a clipped text; the default passes the same pa
 	});
 });
 
+const THREE = doc(
+	['a', 'b', 'c']
+		.map(
+			(c) =>
+				`<p class="${c}" style="width:100px;overflow:hidden;white-space:nowrap;font:16px monospace">${'W'.repeat(40)}</p>`,
+		)
+		.join(''),
+);
+
+test("checkScreen's max reaches textOverflow, and textOverflow's own max wins", async ({
+	page,
+}, testInfo) => {
+	await page.setContent(THREE);
+	const listed = async (options: Parameters<typeof checkScreen>[3]) =>
+		(
+			(
+				(await checkScreen(page, testInfo, 'three', {
+					a11y: false,
+					...options,
+				}).catch((e: Error) => e)) as Error
+			).message.split('\n') as string[]
+		).filter((l) => l.startsWith('  - ')).length;
+	expect(await listed({ textOverflow: true, max: 1 })).toBe(1);
+	expect(await listed({ textOverflow: { max: 2 }, max: 1 })).toBe(2);
+	expect(await listed({ textOverflow: { max: undefined }, max: 1 })).toBe(1);
+});
+
 test('scroller, as a selector or a function of the test, is checked', async ({
 	page,
 }, testInfo) => {

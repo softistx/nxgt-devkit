@@ -94,7 +94,9 @@ export async function checkScreen(
 	if (textOverflow) {
 		await expectNoTextOverflow(
 			page,
-			textOverflow === true ? { max } : { max, ...textOverflow },
+			textOverflow === true
+				? { max }
+				: { ...textOverflow, max: textOverflow.max ?? max },
 		);
 	}
 }

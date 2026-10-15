@@ -313,6 +313,11 @@ Not measured: `script`, `style`, `svg`, form controls (`input`, `textarea`,
 (`position: absolute` with `clip` or `clip-path`, the usual `sr-only`). A card
 that clips a decoration but not its text passes: only text is measured.
 
+Limits: a text under a CSS `transform`, `scale` or `rotate` (on itself or on
+an ancestor) is skipped, because its rectangles and its box are then measured
+in different coordinate spaces; shadow DOM and iframes are not entered (run the
+check on the frame's own page).
+
 ```
 Text overflows its box in 2 elements (412x839 viewport):
   - span.title  clipped with an ellipsis, no title: "Quarterly report for the…"  312px of text in a 180px box

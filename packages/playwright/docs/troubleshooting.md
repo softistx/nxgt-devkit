@@ -857,7 +857,8 @@ the shell) checks the document only.
 ### `Text overflows its box in <n> elements`
 
 The message continues `(412x839 viewport):` and lists the boxes, each as
-`tag#id.class`, `clipped` or `spills`, the text, and the widths.
+`tag#id.class`, `clipped` or `spills`, the text, and the widths. For a single
+box it says `1 element`.
 
 **When:** `expectNoTextOverflow`, or `checkScreen` with `textOverflow`.
 **Why:** a text is wider (or, in a clamped box, taller) than its box. `spills`:
@@ -866,13 +867,15 @@ box hides the rest (`overflow: hidden`, usually with `text-overflow: ellipsis`
 or a line clamp) and nothing gives the full text.
 **Fix:** let the text wrap (`white-space: normal`, a `min-width: 0` on a flex
 child), widen the box, or, for a clipped text that is meant to be, give it
-its full text and exclude nothing:
+its full text in a `title` or `aria-label`, or leave the box out:
 
 ```html
 <span class="title" title="Quarterly report for the whole group">Quarterly report for the whole group</span>
 ```
 
-or leave the box out: `expectNoTextOverflow(page, { exclude: '.marquee' })`.
+`expectNoTextOverflow(page, { exclude: '.marquee' })` leaves a box out. A text
+under a CSS `transform`, `scale` or `rotate`, in shadow DOM or in an iframe is
+never reported: the check does not measure it.
 
 ### A clipped label fails although it shows a tooltip
 
