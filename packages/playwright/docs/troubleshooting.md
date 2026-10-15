@@ -51,9 +51,16 @@ throws itself are quoted exactly.
 - [Accessibility](#accessibility)
   - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
   - [`target-size [serious]` on a control a sticky bar half covers](#target-size-serious-on-a-control-a-sticky-bar-half-covers)
+  - [`no element matches <actions>: the check cannot run`](#no-element-matches-actions-the-check-cannot-run)
+  - [`the focused control ends <n>px under the sticky bar`](#the-focused-control-ends-npx-under-the-sticky-bar)
+  - [`nothing is focused: focus a control before checking`](#nothing-is-focused-focus-a-control-before-checking)
+  - [`the submit was not reached in <n> tabs`](#the-submit-was-not-reached-in-n-tabs)
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
   - [`The scroll container <tag#id.class> scrolls horizontally`](#the-scroll-container-tagidclass-scrolls-horizontally)
+- [Content-Security-Policy](#content-security-policy)
+  - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
+  - [`expectNoncedPage` failures](#expectnoncedpage-failures)
 - [Auth and forms](#auth-and-forms)
   - [`Error reading storage state from playwright/.auth/<account>.json`](#error-reading-storage-state-from-playwrightauthaccountjson)
   - [`page.waitForURL: Test timeout of 30000ms exceeded.`](#pagewaitforurl-test-timeout-of-30000ms-exceeded)
@@ -78,8 +85,9 @@ you import needs a peer you have not installed.
 
 | Subpath | Install |
 | --- | --- |
-| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
+| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./pwa`, `./csp`, `./react-router` | `@playwright/test` (the root re-exports `./screens`: see below) |
 | `./a11y` | `@playwright/test`, `@axe-core/playwright` |
+| `./screens` | `@playwright/test`, plus `@axe-core/playwright` when `checkScreen`'s scan runs (the default, or an options object) |
 | `./msw` | `@playwright/test`, `msw`, `@msw/playwright` |
 | `./mock-server` | `@playwright/test` |
 | `./storybook`, `./storybook/capture`, `./storybook/setup` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
@@ -120,8 +128,8 @@ bun add -d --exact vitest@4.1.10 @vitest/browser-playwright@4.1.10
 
 The message ends `Install it: bun add -d @axe-core/playwright`.
 
-**When:** the first `expectAccessible`, `accessibilityScan` or `a11y.expect()`
-of a run.
+**When:** the first `expectAccessible`, `accessibilityScan`, `a11y.expect()` or
+`checkScreen` scan (the default, or an `a11y` options object) of a run.
 **Why:** `@nxgt/playwright/a11y` loads axe only when a scan runs, and
 `@axe-core/playwright` is an optional peer: installing `@nxgt/playwright`
 does not bring it.
@@ -737,6 +745,58 @@ await expectAccessible(page, {
 });
 ```
 
+### `no element matches <actions>: the check cannot run`
+
+**When:** `expectFocusAboveActions` or `expectFieldsAboveActions` finds no
+element for the `actions` selector (default `[data-slot="form-actions"]`).
+**Why:** a page with no bar has nothing to be obscured by, but a check that
+passes there would hide a renamed or not yet rendered bar. It fails instead.
+**Fix:** wait for the form to render, or pass your bar's selector.
+
+```ts
+await expectFieldsAboveActions(page, { actions: '.app-bottom-bar' });
+```
+
+### `the focused control ends <n>px under the sticky bar`
+
+```
+the focused control ends 10px under the sticky bar [data-slot="form-actions"] (WCAG 2.4.11 Focus Not Obscured): input #f2 name="f2" <input id="f2" name="f2">. Give the scroll container a scroll-padding-bottom the height of the bar, and the control (or its field) a scroll-margin-bottom for the error line beneath it.
+```
+
+**When:** the focused control, or its field (an error line under it), is
+hidden under the sticky bar.
+**Why:** the browser scrolls a focused control only until it is in view, and
+the bar covers the bottom of the view.
+**Fix:** reserve the bar's height where the page scrolls, in your CSS, not in
+the spec. If the control is the problem and its field's error is not, set
+`field` to the right wrapper.
+
+```css
+html { scroll-padding-bottom: 6rem; } /* the bar's height */
+input, select, textarea { scroll-margin-bottom: 4rem; } /* room for the error line */
+```
+
+### `nothing is focused: focus a control before checking`
+
+**When:** `expectFocusAboveActions` runs while the page itself has focus.
+**Fix:** focus a control first (`await page.getByLabel('Name').focus()`).
+`expectFieldsAboveActions` may start there: its first Tab lands on the first control.
+
+### `the submit was not reached in <n> tabs`
+
+**When:** `expectFieldsAboveActions` pressed Tab `limit` times (40) without
+focusing the `until` control (by default the first `[type="submit"]` in the bar).
+**Why:** a longer form, a submit that is not a `[type="submit"]`, or a focus
+that leaves the form (a focus trap or a control outside it).
+**Fix:** raise `limit`, or name where to stop. The message names the locator.
+
+```ts
+await expectFieldsAboveActions(page, {
+	limit: 80,
+	until: page.getByRole('button', { name: 'Save' }),
+});
+```
+
 ### `color-contrast` fails, then passes on a retry
 
 The violation names an element that is fading in, sliding, or changing
@@ -788,6 +848,48 @@ see it: an inner scroller never widens the document.
 **Fix:** narrow the listed elements, or wrap a wide table in its own
 `overflow-x: auto` box. A selector that matches nothing (an error page without
 the shell) checks the document only.
+
+## Content-Security-Policy
+
+### `Content-Security-Policy refusals`
+
+The report of a test using `withCspGuard` or `cspTest`:
+`expect(received).toEqual(expected)` with the message
+`Content-Security-Policy refusals` and an array of lines.
+
+A page of the test ran something its policy refuses. A line is either
+`<directive> refused <blocked URL or inline> in <page> (<file:line> <sample>)`,
+from a `securitypolicyviolation` event, or `console: <text> (<url>)`, a
+console error that names the policy (the same refusal is usually reported
+twice). Add the nonce to the inline script or load it from an allowed source;
+do not loosen the policy to silence the test. A refusal that comes from a
+browser extension or a third-party widget you cannot change belongs to a test
+that uses plain `test`, not `cspTest`.
+
+```ts
+import { test as base } from '@playwright/test';
+import { withCspGuard } from '@nxgt/playwright/csp';
+
+export const test = withCspGuard(base); // every test of this file is guarded
+```
+
+The guard only sees pages opened after the fixture starts, and a refusal
+that happens after the test body ended is not reported.
+
+### `expectNoncedPage` failures
+
+- `content-security-policy has no 'nonce-…' of 16+ base64 characters in script-src`:
+  the response has no header, or its `script-src` names no nonce (a nonce in
+  `style-src` does not count). The message prints the policy it got.
+- `no <script> or <link rel="modulepreload"> to carry the nonce`: the HTML
+  holds nothing to check; point the check at a page that loads scripts.
+- `tags without the policy's nonce`: the array lists the tags whose `nonce`
+  attribute is missing or differs from the policy's. The raw HTML is read, since
+  browsers hide `nonce` from the DOM.
+- `the nonce is the same on a second load`: the nonce is cached or built once.
+  It must be new on every response, so a cached HTML page cannot be nonced.
+- `script-src`: with the `scriptSrc` option, the directive differs; the
+  nonce is written `{nonce}` in the expected value.
 
 ## Auth and forms
 

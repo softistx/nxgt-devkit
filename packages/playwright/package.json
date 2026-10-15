@@ -1,7 +1,7 @@
 {
 	"name": "@nxgt/playwright",
 	"version": "0.6.0",
-	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-aware navigation and fills, settled-page waits, axe accessibility checks, phone projects, full-page screens, PWA specs against a production build (offline, worker updates, cache checks), and Storybook stories as Vitest browser tests with preview capture",
+	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-aware navigation and fills, settled-page waits, axe accessibility checks, Content-Security-Policy checks (refusal guard, nonce on every script), phone projects, full-page screens, PWA specs against a production build (offline, worker updates, cache checks), and Storybook stories as Vitest browser tests with preview capture",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -44,6 +44,11 @@
 			"types": "./dist/a11y/index.d.ts",
 			"import": "./dist/a11y/index.js",
 			"default": "./dist/a11y/index.js"
+		},
+		"./csp": {
+			"types": "./dist/csp/index.d.ts",
+			"import": "./dist/csp/index.js",
+			"default": "./dist/csp/index.js"
 		},
 		"./pwa": {
 			"types": "./dist/pwa/index.d.ts",
@@ -100,6 +105,7 @@
 		"hydration",
 		"screenshots",
 		"pwa",
+		"csp",
 		"service-worker",
 		"react-router",
 		"mock-server"
@@ -127,6 +133,7 @@
 			"src/auth/index.ts",
 			"src/helpers/index.ts",
 			"src/a11y/index.ts",
+			"src/csp/index.ts",
 			"src/pwa/index.ts",
 			"src/screens/index.ts",
 			"src/screens/clear.ts",

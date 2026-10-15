@@ -3,7 +3,8 @@
 Save a full-page PNG of what a page looks like, per project, for a review of
 the design on desktop and phone: `saveScreen` and `savingScreens` from
 `@nxgt/playwright/screens` (also the root), switched on by
-`defineAppConfig({ screens })`.
+`defineAppConfig({ screens })`. `checkScreen` does the whole round for a
+screen in one call: save, accessibility scan, no sideways scroll.
 
 ```ts
 // playwright.config.ts
@@ -102,9 +103,51 @@ Three things to know:
   screens a `dir` of their own when you keep both.
 - Add the folder to `.gitignore`.
 
-## A check that leaves its image
+## One call per screen: `checkScreen`
 
-Save first, so a failing check still leaves the image to look at, then check:
+`checkScreen(page, testInfo, name, options?)` is what a screen goes through, in
+this order: web fonts loaded (`document.fonts.ready`), motion over (`settled`),
+the screen saved when the run saves them (before the checks, so a failing one
+still leaves the image to look at), the accessibility scan, then the
+no-sideways-scroll check.
+
+```ts
+// playwright/e2e/quality-students.spec.ts
+import { test } from '@playwright/test';
+import { isMobileProject } from '@nxgt/playwright/helpers';
+import { checkScreen } from '@nxgt/playwright/screens';
+
+test.use({ locale: 'en-US', reducedMotion: 'reduce' });
+
+test('students list', async ({ page }, testInfo) => {
+	await page.clock.install({ time: new Date('2026-01-15T09:00:00Z') });
+	await page.goto('/students');
+	await checkScreen(page, testInfo, 'students-list', {
+		// A phone project scrolls the table inside its wrapper.
+		scroller: (info) => (isMobileProject(info) ? '[data-slot="table-wrapper"]' : undefined),
+	});
+});
+```
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `a11y` | `expectAccessible(page, { testInfo })` | An options object is `expectAccessible`'s own (`exclude`, `disableRules`, …). A function `(page) => Promise<unknown>` replaces the scan, for an app's wrapper around `expectAccessible`. `false` skips it. |
+| `scroller` | none | The inner scroll container `expectNoHorizontalScroll` checks too: a selector or a locator, or a function of the `testInfo` returning one (or `undefined` for the document only). |
+| `horizontalScroll` | `true` | `false` skips the sideways-scroll check. |
+| `max` | `5` | How many offending elements the sideways-scroll message lists. |
+| `save` | none | `saveScreen`'s options (`dir`, `maxGrowth`, `screenshot`), used when the run saves screens. |
+
+`@axe-core/playwright` is needed when the scan runs (the default, or an options
+object), and loaded only then: with `a11y: false` or a function, `/screens` needs nothing beyond
+`@playwright/test`. A failure is the failure of the check that raised it
+(`expectAccessible`'s or `expectNoHorizontalScroll`'s message), unchanged.
+
+## A check you compose yourself
+
+Compose it from the parts when a screen needs a step `checkScreen` lacks, or
+the steps in another order; otherwise its options (`a11y`, `scroller`, …) are
+enough. Save first,
+so a failing check still leaves the image to look at, then check:
 
 ```ts
 // playwright/support/check-screen.ts
@@ -113,7 +156,7 @@ import { expectAccessible } from '@nxgt/playwright/a11y';
 import { expectNoHorizontalScroll, settled } from '@nxgt/playwright/helpers';
 import { saveScreen, savingScreens } from '@nxgt/playwright/screens';
 
-export async function checkScreen(page: Page, testInfo: TestInfo, name: string) {
+export async function myCheckScreen(page: Page, testInfo: TestInfo, name: string) {
 	await page.evaluate(() => document.fonts.ready);
 	await settled(page);
 	if (savingScreens(testInfo)) await saveScreen(page, testInfo, name);

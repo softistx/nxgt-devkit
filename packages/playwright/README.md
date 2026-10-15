@@ -21,8 +21,10 @@ subpaths you import:
 
 | Subpath | Peers to add |
 | --- | --- |
-| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `/react-router` | `@playwright/test` (`^1.61.0`) |
+| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/pwa`, `/react-router` | `@playwright/test` (`^1.61.0`); the root re-exports `/screens`, so `checkScreen` imported from it needs `@axe-core/playwright` when the scan runs (the default, or an options object) |
 | `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
+| `/screens` | `@playwright/test`, plus `@axe-core/playwright` when the scan runs (the default, or an options object) |
+| `/csp` | `@playwright/test` |
 | `/msw` | `@playwright/test`, `msw` (`^2.12.10 \|\| ^3.0.0`), `@msw/playwright` (`>=0.6.7 <0.8`; 0.7 needs msw 3) |
 | `/mock-server` | `@playwright/test` only (it talks HTTP) |
 | `/storybook`, `/storybook/capture`, `/storybook/setup` | `vitest` (`^4.0.0`), `@vitest/browser-playwright` (`^4.0.0`), `@storybook/addon-vitest` (`>=10.3.0 <11`), and `playwright` itself (required by `@vitest/browser-playwright`) |
@@ -46,17 +48,18 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
 | `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
-| `@nxgt/playwright/screens` | `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR` | Node |
+| `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
-| `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `formatViolations`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `DisabledRule`, `AccessibilityResults` | Node |
+| `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `expectFocusAboveActions`, `expectFieldsAboveActions`, `formatViolations`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `FocusOptions`, `FocusFieldsOptions`, `DisabledRule`, `AccessibilityResults` | Node |
+| `@nxgt/playwright/csp` | `watchCsp`, `withCspGuard`, `cspTest`, `expectNoncedPage`, `cspNonce`, `loadPolicy`; types `CspGuardFixtures`, `ExpectNoncedPageOptions`, `LoadedPolicy` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
 | `@nxgt/playwright/storybook/capture` | `capturePreview` | **browser only** |
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
-The root barrel does not re-export `/a11y`, `/msw`, `/mock-server` or `/storybook`, so an app
+The root barrel does not re-export `/a11y`, `/csp`, `/msw`, `/mock-server` or `/storybook`, so an app
 without those peers can still import it, nor the `/react-router` adapter.
 
 ## Usage
@@ -341,15 +344,13 @@ export default defineAppConfig({ port: 5174, mobile: true, screens: true }); // 
 
 ```ts
 // playwright/e2e/projects.spec.ts
-import { expectAccessible } from '@nxgt/playwright/a11y';
-import { settled } from '@nxgt/playwright/helpers';
-import { saveScreen, savingScreens } from '@nxgt/playwright/screens';
+import { checkScreen } from '@nxgt/playwright/screens';
 
 test('projects', async ({ page }, testInfo) => {
 	await page.goto('/projects');
-	await settled(page);
-	if (savingScreens(testInfo)) await saveScreen(page, testInfo, 'projects');
-	await expectAccessible(page);
+	// Fonts and motion settled, screen saved when SCREENS=1, then the axe scan
+	// and the no-sideways-scroll check. Options: `a11y`, `scroller`, …
+	await checkScreen(page, testInfo, 'projects');
 });
 ```
 
@@ -459,6 +460,37 @@ import { DEFAULT_UNSTICK, expectAccessible } from '@nxgt/playwright/a11y';
 
 await expectAccessible(page, { unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar'] });
 ```
+
+axe does not check WCAG 2.4.11 (Focus Not Obscured), so a control hidden under
+that sticky bar is yours to check: `expectFocusAboveActions` for the focused
+control, `expectFieldsAboveActions` to tab from it up to the submit:
+
+```ts
+import { expectFieldsAboveActions } from '@nxgt/playwright/a11y';
+
+await page.getByLabel('Name').focus();
+await expectFieldsAboveActions(page); // or { actions: '.app-bottom-bar', until: page.getByRole('button', { name: 'Save' }) }
+```
+
+### Content-Security-Policy
+
+```ts
+import { cspTest as test, expectNoncedPage } from '@nxgt/playwright/csp';
+
+// Fails any test whose pages met a Content-Security-Policy refusal.
+test('home', async ({ page }) => {
+	await page.goto('/');
+});
+
+test('the home page is nonced', async ({ request }) => {
+	await expectNoncedPage(request, '/', {
+		scriptSrc: "'self' 'nonce-{nonce}' 'strict-dynamic'",
+	});
+});
+```
+
+`withCspGuard(test)` adds the guard to your own `test`; `watchCsp(context)`
+returns the refusals collected so far. See [docs/guide/csp.md](docs/guide/csp.md).
 
 ### msw
 
@@ -630,6 +662,6 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 
 ## Documentation
 
-- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md), [mock server](docs/guide/mock-server.md).
+- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md), [Content-Security-Policy](docs/guide/csp.md), [mock server](docs/guide/mock-server.md).
 - [Troubleshooting](docs/troubleshooting.md) — the error you are looking at, and its fix.
 - [Roadmap](docs/roadmap.md) — what is coming, and what is not planned.
