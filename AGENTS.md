@@ -138,6 +138,11 @@ src/storybook` and the `test/storybook/` fixture. Measured on 2026-10-15: all
 green on vitest 4.0.18 with addon-vitest 10.3.6, so both floors hold as declared.
 Give it the newest patch of each floor's minor.
 
+`test-matrix.ts` and `test-lower-peers.ts` carry the same SIGINT/SIGTERM
+handler (a signal skips their `finally`): it removes the scratch folder and
+re-raises the signal. Change both; a shared helper would cross the package
+boundary.
+
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
 `scripts/newest-peers.ts`. That script and its spec come from the graphql repository's
