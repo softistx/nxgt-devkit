@@ -20,7 +20,8 @@ import type { TapTargetBox, TapTargetOptions } from './types';
  * `inline-block` link is measured).
  *
  * A target whose box is smaller than `size` still passes when its hit area
- * fills the `size` square centred on its box (with its labels, for a checkbox or radio; `hitArea`, on by default): an
+ * fills the `size` square centred on its box (with its labels, for a
+ * checkbox or radio; `hitArea`, on by default): an
  * invisible `::before` of 44px on a 20px checkbox. The square is probed with
  * `elementFromPoint` on a 5x5 grid, scrolling the target into view when it
  * is off screen and restoring every scroll position afterwards.

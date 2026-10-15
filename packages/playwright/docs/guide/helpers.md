@@ -441,13 +441,16 @@ The size is the element's border box, as `getBoundingClientRect` reports it:
 grow it with `padding`, or `min-width` and `min-height`, on the element
 itself, or give it a hit area (below).
 
-**The real hit area (`hitArea`, on by default).** A design system draws a
+### The real hit area (`hitArea`, on by default)
+
+A design system draws a
 checkbox, a switch, a radio or a toast's close button small and gives it an
 invisible 44px `::before` / `::after`, often under `@media (pointer: coarse)`.
 The box stays small, the thumb does not miss it. For a target whose box is
 smaller than `size` in either dimension and that could have a larger hit area,
-the check probes the `size` by `size` square centred on the box with `document.elementFromPoint`, on a 5x5 grid
-(points 1px inside the square's edges). The target passes when every probe hits
+the check probes the `size` by `size` square centred on the box with
+`document.elementFromPoint`, on a 5x5 grid (points 1px inside the square's
+edges). The target passes when every probe hits
 the target itself, one of its descendants (a pseudo-element hit-tests as its
 element), or, for a checkbox or radio, one of its labels or their descendants.
 The square is centred on the target's box, joined with its labels' for a
@@ -476,13 +479,14 @@ without smooth scrolling) for the probe, and the window and every scrolled
 ancestor (through slots and shadow roots) are put back where they were, so the
 page the next check sees is the one you had. Scroll listeners on the page fire
 for the two moves. A square that still sticks out (a control fixed at the
-page's edge) is moved inside the viewport, not cut: a full `size` square of hit
-area must be on screen (the viewport without a classic scrollbar), so a fixed
-control at the edge needs its whole hit area on screen. A target is probed at
+page's edge) is moved inside the viewport, without a classic scrollbar, not
+cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position once its square is on screen, so a sticky header or
 a toast covering part of it makes it fail. A viewport smaller than `size` falls
-back to the box. `hitArea: false` restores the 0.8
-behaviour: the visible box only, and no scrolling.
+back to the box.
+
+`hitArea: false` restores the 0.8 behaviour: the visible box only, and no
+scrolling.
 
 The message counts every offender and lists at most `max`. Run it on a phone
 viewport: a desktop layout has small targets on purpose, which is why

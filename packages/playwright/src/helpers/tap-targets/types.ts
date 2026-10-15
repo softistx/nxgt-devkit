@@ -51,8 +51,8 @@ export type TapTargetOptions = {
 	 * with content (on it, on a checkbox's or radio's label, or on a
 	 * descendant), a descendant drawn outside its box, or a custom element or
 	 * shadow root (as the target or inside it). Any other is judged on its
-	 * box, which is what it hit-tests as. A candidate still passes when a `size` square centred on its box (with its labels, for a checkbox or radio) is hit
-	 * by the target itself, its descendants (a `::before` / `::after` counts as
+	 * box, which is what it hit-tests as. A candidate still passes when a `size` square centred on its
+	 * box (with its labels, for a checkbox or radio) is hit by the target itself, its descendants (a `::before` / `::after` counts as
 	 * the element) or, for a checkbox or radio, its labels: the design system
 	 * that draws a 20px checkbox with an invisible 44px `::before`. The square
 	 * is probed with `document.elementFromPoint` on a 5x5 grid, so the

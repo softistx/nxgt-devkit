@@ -976,28 +976,22 @@ or leave the target out:
 **When:** a checkbox, a switch or a close button has an invisible 44px
 `::before` / `::after`, and `expectTapTargets` still reports its 20px box.
 **Why:** since 0.9.0 the check probes the real hit area (`hitArea`, on by
-default): `elementFromPoint` on a 5x5 grid over the `size` square centred on
-the box, and every point must hit the control, its descendants or, for a
-checkbox or radio, its labels. A probe that lands elsewhere fails it:
+default) and fails when a probe of the `size` square lands on another element.
+The usual causes:
 
-- the pseudo-element is `pointer-events: none`, or is smaller than `size`;
+- the pseudo-element is `pointer-events: none`, or smaller than `size`;
 - another element covers part of the square (a neighbour, a sticky bar, a
-  toast);
-- an ancestor's `overflow` clips it (a control at the edge of a scroll box);
+  toast), or an ancestor's `overflow` clips it;
 - the rule is under `@media (pointer: coarse)` and the project is a desktop
   one: only the mobile project emulates a coarse pointer;
-- the control is fixed at the viewport's edge: a full `size` square of hit area
-  must fit on screen (the square is moved inside the viewport, not cut), so the
-  whole hit area has to be on screen, and a viewport smaller than `size` falls
-  back to the box;
-- a sticky header or a toast covers part of the square: a target is probed at
-  the current scroll position when its square is on screen, and scrolled to the
-  middle only when it is not.
+- the control is fixed at the viewport's edge, so its whole hit area is not on
+  screen.
 
 **Fix:** make the pseudo-element hit-testable and as large as `size`, or run
 the check in the project the rule is for
-(`tapTargets: (info) => isMobileProject(info)`). `hitArea: false` judges the
-visible box only; `exclude` leaves a target out.
+(`tapTargets: (info) => isMobileProject(info)`). The full rules are in
+[the real hit area](guide/helpers.md#the-real-hit-area-hitarea-on-by-default);
+`hitArea: false` judges the visible box only.
 
 ### `` expectTapTargets: `targets` is empty. ``
 
