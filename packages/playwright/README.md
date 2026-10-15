@@ -21,7 +21,7 @@ subpaths you import:
 
 | Subpath | Peers to add |
 | --- | --- |
-| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/pwa`, `/react-router` | `@playwright/test` (`^1.55.0`); the root re-exports `/screens`, so `checkScreen` imported from it needs `@axe-core/playwright` when the scan runs (the default, or an options object) |
+| `.`, `/config`, `/pages`, `/auth`, `/helpers`, `/pwa`, `/react-router` | `@playwright/test` (`^1.61.0`); the root re-exports `/screens`, so `checkScreen` imported from it needs `@axe-core/playwright` when the scan runs (the default, or an options object) |
 | `/a11y` | `@playwright/test`, `@axe-core/playwright` (`>=4.10.0 <5`) |
 | `/screens` | `@playwright/test`, plus `@axe-core/playwright` when the scan runs (the default, or an options object) |
 | `/csp` | `@playwright/test` |
@@ -651,7 +651,8 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
   `overrides: { workers: 1 }`.
 - **`goOffline` takes the whole context offline**, every page of it, until
   `goOnline`. That it reaches a worker's own fetches is verified in Chromium,
-  where `pwaProject` runs.
+  where `pwaProject` runs. It needs `@playwright/test` 1.61 or newer
+  ([troubleshooting](./docs/troubleshooting.md#offline-a-fetch-from-the-page-still-answers-200-on-an-older-playwright)).
 - **`settled` does not wait for web fonts**, which change widths:
   `await page.evaluate(() => document.fonts.ready)` first.
 - **Never import `/storybook/capture` or `/storybook/setup` from Node** — they

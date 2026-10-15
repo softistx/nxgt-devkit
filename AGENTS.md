@@ -100,6 +100,21 @@ installs those two, builds, typechecks the package and runs `test/e2e/msw.pw.ts`
 It keeps `bun.lock`, so the Chromium the lockfile's Playwright installed is
 the one it uses.
 
+The `@playwright/test` floor (`^1.61.0`) is measured by the same script with
+`--playwright 1.61.1` (`bun run test:lower-peers --playwright 1.61.1`; a second
+CI step): only `@playwright/test` moves, (and `@nxgt/msw-graphql`'s copy of it), with a root `overrides` entry for
+`playwright-core` (`@axe-core/playwright` takes it as a peer, and the lockfile's
+copy would be a second `Page` type). This leg downloads its own browser into the
+shared cache (the workspace's is not that version's): it runs
+`playwright install chromium-headless-shell`, as ci.yml's main step does, after
+the install, then builds, typechecks
+and runs the unit specs and both Playwright configs. Bump the version it is
+given only to the newest patch of the floor's minor. The floor is 1.61 because
+`goOffline` needs `context.setOffline` to reach the service worker's fetches:
+`pwa.pw.ts` "offline, the worker answers from its cache" fails on 1.55.1, 1.56.1,
+1.57.0, 1.58.2, 1.59.1 and 1.60.0, and passes on 1.61.0 and every later minor
+tried. `--grep <title>` bisects a failing spec across versions.
+
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
 `scripts/newest-peers.ts`. That script and its spec come from the graphql repository's
@@ -146,6 +161,18 @@ specs) it resolves to `src/screens/clear.ts`. A spec asserts the file exists.
 **Build before typecheck.** In a fresh checkout or worktree, run `bun run build`
 before `bun run typecheck` or `bun run test`. `@nxgt/playwright`'s specs import
 `@nxgt/msw-graphql` through its `dist/` types, which only the build writes.
+
+**Typecheck stays `tsc`, not `bun check`.** Bun 1.4.3's built-in checker
+(there is no `bun tsc`: that runs `node_modules/.bin/tsc`) was measured here:
+the same errors as tsc 6.0.3, word for word (a clean tree, a tree without
+`dist/`, seeded errors), about ten times faster. It is not used, for three
+reasons: it checks with Bun's own bundled TypeScript 6.0.3 and ignores
+`node_modules/typescript` (shown in nxgt-graphql with a broken fake
+`typescript` package; not re-measured here), so the newest-peers leg, which installs
+TypeScript 7 (the peer is `^6.0.3 || ^7.0.0`), would silently check against
+6; at the root, `bun check` runs this repository's `check` script (Biome)
+instead of the built-in; and it emits nothing, so `build.ts` needs tsc for
+the declarations anyway.
 
 - `bun test src` — the pure logic: names, config, the Storybook project shape.
 - `playwright test -c test/playwright.config.ts` — the pages, fixtures, fills

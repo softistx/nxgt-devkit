@@ -37,6 +37,8 @@ Nothing is in progress.
 
 ## Shipped
 
+- **Playwright 1.61 floor** — the `@playwright/test` peer is `^1.61.0`: from that version `goOffline` also takes a service worker's own fetches offline. 0.7.0.
+
 Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
 
 - **Application checks in one call** — `/csp` fails a test on a
