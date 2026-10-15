@@ -85,6 +85,7 @@ the **mock's** `fetch` in the resolver: a plain unpatched `fetch` would send the
 marker to the server. A `strict` mock does not throw for it.
 
 ```ts
+import { createMockFetch } from '@nxgt/msw-graphql/fetch';
 import { bypass, HttpResponse, http } from 'msw';
 
 const url = 'https://api.example.com/profile';
@@ -103,6 +104,10 @@ goes to `fallback` (or the real `fetch`), as msw does. It is not an unhandled
 request, so `strict: true` does not throw for it:
 
 ```ts
+import { createMockFetch } from '@nxgt/msw-graphql/fetch';
+import { http, passthrough } from 'msw';
+
+const realFetch = globalThis.fetch;
 const { fetch } = createMockFetch(
 	[http.get('https://cdn.example.test/*', () => passthrough())],
 	{ strict: true, fallback: realFetch },

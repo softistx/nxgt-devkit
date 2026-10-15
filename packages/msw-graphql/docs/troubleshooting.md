@@ -148,7 +148,8 @@ it: its equivalent is `strict` ([no handler](#createmockfetch-no-handler-for-met
 request is unhandled by design: a handler that calls `passthrough()` does not
 count, and neither does `fetch(bypass(request))` inside a resolver.
 **Fix:** add a handler for that URL, let it through explicitly, or use
-`'bypass'` (the default) or `'warn'`:
+`'bypass'` (`startMockServer`'s default; a direct `server.listen()` defaults
+to `'warn'`, as msw does) or `'warn'`:
 
 ```ts
 import { http, passthrough } from 'msw';
