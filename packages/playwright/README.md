@@ -345,8 +345,9 @@ test('labels fit a phone', async ({ page }) => {
 ```
 
 An icon button a mouse hits and a thumb misses is the third. `expectTapTargets`
-fails on a link, button or control smaller than 44x44 CSS pixels (a 24px
-minimum is axe's `target-size`, which `expectAccessible` already runs);
+fails on a link, button or control smaller than 44x44 CSS pixels, unless its
+invisible hit area (a 44px `::before`) fills that square (`hitArea: false` turns
+the probe off; a 24px minimum is axe's `target-size`, which `expectAccessible` already runs);
 `checkScreen` takes `tapTargets: (info) => isMobileProject(info)` for phones
 only:
 

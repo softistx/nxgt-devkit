@@ -371,6 +371,7 @@ fits a mouse and gets missed on a phone is the usual find.
 type TapTargetOptions = {
 	size?: number; // default 44
 	spacing?: boolean; // default false
+	hitArea?: boolean; // default true
 	targets?: string | readonly string[]; // default DEFAULT_TAP_TARGETS
 	include?: string | readonly string[]; // default: the whole document
 	exclude?: string | readonly string[];
@@ -436,9 +437,36 @@ the selector of the target that crowds it.
 
 The size is the element's border box, as `getBoundingClientRect` reports it:
 grow it with `padding`, or `min-width` and `min-height`, on the element
-itself. An absolutely positioned `::after` that extends the hit area is not
-part of that box, so it never makes a target pass; `exclude` the target when
-the design cannot grow.
+itself, or give it a hit area (below).
+
+**The real hit area (`hitArea`, on by default).** A design system draws a
+checkbox, a switch, a radio or a toast's close button small and gives it an
+invisible 44px `::before` / `::after`, often under `@media (pointer: coarse)`.
+The box stays small, the thumb does not miss it. For a target whose box is
+smaller than `size` in either dimension, the check probes the `size` by `size`
+square centred on the box with `document.elementFromPoint`, on a 5x5 grid
+(points 1px inside the square's edges). The target passes when every probe hits
+the target itself, one of its descendants (a pseudo-element hit-tests as its
+element), or, for a checkbox or radio, one of its labels or their descendants.
+With `spacing`, such a target is not counted as undersized; its neighbours
+still judge it by its visible box. A target inside a shadow tree passes when
+the probe hits the shadow host that holds it; nothing deeper is tried.
+
+So the pseudo-element has to be hit-testable: not `pointer-events: none`, not
+covered by another element (a neighbour, a sticky bar), not clipped by an
+ancestor's `overflow`, and as large as `size`. Under `@media (pointer:
+coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
+7 with touch, emulates `pointer: coarse`) and not in a desktop one, which is
+the point of running the check on phones.
+
+A target that is off screen, or whose square sticks out of the viewport, is
+scrolled to the middle (`scrollIntoView({ block: 'center', inline: 'center' })`,
+without smooth scrolling) for the probe, and the window and every scrolled
+ancestor are put back where they were, so the page the next check sees is the
+one you had. Scroll listeners on the page fire for the two moves. A square that still sticks out
+(a control at the page's edge) is probed at the viewport's edge, and a viewport
+smaller than `size` falls back to the box. `hitArea: false` restores the 0.8
+behaviour: the visible box only, and no scrolling.
 
 The message counts every offender and lists at most `max`. Run it on a phone
 viewport: a desktop layout has small targets on purpose, which is why

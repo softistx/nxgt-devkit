@@ -66,6 +66,7 @@ throws itself are quoted exactly.
   - [`Text overflows its box in <n> elements`](#text-overflows-its-box-in-n-elements)
   - [A clipped label fails although it shows a tooltip](#a-clipped-label-fails-although-it-shows-a-tooltip)
   - [`<n> tap targets are smaller than 44x44px`](#n-tap-targets-are-smaller-than-44x44px)
+  - [A control with an enlarged hit area still fails `expectTapTargets`](#a-control-with-an-enlarged-hit-area-still-fails-expecttaptargets)
   - [`` expectTapTargets: `targets` is empty. ``](#expecttaptargets-targets-is-empty)
   - [`` expectTapTargets: `include` matched no element (<selectors>) ``](#expecttaptargets-include-matched-no-element-selectors)
   - [`` expectNoTextOverflow: `include` matched no element (<selectors>) ``](#expectnotextoverflow-include-matched-no-element-selectors)
@@ -959,8 +960,9 @@ The message continues `(412x839 viewport):` and lists the targets, each as
 32px, a text link whose box is 20px tall. With `spacing: true` a smaller one
 also fails when another target is within `size` of it (`, too close to <x>`).
 **Fix:** grow the element's own box, with `padding` or `min-width` and
-`min-height`, or leave the target out. The check reads the border box, so an
-absolutely positioned `::after` that extends the hit area never makes it pass:
+`min-height`, give it a hit area (see
+[the next entry](#a-control-with-an-enlarged-hit-area-still-fails-expecttaptargets)),
+or leave the target out:
 
 ```css
 .icon-button { min-width: 44px; min-height: 44px; }
@@ -968,6 +970,29 @@ absolutely positioned `::after` that extends the hit area never makes it pass:
 
 `expectTapTargets(page, { exclude: '.legal a' })` leaves a target out;
 `{ size: 24 }` asks for WCAG 2.5.8's minimum instead.
+
+### A control with an enlarged hit area still fails `expectTapTargets`
+
+**When:** a checkbox, a switch or a close button has an invisible 44px
+`::before` / `::after`, and `expectTapTargets` still reports its 20px box.
+**Why:** since 0.9.0 the check probes the real hit area (`hitArea`, on by
+default): `elementFromPoint` on a 5x5 grid over the `size` square centred on
+the box, and every point must hit the control, its descendants or, for a
+checkbox or radio, its labels. A probe that lands elsewhere fails it:
+
+- the pseudo-element is `pointer-events: none`, or is smaller than `size`;
+- another element covers part of the square (a neighbour, a sticky bar, a
+  toast);
+- an ancestor's `overflow` clips it (a control at the edge of a scroll box);
+- the rule is under `@media (pointer: coarse)` and the project is a desktop
+  one: only the mobile project emulates a coarse pointer;
+- the control is in the viewport's corner: the probe stays inside the viewport,
+  and a viewport smaller than `size` falls back to the box.
+
+**Fix:** make the pseudo-element hit-testable and as large as `size`, or run
+the check in the project the rule is for
+(`tapTargets: (info) => isMobileProject(info)`). `hitArea: false` judges the
+visible box only; `exclude` leaves a target out.
 
 ### `` expectTapTargets: `targets` is empty. ``
 
