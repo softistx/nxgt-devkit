@@ -59,6 +59,55 @@ executor and the control, which are plain `Request` / `Response` functions.
 Specs that run under Bun (`bun test`) can call them directly, as in
 [control](control.md#unit-tests-without-http).
 
+## `bypass()` and `passthrough()`
+
+Since 0.3.0, both msw helpers work where this package fetches for you: in
+`startMockServer` **under Bun with msw 3** (Node and msw 2 use msw's own
+`setupServer`, which has always supported them) and in `createMockFetch`.
+
+- **`fetch(bypass(request))`** in a resolver reaches the real server and skips
+  the handlers, so the resolver is not entered again. msw's `bypass()` appends
+  `msw/passthrough` to the request's `accept` header; this package recognises the
+  token and strips it before sending (`application/json, msw/passthrough` becomes
+  `application/json`; an `accept` that held only the token is removed).
+- **`passthrough()`** returned by a handler sends the request for real: to the
+  original `fetch` under Bun, to `fallback` (or the real `fetch`) in
+  `createMockFetch`. It is not an unhandled request: `onUnhandledRequest:
+  'warn'` / `'error'` and `strict` do not react to it.
+
+```ts
+// mocks.ts, under Bun with msw 3
+import { startMockServer } from '@nxgt/msw-graphql/node';
+import { bypass, HttpResponse, http, passthrough } from 'msw';
+
+startMockServer([
+	// Real data, patched.
+	http.get('https://api.example.com/profile', async ({ request }) => {
+		const real = await fetch(bypass(request)); // the real server answers
+		return HttpResponse.json({ ...(await real.json()), patched: true });
+	}),
+	// Real data, untouched.
+	http.get('https://api.example.com/health', () => passthrough()),
+]);
+```
+
+In `createMockFetch`, call the mock's `fetch` in the resolver
+([example](fetch.md#bypass-and-passthrough)).
+
+**What the real `fetch` receives.** The request is rebuilt as a `Request`
+(`new Request(input, init)`), which carries the method, headers and body, and
+the init's other keys ride along as the second argument, so they are kept: every
+`RequestInit` key except `body`, `headers` and `method` (`signal`, `redirect`,
+`credentials`, and Bun's `unix`, `tls`, `proxy`...). Bun builds a `Request` without
+those Bun-only options, which is why they are passed again. The marker is
+removed **in place** from the new `Request`'s headers: Bun ignores an empty
+`headers` in `new Request(request, { headers })` and keeps the input's, so a
+copy could not drop it. What you observe: the server never sees
+`msw/passthrough`, and a mocked-then-bypassed call carries the same method,
+body and headers as the original. A request that no handler matches under Bun
+and that carries no stream body is sent with the caller's own `input` and
+`init` untouched.
+
 ## graphql 16 or 17
 
 Both work, as the matrix shows; the peer is `^16.0.0 || ^17.0.0`. `@graphql-tools/mock` 9.1.16 accepts both.

@@ -203,7 +203,9 @@ TypeScript 7 (the peer is `^6.0.3 || ^7.0.0`), would silently check against
 instead of the built-in; and it emits nothing, so `build.ts` needs tsc for
 the declarations anyway.
 
-- `bun test src` — the pure logic: names, config, the Storybook project shape.
+- `bun test src ./scripts/` — the pure logic: names, config, the Storybook
+  project shape, and the lower-peers script's option parsing
+  (`scripts/lower-peers/options.spec.ts`).
 - `bun test ./test/storybook/` — a real-browser Storybook fixture (stories, a
   `.storybook`, a Vitest browser project made by `storybookProject`). Part of
   the package's `test` script. It imports the built `@nxgt/playwright/storybook`,

@@ -11,6 +11,9 @@ were reproduced while writing this page.
   [`server.boundary()` under Bun](#nxgtmsw-graphql-serverboundary-is-not-available-under-bun-with-msw-3),
   [production](#createmockcontrol-is-dev-and-test-only-node_env-is-production),
   [`createMockFetch: no handler`](#createmockfetch-no-handler-for-method-url),
+  [`Cannot bypass a request when using the "error" strategy`](#msw-cannot-bypass-a-request-when-using-the-error-strategy-for-the-onunhandledrequest-option),
+  [`server is already listening`](#failed-to-call-serverlisten-the-server-is-already-listening),
+  [`unknown strategy`](#failed-to-react-to-an-unhandled-request-unknown-strategy-value),
   [control answers](#the-control-answers-415-404-405-or-400),
   [parallel specs](#mock-server-specs-fail-when-run-in-parallel),
   [second `startMockServer` ignored](#my-second-startmockserver-calls-handlers-or-options-are-ignored),
@@ -130,6 +133,68 @@ const { fetch } = createMockFetch(
 	[...handlers, http.get('https://cdn.example.test/*', () => new Response(null, { status: 204 }))],
 	{ strict: true },
 );
+```
+
+## `[MSW] Cannot bypass a request when using the "error" strategy for the "onUnhandledRequest" option.`
+
+**When:** `startMockServer(handlers, { onUnhandledRequest: 'error' })` (or
+`server.listen({ onUnhandledRequest: 'error' })`) and the app sends a request no
+handler matches: the `fetch` rejects with this error, after msw printed
+`[MSW] Error: intercepted a request without a matching request handler`. Thrown
+by this package's server under Bun with msw 3, and by msw's own server under
+Node (msw 3 words it with `"onUnhandledFrame"`). `createMockFetch` never throws
+it: its equivalent is `strict` ([no handler](#createmockfetch-no-handler-for-method-url)).
+**Why:** `'error'` fails the request instead of sending it for real. The
+request is unhandled by design: a handler that calls `passthrough()` does not
+count, and neither does `fetch(bypass(request))` inside a resolver.
+**Fix:** add a handler for that URL, let it through explicitly, or use
+`'bypass'` (`startMockServer`'s default; a direct `server.listen()` defaults
+to `'warn'`, as msw does) or `'warn'`:
+
+```ts
+import { http, passthrough } from 'msw';
+
+startMockServer(
+	[...handlers, http.get('https://cdn.example.test/*', () => passthrough())],
+	{ onUnhandledRequest: 'error' },
+);
+```
+
+## `Failed to call "server.listen()": the server is already listening.`
+
+**When:** calling `server.listen()` on the server `startMockServer` returned.
+msw 3 words it `... Remove the redundant "server.listen()" call.`; under Bun
+with msw 3 this package throws the shorter message above.
+**Why:** `startMockServer` already calls `listen()` for you, and it is
+idempotent per process: a second `startMockServer` call returns the first
+`{ server, control }`.
+**Fix:** drop the `listen()` call. To stop and start again, `close()` first
+(which also forgets the server, so the next `startMockServer` starts a new one):
+
+```ts
+const { server } = startMockServer(handlers);
+// no server.listen() here: it is already listening
+server.close();
+```
+
+## `Failed to react to an unhandled request: unknown strategy "<value>"`
+
+**When:** `server.listen({ onUnhandledRequest: value })`, or
+`startMockServer(handlers, { onUnhandledRequest: value })`, where `value` is
+not `'bypass'`, `'warn'` or `'error'`: a typo, or an unchecked string such as an
+environment variable. Under Bun with msw 3 the message is the one above; msw 3's
+own server on Node says `unknown strategy "<value>" ... network frame`
+and also accepts a callback function (this package's `startMockServer` type
+does not).
+**Why:** the option is validated when `listen()` runs. Under Bun nothing is
+patched when it throws, so `fetch` stays the real one.
+**Fix:** pass one of the three strategies:
+
+```ts
+const strategy = process.env.MOCK_UNHANDLED;
+startMockServer(handlers, {
+	onUnhandledRequest: strategy === 'error' || strategy === 'warn' ? strategy : 'bypass',
+});
 ```
 
 ## `createMockControl is dev and test only: NODE_ENV is "production"`

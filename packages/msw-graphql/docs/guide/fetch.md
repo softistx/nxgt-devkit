@@ -72,6 +72,52 @@ server.use(http.post('https://api.example.com/graphql', () => HttpResponse.json(
 server.resetHandlers();
 ```
 
+## `bypass()` and `passthrough()`
+
+Both are msw's own helpers, and `createMockFetch` honours them (since 0.3.0).
+
+**`bypass(request)`** in a resolver sends that request to the real server, to
+build a response from the real one. msw marks the request with
+`accept: msw/passthrough`; `createMockFetch` recognises the marker, skips the
+handlers (so the resolver is not entered again) and strips the marker before
+the request goes to `fallback`, or to the real `fetch` when there is none. Call
+the **mock's** `fetch` in the resolver: a plain unpatched `fetch` would send the
+marker to the server. A `strict` mock does not throw for it.
+
+```ts
+import { createMockFetch } from '@nxgt/msw-graphql/fetch';
+import { bypass, HttpResponse, http } from 'msw';
+
+const url = 'https://api.example.com/profile';
+let mock: ReturnType<typeof createMockFetch>;
+mock = createMockFetch([
+	http.get(url, async ({ request }) => {
+		const real = await mock.fetch(bypass(request)); // reaches the real server
+		return HttpResponse.json({ ...(await real.json()), patched: true });
+	}),
+]);
+```
+
+**`passthrough()`** answers "not mine, send it for real". Before 0.3.0
+`createMockFetch` returned msw's `302` response to the caller; now the request
+goes to `fallback` (or the real `fetch`), as msw does. It is not an unhandled
+request, so `strict: true` does not throw for it:
+
+```ts
+import { createMockFetch } from '@nxgt/msw-graphql/fetch';
+import { http, passthrough } from 'msw';
+
+const realFetch = globalThis.fetch;
+const { fetch } = createMockFetch(
+	[http.get('https://cdn.example.test/*', () => passthrough())],
+	{ strict: true, fallback: realFetch },
+);
+await fetch('https://cdn.example.test/logo.png'); // answered by realFetch
+```
+
+What the real `fetch` receives (a `Request` plus the init's extra options) is
+described in [runtimes](runtimes.md#bypass-and-passthrough).
+
 ## In an SSR app
 
 ```ts
