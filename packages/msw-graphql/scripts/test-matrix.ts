@@ -17,6 +17,7 @@
  * build, `bun test src` and the Node smoke test.
  */
 
+import { rmSync } from 'node:fs';
 import { cp, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -27,6 +28,15 @@ const pkgDir = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const rootDir = join(pkgDir, '..', '..');
 
 const work = await mkdtemp(join(tmpdir(), 'msw-graphql-matrix-'));
+// A signal skips the `finally` below: remove the scratch folder, then die of
+// the same signal so the exit status says so.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+	process.on(signal, () => {
+		rmSync(work, { recursive: true, force: true });
+		process.removeAllListeners(signal);
+		process.kill(process.pid, signal);
+	});
+}
 const copy = join(work, 'packages', 'msw-graphql');
 try {
 	await mkdir(copy, { recursive: true });
