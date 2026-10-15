@@ -127,6 +127,11 @@ given only to the newest patch of the floor's minor. The floor is 1.61 because
 1.57.0, 1.58.2, 1.59.1 and 1.60.0, and passes on 1.61.0 and every later minor
 tried. `--grep <title>` bisects a failing spec across versions.
 
+`test-matrix.ts` and `test-lower-peers.ts` carry the same SIGINT/SIGTERM
+handler (a signal skips their `finally`): it removes the scratch folder and
+re-raises the signal. Change both; a shared helper would cross the package
+boundary.
+
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
 `scripts/newest-peers.ts`. That script and its spec come from the graphql repository's

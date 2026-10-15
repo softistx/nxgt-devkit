@@ -33,6 +33,7 @@
  * Modelled on `@nxgt/msw-graphql`'s `scripts/test-matrix.ts`.
  */
 
+import { rmSync } from 'node:fs';
 import { cp, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -70,6 +71,23 @@ const SKIP = new Set([
 ]);
 
 const work = await mkdtemp(join(tmpdir(), 'playwright-lower-peers-'));
+// A signal skips the `finally` below: remove the scratch folder, then die of
+// the same signal so the exit status says so. Best effort: a child the signal
+// did not reach may still write into the folder.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+	process.once(signal, () => {
+		try {
+			rmSync(work, {
+				recursive: true,
+				force: true,
+				maxRetries: 3,
+				retryDelay: 100,
+			});
+		} finally {
+			process.kill(process.pid, signal);
+		}
+	});
+}
 try {
 	await cp(rootDir, work, {
 		recursive: true,
