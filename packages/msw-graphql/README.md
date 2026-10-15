@@ -200,6 +200,9 @@ await control.reset();
   its server on msw's `fetch/web` interceptor, so it mocks `fetch` but not
   `node:http` clients. Your own `setupServer` calls under Bun need the same, or
   `createMockFetch`; see [docs/guide/runtimes.md](docs/guide/runtimes.md).
+- **Do not bundle the mock server** (`bun build --compile`, a server bundle):
+  under Bun it resolves msw's interceptors with `createRequire` from msw's own
+  location, which a bundle defeats. Keep `msw` external, in `node_modules`.
 - **`typescript-msw` handlers do not work on msw 3.** `graphql.query` is gone
   from `msw`; generate them with
   [`@nxgt/graphql-codegen-msw`](https://www.npmjs.com/package/@nxgt/graphql-codegen-msw), or use

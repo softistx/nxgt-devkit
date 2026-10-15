@@ -17,6 +17,43 @@ type Network = {
 	listHandlers: () => ReadonlyArray<AnyHandler>;
 };
 
+type NodeModule = {
+	defaultNetworkOptions: Record<string, unknown>;
+	AsyncHandlersController: new (
+		handlers: AnyHandler[],
+	) => { boundary: MswServer['boundary'] };
+};
+type ExperimentalModule = {
+	defineNetwork: (options: unknown) => Network;
+	InterceptorSource: new (options: { interceptors: unknown[] }) => unknown;
+};
+type FetchWebModule = { FetchInterceptor: new () => unknown };
+
+/**
+ * Throws a readable error when an msw 3 minor moved what the Bun path relies
+ * on. Pure, so a spec can feed it the shapes of a future msw.
+ */
+export function assertWebServerModules(
+	mswVersion: string,
+	node: Partial<NodeModule>,
+	experimental: Partial<ExperimentalModule>,
+	fetchWeb: Partial<FetchWebModule>,
+): void {
+	const missing = [
+		['defineNetwork', experimental.defineNetwork],
+		['InterceptorSource', experimental.InterceptorSource],
+		['AsyncHandlersController', node.AsyncHandlersController],
+		['defaultNetworkOptions', node.defaultNetworkOptions],
+		['FetchInterceptor', fetchWeb.FetchInterceptor],
+	]
+		.filter(([, value]) => value === undefined)
+		.map(([name]) => name);
+	if (missing.length === 0) return;
+	throw new Error(
+		`@nxgt/msw-graphql cannot mock fetch under Bun with msw ${mswVersion}: ${missing.join(', ')} not found. Its Bun path needs msw/experimental's defineNetwork and msw's @mswjs/interceptors/fetch/web (see mswjs/msw#2811).`,
+	);
+}
+
 /** Bun, whose native `fetch` msw 3's Node interceptors never see (mswjs/msw#2811). */
 export const isBun = (): boolean =>
 	typeof process !== 'undefined' && Boolean(process.versions?.bun);
@@ -42,30 +79,23 @@ export function createWebServer(handlers: AnyHandler[]): MswServer | undefined {
 	// msw 2.13 to 2.15 already ship `defineNetwork` and `defaultNetworkOptions`
 	// but intercept Bun's `fetch` through `setupServer`, and their interceptors
 	// have no `fetch/web`: only the major tells msw 3 apart.
-	const major = Number(
-		(here('msw/package.json') as { version: string }).version.split('.')[0],
-	);
+	const mswVersion = (here('msw/package.json') as { version: string }).version;
+	const major = Number(mswVersion.split('.')[0]);
 	if (major < 3) return;
-	const node = here('msw/node') as {
-		defaultNetworkOptions: Record<string, unknown>;
-		AsyncHandlersController: new (
-			handlers: AnyHandler[],
-		) => { boundary: MswServer['boundary'] };
-	};
-	const { defaultNetworkOptions, AsyncHandlersController } = node;
-	const experimental = here('msw/experimental') as {
-		defineNetwork: (options: unknown) => Network;
-		InterceptorSource: new (options: { interceptors: unknown[] }) => unknown;
-	};
-	const { FetchInterceptor } = createRequire(here.resolve('msw/node'))(
+	const node = here('msw/node') as Partial<NodeModule>;
+	const experimental = here('msw/experimental') as Partial<ExperimentalModule>;
+	const fetchWeb = createRequire(here.resolve('msw/node'))(
 		'@mswjs/interceptors/fetch/web',
-	) as { FetchInterceptor: new () => unknown };
+	) as Partial<FetchWebModule>;
+	assertWebServerModules(mswVersion, node, experimental, fetchWeb);
+	const { defaultNetworkOptions, AsyncHandlersController } = node as NodeModule;
+	const { FetchInterceptor } = fetchWeb as FetchWebModule;
 
 	const controller = new AsyncHandlersController(handlers);
-	const network = experimental.defineNetwork({
+	const network = (experimental as ExperimentalModule).defineNetwork({
 		...defaultNetworkOptions,
 		sources: [
-			new experimental.InterceptorSource({
+			new (experimental as ExperimentalModule).InterceptorSource({
 				interceptors: [new FetchInterceptor()],
 			}),
 		],

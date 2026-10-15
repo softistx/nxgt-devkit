@@ -95,6 +95,21 @@ bun -e "import{setupServer}from'msw/node';import{http,HttpResponse}from'msw';con
 
 The probe lives in this package's `scripts/` folder in the repository.
 
+## `@nxgt/msw-graphql cannot mock fetch under Bun with msw <version>: <names> not found.`
+
+**When:** `startMockServer` under Bun with an msw 3 minor that no longer ships
+`defineNetwork`, `InterceptorSource` (`msw/experimental`), `AsyncHandlersController`,
+`defaultNetworkOptions` (`msw/node`) or `FetchInterceptor`
+(`@mswjs/interceptors/fetch/web`). The message names the installed msw version
+and the missing ones.
+**Why:** the Bun path is built on those, measured on msw 3.0.0 and 3.0.3
+([mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811)). It also happens
+when the mock server is bundled, so msw's interceptors cannot be resolved.
+**Fix:** keep `msw` external (in `node_modules`), or pin msw to a measured
+version (`bun add -d msw@3.0.3`), and file the break on this package. Meanwhile
+`createMockFetch` from `@nxgt/msw-graphql/fetch` patches nothing and needs none
+of them.
+
 ## `createMockFetch: no handler for <METHOD> <url>.`
 
 **When:** `createMockFetch(handlers, { strict: true })` gets a request that no

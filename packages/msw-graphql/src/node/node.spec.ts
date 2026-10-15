@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import { getResponse, HttpResponse, http } from 'msw';
 import { startMockServer } from './index';
+import { assertWebServerModules } from './web-server';
 
 test('starts a server holding the given handlers', async () => {
 	const handlers = [http.get('http://x.test/a', () => HttpResponse.json({}))];
@@ -168,10 +169,44 @@ test('after close(), fetch is no longer intercepted', async () => {
 });
 
 test('an unmatched request is bypassed, or errors with onUnhandledRequest: error', async () => {
-	const { server } = startMockServer([], { onUnhandledRequest: 'error' });
+	// A real local server: a bypassed request reaches it, so only the
+	// 'error' policy can make the fetch reject.
+	const real = Bun.serve({ port: 0, fetch: () => new Response('real') });
+	const url = `http://localhost:${real.port}/c`;
 	try {
-		await expect(fetch('http://unserved.invalid/c')).rejects.toThrow();
+		const bypass = startMockServer([]);
+		try {
+			expect(await (await fetch(url)).text()).toBe('real');
+		} finally {
+			bypass.server.close();
+		}
+		const strict = startMockServer([], { onUnhandledRequest: 'error' });
+		try {
+			await expect(fetch(url)).rejects.toThrow();
+		} finally {
+			strict.server.close();
+		}
 	} finally {
-		server.close();
+		await real.stop(true);
 	}
+});
+
+test('assertWebServerModules names the missing pieces and the msw version', () => {
+	const node = { defaultNetworkOptions: {}, AsyncHandlersController: class {} };
+	const experimental = {
+		defineNetwork: () => ({}),
+		InterceptorSource: class {},
+	};
+	const fetchWeb = { FetchInterceptor: class {} };
+	expect(() =>
+		assertWebServerModules(
+			'3.0.3',
+			node as never,
+			experimental as never,
+			fetchWeb,
+		),
+	).not.toThrow();
+	expect(() => assertWebServerModules('3.9.0', node as never, {}, {})).toThrow(
+		'@nxgt/msw-graphql cannot mock fetch under Bun with msw 3.9.0: defineNetwork, InterceptorSource, FetchInterceptor not found.',
+	);
 });

@@ -46,6 +46,8 @@ The peer is `msw ^2.12.10 || ^3.0.0`.
 
   Since 0.3.0, **`startMockServer` does that for you**: under Bun with msw 3 it calls `defineNetwork` (`msw/experimental`) with `msw/node`'s `defaultNetworkOptions`, its `AsyncHandlersController` and a single `fetch/web` interceptor source. It returns the same `{ server, control }` (`listen`, `close`, `use`, `resetHandlers`, `restoreHandlers`, `listHandlers`, `boundary`, `events`). The one difference: that interceptor patches `globalThis.fetch` only, so a `node:http` client (axios' Node adapter, `got`) is not mocked under Bun. For such a client, or for your own `setupServer` calls, use `createMockFetch` from `@nxgt/msw-graphql/fetch` (patches nothing; the client must take an injected `fetch`), or msw 2. Node, and msw 2 on either runtime, keep `setupServer`, so they intercept `http`, `XMLHttpRequest` and WebSocket as before.
 
+  The Bun path relies on `msw/experimental` and on msw's own `@mswjs/interceptors/fetch/web`, measured on msw 3.0.0 and 3.0.3; the weekly newest-peers run catches a minor that moves them, and the package then throws an error naming the missing export (see [troubleshooting](../troubleshooting.md)). Do not bundle the mock server (`bun build --compile`, a server bundle): it resolves msw's interceptors from msw's own location with `createRequire`, which a bundle defeats, so keep `msw` external, in `node_modules`.
+
   Check what a plain `setupServer` does on your install:
 
 ```bash
