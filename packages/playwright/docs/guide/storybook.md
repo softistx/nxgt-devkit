@@ -48,6 +48,7 @@ type StorybookProjectOptions = {
 	tags?: { include?: string[]; exclude?: string[]; skip?: string[] };
 	capture?: boolean | PreviewCaptureOptions;
 	viewport?: { width: number; height: number };
+	browsers?: ('chromium' | 'firefox' | 'webkit')[];
 	executablePath?: string;
 	setupFiles?: string[];
 };
@@ -61,7 +62,7 @@ The project it returns:
   Tailwind's), aliases and `define`, so stories build like the app;
 - `plugins: [storybookTest({ configDir, tags })]` from
   `@storybook/addon-vitest/vitest-plugin`;
-- `test.browser`: enabled, headless, one `chromium` instance through
+- `test.browser`: enabled, headless, one instance per entry of `browsers` (default one `chromium`) through
   `@vitest/browser-playwright`, at `viewport`;
 - `test.setupFiles`: this package's `storybook/setup` first (it registers
   the capture `afterEach`), then yours;
@@ -74,7 +75,8 @@ The project it returns:
 | `tags` | `{ include?, exclude?, skip? }` | none | Filters stories by tag, as `storybookTest` does. With `capture`, the capture tag is appended to `include`. |
 | `capture` | `boolean \| PreviewCaptureOptions` | `false` | Capture previews; only stories carrying the capture tag run. `true` = all capture defaults. |
 | `viewport` | `{ width, height }` | `{ width: 1280, height: 800 }` | The browser viewport, in CSS px. |
-| `executablePath` | `string` | `$PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` | A Chromium to launch instead of Playwright's download. |
+| `browsers` | `('chromium' \| 'firefox' \| 'webkit')[]` | `['chromium']` | The browsers every story runs in, one Vitest instance each. Duplicates are dropped; an empty list throws. |
+| `executablePath` | `string` | `$PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` | A Chromium to launch instead of Playwright's download. Applies to the `chromium` instance only. |
 | `setupFiles` | `string[]` | `[]` | Extra setup files, run after the package's own. |
 
 ### Skip stories that cannot render headless
@@ -86,6 +88,23 @@ storybookProject({ tags: { exclude: ['no-test'] } });
 ```tsx
 export const WithCamera: Story = { tags: ['no-test'] };
 ```
+
+### Run the stories in Firefox and WebKit
+
+```ts
+storybookProject({ browsers: ['chromium', 'firefox', 'webkit'] });
+```
+
+Each story then runs once per browser, reported under the instance name
+(`chromium`, `firefox`, `webkit`), so a layout that only Firefox gets wrong
+fails there. Download the browsers first (`bunx playwright install firefox
+webkit`). With `capture`, every browser writes the same preview file: keep
+`browsers` to the default for the `previews` project.
+
+`executablePath` is a Chromium binary: it is applied to the `chromium`
+instance only, and Firefox and WebKit keep Playwright's downloads. Giving it
+while `browsers` has no `chromium` throws; the
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` variable is simply ignored there.
 
 ### A system Chromium (Arch, Manjaro)
 
