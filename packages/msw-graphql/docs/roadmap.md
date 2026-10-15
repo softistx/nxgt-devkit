@@ -38,10 +38,11 @@ Tests only, no release:
 
 Next minor, unreleased (0.3.0):
 
-- **`startMockServer` on msw 3 under Bun** — it builds its server on msw's
-  `fetch/web` interceptor (`defineNetwork`, `msw/experimental`) where
-  `setupServer` intercepts nothing, with the same `{ server, control }`. It
-  patches `fetch` only; Node and msw 2 are unchanged.
+- **`startMockServer` on msw 3 under Bun** — it patches `globalThis.fetch` and
+  answers with msw's public `getResponse` (shared with `createMockFetch`)
+  where `setupServer` intercepts nothing, with the same `{ server, control }`.
+  `fetch` only; `server.events` and `server.boundary()` throw there. Node and
+  msw 2 are unchanged.
 - **Idempotent `startMockServer`** — a second call in the same process returns
   the running server and control (its arguments are ignored), so an SSR entry
   re-evaluated under HMR does not stack listeners.

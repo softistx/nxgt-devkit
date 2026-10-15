@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, http, passthrough } from 'msw';
 import { schema } from '../../test/schema';
 import { bearerToken, createExecutor, graphqlEndpoint } from '../index';
 import { createMockState } from '../state';
@@ -146,4 +146,16 @@ test('an aborted signal rejects, as the real fetch does', async () => {
 	await expect(
 		fetch(url, { method: 'POST', signal: AbortSignal.abort() }),
 	).rejects.toThrow();
+});
+
+test('a handler that calls passthrough() goes to the fallback, even with strict', async () => {
+	const mock = createMockFetch(
+		[http.get('http://p.test/x', () => passthrough())],
+		{
+			strict: true,
+			fallback: (async (_input: RequestInfo | URL) =>
+				new Response('real')) as typeof globalThis.fetch,
+		},
+	);
+	expect(await (await mock.fetch('http://p.test/x')).text()).toBe('real');
 });

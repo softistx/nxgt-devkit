@@ -109,7 +109,8 @@ if (process.env.MOCKS === 'true') {
 
 For a client that cannot take a `fetch`, replace the `createMockFetch` lines
 with `startMockServer` from `@nxgt/msw-graphql/node`, which patches the process
-(Node, or Bun, msw 2 or 3; under Bun with msw 3 it patches `fetch` only) and
+(Node, or Bun, msw 2 or 3; under Bun with msw 3 it patches `fetch` only, and `server.events` and
+`server.boundary()` throw) and
 returns the same `control`:
 
 ```ts

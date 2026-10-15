@@ -87,12 +87,16 @@ nothing.
 **msw 3 and Bun.** msw 3's Node interceptors patch `node:net`, which Bun's
 native `fetch` does not go through, so under Bun a plain `setupServer` intercepts
 nothing (msw 2.15 does; mswjs/msw#2811, closed as expected). `startMockServer`
-therefore builds, under Bun with msw 3, a `defineNetwork` network on the
-`fetch/web` interceptor (`src/node/web-server.ts`); its spec runs it under
-`bun test`. It relies on `msw/experimental` and msw's own
-`@mswjs/interceptors/fetch/web`, measured on msw 3.0.0 and 3.0.3 (a guard throws
-naming the missing export); the weekly newest-peers run catches a minor that
-moves them. `scripts/node-smoke.mjs` runs a real msw server under Node against
+therefore patches `globalThis.fetch` itself under Bun with msw 3
+(`src/node/bun-server.ts`), resolving each request with msw's public
+`getResponse` through `src/handlers.ts`, the code `createMockFetch` shares, and
+falling back to the original fetch. That is deliberate (owner, 2026-10-15): an
+experimental msw API (`msw/experimental`'s `defineNetwork`, msw's interceptors)
+may change in a minor, `getResponse` is public. Never reach for those, nor for
+`createRequire`, to make this path richer. The cost is documented: `events` and
+`boundary()` throw there, and `node:http` is not mocked. Its spec runs under
+`bun test`; the weekly newest-peers run catches a minor that changes
+`getResponse`. `scripts/node-smoke.mjs` runs a real msw server under Node against
 the built `dist/`. `scripts/test-matrix.ts
 <graphql> <msw>` runs the whole bar against other majors in a scratch copy;
 CI runs it for graphql 16 and for msw 2, with full versions (`16 3.0.3`,

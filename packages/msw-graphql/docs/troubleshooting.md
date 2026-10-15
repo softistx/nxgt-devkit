@@ -7,6 +7,7 @@ were reproduced while writing this page.
   [`Module '"msw"' has no exported member 'graphql'`](#module-msw-has-no-exported-member-graphql),
   [Node >= 22.12](#msw-3-needs-node--2212)
 - Runtime: [not intercepted under Bun (before 0.3.0)](#failed-to-replace-a-global-value-at-_wraphandle-not-a-global-value),
+  [`server.events` under Bun](#nxgtmsw-graphql-serverevents-is-not-available-under-bun-with-msw-3),
   [production](#createmockcontrol-is-dev-and-test-only-node_env-is-production),
   [`createMockFetch: no handler`](#createmockfetch-no-handler-for-method-url),
   [control answers](#the-control-answers-415-404-405-or-400),
@@ -71,9 +72,8 @@ logged, the request is not mocked and goes to the network (`ENOTFOUND`).
 Measured.
 **Why:** msw 3's Node server patches `node:net`, which does not intercept
 Bun's native `fetch` (msw 2.15 does). msw closed
-[mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811) as expected: for
-other runtimes, build a network on the `fetch/web` interceptor.
-**Fix:** `startMockServer` does that itself under Bun with msw 3 since 0.3.0:
+[mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811) as expected.
+**Fix:** `startMockServer` patches `fetch` itself under Bun with msw 3 since 0.3.0:
 upgrade `@nxgt/msw-graphql`. It patches `globalThis.fetch` only, so a client
 built on `node:http` (axios' Node adapter, `got`) is not mocked under Bun; give
 such a client `createMockFetch`'s fetch, or run it under Node:
@@ -95,20 +95,17 @@ bun -e "import{setupServer}from'msw/node';import{http,HttpResponse}from'msw';con
 
 The probe lives in this package's `scripts/` folder in the repository.
 
-## `@nxgt/msw-graphql cannot mock fetch under Bun with msw <version>: <names> not found.`
+## `@nxgt/msw-graphql: server.events is not available under Bun with msw 3`
 
-**When:** `startMockServer` under Bun with an msw 3 minor that no longer ships
-`defineNetwork`, `InterceptorSource` (`msw/experimental`), `AsyncHandlersController`,
-`defaultNetworkOptions` (`msw/node`) or `FetchInterceptor`
-(`@mswjs/interceptors/fetch/web`). The message names the installed msw version
-and the missing ones.
-**Why:** the Bun path is built on those, measured on msw 3.0.0 and 3.0.3
-([mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811)). It also happens
-when the mock server is bundled, so msw's interceptors cannot be resolved.
-**Fix:** keep `msw` external (in `node_modules`), or pin msw to a measured
-version (`bun add -d msw@3.0.3`), and file the break on this package. Meanwhile
-`createMockFetch` from `@nxgt/msw-graphql/fetch` patches nothing and needs none
-of them.
+**When:** reading `server.events` or calling `server.boundary()` on the server
+`startMockServer` returns, under Bun with msw 3 (also `server.boundary()`).
+**Why:** under Bun with msw 3 the server patches `globalThis.fetch` and resolves
+requests with msw's public `getResponse`. It has no event emitter nor async
+context; it is the one difference from `setupServer`, and it is typed as
+`setupServer`'s so Node code compiles unchanged.
+**Fix:** run that code under Node or msw 2, or observe requests in a handler.
+`listen`, `close`, `use`, `resetHandlers`, `restoreHandlers` and `listHandlers`
+work.
 
 ## `createMockFetch: no handler for <METHOD> <url>.`
 

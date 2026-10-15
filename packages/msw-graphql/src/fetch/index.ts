@@ -1,5 +1,5 @@
-import { getResponse } from 'msw';
 import { createMockControl, type MockControlOptions } from '../control';
+import { answer, createHandlerStore } from '../handlers';
 
 export type CreateMockFetchOptions = Omit<MockControlOptions, 'server'> & {
 	/** Throw on a request no handler matches, instead of sending it for real. */
@@ -27,18 +27,7 @@ export function createMockFetch(
 	options: CreateMockFetchOptions = {},
 ) {
 	const { strict = false, fallback, ...controlOptions } = options;
-	const initial = [...handlers];
-	let current = [...initial];
-	const server = {
-		// Runtime handlers first, as msw's `server.use` does.
-		use: (...added: unknown[]) => {
-			current = [...added, ...current];
-		},
-		resetHandlers: () => {
-			current = [...initial];
-		},
-		listHandlers: (): readonly unknown[] => current,
-	};
+	const server = createHandlerStore(handlers);
 	const control = createMockControl({ ...controlOptions, server });
 
 	const mockFetch = async (
@@ -48,10 +37,10 @@ export function createMockFetch(
 		const request = new Request(input, init);
 		// As the real fetch does: an aborted signal rejects, mocked or not.
 		request.signal.throwIfAborted();
-		// `as never`: msw 2 and 3 name their handler types differently.
-		const mocked = await getResponse(current as never, request.clone());
+		const mocked = await answer(server.listHandlers(), request);
 		if (mocked) return mocked;
-		if (strict) {
+		// `null`: a handler called `passthrough()`, which is not an unhandled request.
+		if (strict && mocked === undefined) {
 			throw new Error(
 				`createMockFetch: no handler for ${request.method} ${request.url}.`,
 			);
