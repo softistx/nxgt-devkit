@@ -88,16 +88,23 @@ describe('storybookProject in a real Vitest browser run', () => {
 
 	test('Broken fails once per browser with its message', () => {
 		const runs = named('Broken');
+		const message = 'Text that is not rendered anywhere';
 		expect(runs).toHaveLength(browsers.length);
 		for (const run of runs) {
 			expect(run.status).toBe('failed');
-			// Chromium's stack starts with the message; Firefox's and WebKit's
-			// hold frames only, so there the failing story's file is the proof
-			// the failure came from its `play`.
+			// Firefox's and WebKit's stacks hold frames only, so per run the
+			// failing story's file is the proof the failure came from its `play`.
 			const trace = run.failureMessages?.join('\n') ?? '';
 			expect(
-				trace.includes('Text that is not rendered anywhere') ||
-					trace.includes('broken.stories.ts'),
+				trace.includes(message) || trace.includes('broken.stories.ts'),
+			).toBe(true);
+		}
+		// Chromium's stack starts with the message, so there it must show.
+		if (browsers.includes('chromium')) {
+			expect(
+				runs.some((run) =>
+					(run.failureMessages ?? []).join('\n').includes(message),
+				),
 			).toBe(true);
 		}
 	});
