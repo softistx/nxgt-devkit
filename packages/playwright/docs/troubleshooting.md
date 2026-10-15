@@ -84,8 +84,9 @@ you import needs a peer you have not installed.
 
 | Subpath | Install |
 | --- | --- |
-| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./react-router` | `@playwright/test` |
+| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./pwa`, `./react-router` | `@playwright/test` (the root re-exports `./screens`: see below) |
 | `./a11y` | `@playwright/test`, `@axe-core/playwright` |
+| `./screens` | `@playwright/test`, plus `@axe-core/playwright` when `checkScreen`'s scan runs (the default, or an options object) |
 | `./msw` | `@playwright/test`, `msw`, `@msw/playwright` |
 | `./mock-server` | `@playwright/test` |
 | `./storybook`, `./storybook/capture`, `./storybook/setup` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
@@ -126,8 +127,8 @@ bun add -d --exact vitest@4.1.10 @vitest/browser-playwright@4.1.10
 
 The message ends `Install it: bun add -d @axe-core/playwright`.
 
-**When:** the first `expectAccessible`, `accessibilityScan` or `a11y.expect()`
-of a run.
+**When:** the first `expectAccessible`, `accessibilityScan`, `a11y.expect()` or
+`checkScreen` scan (the default, or an `a11y` options object) of a run.
 **Why:** `@nxgt/playwright/a11y` loads axe only when a scan runs, and
 `@axe-core/playwright` is an optional peer: installing `@nxgt/playwright`
 does not bring it.

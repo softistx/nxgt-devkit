@@ -1,3 +1,4 @@
+export { type CheckScreenOptions, checkScreen } from './check-screen';
 export { DEFAULT_SCREENS_DIR, type ScreensMetadata } from './dir';
 export {
 	type SaveScreenOptions,

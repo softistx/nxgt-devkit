@@ -39,8 +39,8 @@ application's. A helper that needs one of them takes it as an argument
 The 0.3.0 helpers came from one application's `playwright/support/` the same
 way; left there on purpose: an off-canvas menu's `openMenu` / `followMenu`
 and a date picker's `pickDay` (a component library's labels and markup), the
-axe exclusions of a component library's known faults, and the composition of
-checks a screen goes through (`checkScreen`), which names the app's own rules.
+axe exclusions of a component library's known faults, and the app's own rules a screen's checks name (its axe wrapper, its scroller),
+which `checkScreen` takes as options (`a11y`, `scroller`).
 Framework specifics sit behind an adapter subpath (`./react-router`); the
 generic contract is a marker (`html[data-hydrated]`).
 
@@ -65,8 +65,9 @@ Every peer is **optional** and each subpath needs only its own:
 
 | subpath | needs |
 | --- | --- |
-| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./screens`, `./pwa`, `./csp`, `./react-router` | `@playwright/test` |
+| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./pwa`, `./csp`, `./react-router` | `@playwright/test` |
 | `./a11y` | + `@axe-core/playwright`, loaded on the first scan so a missing peer is named |
+| `./screens` | `@playwright/test`; `checkScreen` needs `@axe-core/playwright` when the scan runs (the default, or an options object), reached through `a11y/scan`'s lazy `loadAxe` (never imported statically, never loaded with `a11y: false` or a function); the root re-exports it, so the same holds from `.` |
 | `./msw` | + `msw` (2.12.10+ or 3), `@msw/playwright` (0.6.7 to 0.7; 0.7 needs msw 3) |
 | `./mock-server` | `@playwright/test`; no msw import, it talks HTTP |
 | `./storybook` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |

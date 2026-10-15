@@ -5,13 +5,13 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-- **Application checks lifted from a consumer** — `./csp`, the 2.4.11 focus
-  check, `checkScreen`.
+Nothing is in progress.
 
 ## Next
 
 - **More responsive checks** — tap targets large enough on a phone, and text
-  that does not overflow its box, beside `expectNoHorizontalScroll`.
+  that does not overflow its box, beside `expectNoHorizontalScroll`; `checkScreen` is where they would plug
+  in, one call per screen.
 
 ## Later
 
@@ -39,6 +39,11 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
 
+- **Application checks in one call** — `/csp` fails a test on a
+  Content-Security-Policy refusal and checks the nonce on every script, the
+  2.4.11 focus check keeps a focused field out from under a sticky bar, and
+  `checkScreen` waits for fonts and motion, saves the screen, then scans it and
+  checks that nothing scrolls sideways. 0.7.0.
 - **Sticky bars in accessibility scans** — `expectAccessible` puts sticky form
   actions back in the flow while axe runs, so `target-size` no longer flags a
   control half under the bar; `unstick` adds an app's own bars
