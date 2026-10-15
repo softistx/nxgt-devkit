@@ -9,9 +9,10 @@ export type TapTargetBox = {
 	width: number;
 	height: number;
 	/**
-	 * Set by `measure` when the box is smaller than `size` but an invisible
-	 * hit area (a `::before` / `::after`, a padding on a wrapper) covers the
-	 * `size` square centred on it: the judge counts it as large enough.
+	 * Set by `probeHitAreas` when the box is smaller than `size` but an
+	 * invisible hit area (a `::before` / `::after`; a checkbox's or radio's
+	 * label counts) covers the `size` square centred on the box: the judge
+	 * counts it as large enough.
 	 */
 	hitArea?: true;
 };
@@ -46,7 +47,7 @@ export type TapTargetOptions = {
 	spacing?: boolean;
 	/**
 	 * Measure the real hit area, not only the visible box. A target smaller
-	 * than `size` still passes when a `size` square centred on its box is hit
+	 * than `size` still passes when a `size` square centred on its box (with its labels, for a checkbox or radio) is hit
 	 * by the target itself, its descendants (a `::before` / `::after` counts as
 	 * the element) or, for a checkbox or radio, its labels: the design system
 	 * that draws a 20px checkbox with an invisible 44px `::before`. The square

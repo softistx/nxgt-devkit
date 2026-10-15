@@ -355,15 +355,79 @@ test('a checkbox whose label covers the square passes as before, with or without
 	await expectTapTargets(page, { hitArea: false });
 });
 
-test('a checkbox whose label covers the square passes through the hit probe', async ({
+test('a label whose ::before covers the square passes through the hit probe', async ({
 	page,
 }) => {
-	// The union box is 12px high only, so the label's own padding is what
-	// the probe reaches: 44px of label around a 20px input.
+	// The input and its label are 20x20px together, under 44: only the label's
+	// own 44px ::before reaches the probe. Without hitArea it fails.
 	await page.setContent(
 		html(
-			'<label style="display:inline-block;padding:12px;margin:0 0 60px"><input type="checkbox" style="margin:0;display:block;width:20px;height:20px"></label>',
+			'<style>.lab{position:relative;display:block;width:20px;height:20px}.lab::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style><label class="lab"><input type="checkbox" style="margin:0;display:block;width:20px;height:20px"></label>',
 		),
 	);
 	await expectTapTargets(page);
+	expect(await failure(expectTapTargets(page, { hitArea: false }))).toContain(
+		'20x20px',
+	);
+});
+
+// A fixed 20px button in the bottom-right corner, with a 44px ::before
+// placed by `before`.
+const fixedCorner = (before: string) =>
+	html(
+		`<style>#t{position:fixed;right:0;bottom:0;width:20px;height:20px;margin:0}#t::before{content:"";position:absolute;width:44px;height:44px;${before}}</style><button id="t" class="box" aria-label="Toggle"></button><div style="height:2000px"></div>`,
+	);
+
+test('a fixed control at the edge needs a full square on screen', async ({
+	page,
+}) => {
+	// Centred 44px ::before: 12px of it is off screen, so only ~32px count.
+	await page.setContent(
+		fixedCorner('left:50%;top:50%;transform:translate(-50%,-50%)'),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	// Offset so the whole 44px square sits on screen.
+	await page.setContent(fixedCorner('right:0;bottom:0'));
+	await expectTapTargets(page);
+});
+
+test('scrollers in a shadow root around a slotted target are restored', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style>
+			<div style="height:200px"></div>
+			<x-scroller><button class="box hit" aria-label="Toggle" style="width:20px;height:20px"></button></x-scroller>
+			<div style="height:2000px"></div>`,
+		),
+	);
+	await page.evaluate(() => {
+		customElements.define(
+			'x-scroller',
+			class extends HTMLElement {
+				constructor() {
+					super();
+					const root = this.attachShadow({ mode: 'open' });
+					root.innerHTML =
+						'<div id="s" style="height:300px;overflow:auto;padding:0 24px"><div style="height:1500px"></div><slot></slot><div style="height:800px"></div></div>';
+				}
+			},
+		);
+		const s = document
+			.querySelector('x-scroller')
+			?.shadowRoot?.getElementById('s') as HTMLElement;
+		s.scrollTop = 40;
+		window.scrollTo(0, 30);
+	});
+	const read = () =>
+		page.evaluate(() => [
+			window.scrollY,
+			document.querySelector('x-scroller')?.shadowRoot?.getElementById('s')
+				?.scrollTop,
+		]);
+	const before = await read();
+	expect(before).toEqual([30, 40]);
+	await expectTapTargets(page);
+	expect(await read()).toEqual(before);
 });

@@ -1,7 +1,7 @@
 import type { SmallTapTarget, TapTargetBox } from './types';
 
 /** Rounding of the layout: a 43.6px box is a 44px target. */
-const TOLERANCE = 0.5;
+export const TOLERANCE = 0.5;
 
 const contains = (a: TapTargetBox, b: TapTargetBox) =>
 	a.left <= b.left + TOLERANCE &&

@@ -5,17 +5,28 @@ export type Measured = {
 	boxes: TapTargetBox[];
 	/** How many roots `include` matched (the document without `include`). */
 	matched: number;
+	/**
+	 * Indices into `boxes` of the undersized targets that could have an
+	 * enlarged hit area: the ones `probeHitAreas` (hit-area.ts) should probe.
+	 */
+	probe: number[];
 };
 
 /**
  * Measures every tap target under `include`, in CSS pixels. Self-contained:
  * Playwright serialises it, so it imports nothing at run time and every
- * helper lives inside it. It judges nothing about size; the caller does.
- * Three parts: the text helpers (`say`), the predicates (`is`) and the
- * geometry (`boxOf`).
+ * helper lives inside it. It judges nothing about size; the caller does. It
+ * only reads: it never scrolls. For the undersized targets that could have
+ * an invisible hit area it also lists their index in `boxes`, and the caller
+ * probes those with `probeHitAreas`, which re-runs this selection (its
+ * skip predicates are a deliberate copy of `is` below).
+ * Four parts: the text helpers (`say`), the predicates (`is`), the geometry
+ * (`boxOf`) and the hit-area candidates (`mayEnlarge`).
  */
 export async function measure(args: {
 	size: number;
+	/** The judge's rounding slack: a box this close to `size` is large enough. */
+	tolerance: number;
 	hitArea: boolean;
 	targets: string[];
 	include: string[];
@@ -125,87 +136,39 @@ export async function measure(args: {
 		};
 	};
 
-	// Whether the `size` square centred on `box` is hit by the target (or a
-	// descendant, a label of a checkbox or radio, or the shadow host that holds
-	// it) at every point of a 5x5 grid inset 1px. A `::before` / `::after`
-	// hit-tests as its element. Shadow DOM: `elementFromPoint` answers the
-	// outermost host, so a hit on a host that contains the target in its shadow
-	// tree counts; nothing deeper is tried.
-	const covers = (el: Element, box: TapTargetBox): boolean => {
-		const size = args.size;
-		if (window.innerWidth < size || window.innerHeight < size) return false;
+	const pseudoContent = (el: Element) =>
+		['::before', '::after'].some(
+			(p) => !/^(none|normal)$/.test(getComputedStyle(el, p).content),
+		);
+	// Whether the target could have a hit area larger than its box: a
+	// pseudo-element with content on it, on a label of a checkbox or radio, or
+	// on a descendant; a descendant drawn outside the box; a shadow tree.
+	// Anything else is hit-tested as the box, so it needs no probe.
+	const mayEnlarge = (el: Element, box: TapTargetBox): boolean => {
+		if (el.shadowRoot) return true;
 		const labels =
 			el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type)
 				? [...(el.labels ?? [])]
 				: [];
-		const owns = (hit: Element | null) => {
-			if (!hit) return false;
-			if (el.contains(hit) || labels.some((l) => l.contains(hit))) return true;
-			for (
-				let r = el.getRootNode();
-				r instanceof ShadowRoot;
-				r = r.host.getRootNode()
-			) {
-				if (r.host === hit) return true;
-			}
-			return false;
+		const slack = args.tolerance;
+		const outside = (d: Element) => {
+			const r = d.getBoundingClientRect();
+			return (
+				r.width > 0 &&
+				r.height > 0 &&
+				(r.left < box.left - slack ||
+					r.top < box.top - slack ||
+					r.right > box.left + box.width + slack ||
+					r.bottom > box.top + box.height + slack)
+			);
 		};
-		const probe = (b: TapTargetBox) => {
-			const x0 = b.left + b.width / 2 - size / 2;
-			const y0 = b.top + b.height / 2 - size / 2;
-			const clamp = (v: number, max: number) =>
-				Math.min(Math.max(v, 1), max - 1);
-			for (let i = 0; i < 5; i++) {
-				for (let j = 0; j < 5; j++) {
-					const x = clamp(x0 + 1 + (i * (size - 2)) / 4, window.innerWidth);
-					const y = clamp(y0 + 1 + (j * (size - 2)) / 4, window.innerHeight);
-					if (!owns(document.elementFromPoint(x, y))) return false;
-				}
-			}
-			return true;
-		};
-		const inside = (b: TapTargetBox) =>
-			b.left + b.width / 2 - size / 2 >= 0 &&
-			b.top + b.height / 2 - size / 2 >= 0 &&
-			b.left + b.width / 2 + size / 2 <= window.innerWidth &&
-			b.top + b.height / 2 + size / 2 <= window.innerHeight;
-		if (inside(box)) return probe(box);
-		// Off screen, or the square sticks out: scroll the target to the middle,
-		// probe, and put back the window and every scrolled ancestor (an
-		// unrestored scroll changes what the next check sees). A square that
-		// still sticks out (the page's edge) is probed at the viewport's edge.
-		const saved: [Element, number, number][] = [];
-		for (
-			let p: Element | null = el.parentElement ?? null;
-			p;
-			p =
-				p.parentElement ??
-				((p.getRootNode() as ShadowRoot).host as Element | undefined) ??
-				null
-		) {
-			saved.push([p, p.scrollLeft, p.scrollTop]);
-		}
-		const { scrollX, scrollY } = window;
-		try {
-			el.scrollIntoView({
-				block: 'center',
-				inline: 'center',
-				behavior: 'instant' as ScrollBehavior,
-			});
-			const moved = boxOf(el);
-			return moved ? probe(moved) : false;
-		} finally {
-			for (const [p, left, top] of saved) {
-				if (p.scrollLeft !== left || p.scrollTop !== top) {
-					p.scrollTo({ left, top, behavior: 'instant' as ScrollBehavior });
-				}
-			}
-			window.scrollTo({
-				left: scrollX,
-				top: scrollY,
-				behavior: 'instant' as ScrollBehavior,
-			});
-		}
+		return [el, ...labels].some(
+			(r) =>
+				pseudoContent(r) ||
+				[...r.querySelectorAll('*')].some(
+					(d) => pseudoContent(d) || outside(d),
+				),
+		);
 	};
 
 	const roots = args.include.length
@@ -213,6 +176,7 @@ export async function measure(args: {
 		: [document.documentElement];
 	const seen = new Set<Element>();
 	const boxes: TapTargetBox[] = [];
+	const probe: number[] = [];
 	for (const root of roots) {
 		for (const el of root.querySelectorAll(args.targets.join(','))) {
 			if (seen.has(el)) continue;
@@ -228,10 +192,11 @@ export async function measure(args: {
 			if (!box) continue;
 			if (
 				args.hitArea &&
-				(box.width < args.size || box.height < args.size) &&
-				covers(el, box)
+				(box.width < args.size - args.tolerance ||
+					box.height < args.size - args.tolerance) &&
+				mayEnlarge(el, box)
 			) {
-				box.hitArea = true;
+				probe.push(boxes.length);
 			}
 			boxes.push(box);
 		}
@@ -240,5 +205,6 @@ export async function measure(args: {
 		viewport: { width: window.innerWidth, height: window.innerHeight },
 		boxes,
 		matched: roots.length,
+		probe,
 	};
 }
