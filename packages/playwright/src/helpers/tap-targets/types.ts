@@ -50,16 +50,17 @@ export type TapTargetOptions = {
 	 * probed: a target smaller than `size` that has a `::before` / `::after`
 	 * with content (on it, on a checkbox's or radio's label, or on a
 	 * descendant), a descendant drawn outside its box, or a custom element or
-	 * shadow root (as the target or inside it). Any other is judged on its
-	 * box, which is what it hit-tests as. A candidate still passes when a `size` square centred on its
-	 * box (with its labels, for a checkbox or radio) is hit by the target itself, its descendants (a `::before` / `::after` counts as
-	 * the element) or, for a checkbox or radio, its labels: the design system
-	 * that draws a 20px checkbox with an invisible 44px `::before`. The square
-	 * is probed with `document.elementFromPoint` on a 5x5 grid, so the
-	 * pseudo-element must be hit-testable (not `pointer-events: none`, not
-	 * covered). A target off screen is scrolled into view for the probe and the
-	 * scroll positions are restored. Default `true`; `false` judges the visible
-	 * box only, as 0.8 did.
+	 * shadow root (as the target, inside it, or in a checkbox's or radio's
+	 * label). Any other is judged on its box, which is what it hit-tests as. A
+	 * candidate still passes when a `size` square centred on its box (with its
+	 * labels, for a checkbox or radio) is hit by the target itself, its
+	 * descendants (a `::before` / `::after` counts as the element) or, for a
+	 * checkbox or radio, its labels: the design system that draws a 20px
+	 * checkbox with an invisible 44px `::before`. The square is probed with
+	 * `document.elementFromPoint` on a 5x5 grid, so the pseudo-element must be
+	 * hit-testable (not `pointer-events: none`, not covered). A target off
+	 * screen is scrolled into view for the probe and the scroll positions are
+	 * restored. Default `true`; `false` judges the visible box only, as 0.8 did.
 	 */
 	hitArea?: boolean;
 	/**

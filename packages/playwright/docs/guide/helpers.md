@@ -459,8 +459,8 @@ checkbox or radio.
 What makes an undersized target a candidate for the probe: a `::before` or
 `::after` with `content` on it, on its checkbox or radio labels, or on a
 descendant; a descendant drawn outside its box (an absolutely positioned child
-with a negative inset); a custom element (a tag with a `-`) as the target or
-inside it, or a shadow root, since what a shadow tree draws cannot be read
+with a negative inset); a custom element (a tag with a `-`) as the target,
+inside it or in a checkbox's or radio's label, or a shadow root, since what a shadow tree draws cannot be read
 from the box. Every other undersized target is judged on its box alone, which
 is also its hit area. With `spacing`, such a target is not counted as undersized;
 its neighbours still judge it by its visible box.
