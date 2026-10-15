@@ -2,7 +2,6 @@ import { expect, test } from 'bun:test';
 import { getResponse, HttpResponse, http } from 'msw';
 import { startMockServer } from './index';
 
-// Bun logs msw 3's failure to patch node:net here; the server is still built.
 test('starts a server holding the given handlers', async () => {
 	const handlers = [http.get('http://x.test/a', () => HttpResponse.json({}))];
 	const { server } = startMockServer(handlers);
@@ -130,5 +129,49 @@ test('under production, a registered server is returned without throwing', () =>
 	} finally {
 		process.env.NODE_ENV = before;
 		first.server.close();
+	}
+});
+
+// Under Bun, msw 3's `setupServer` intercepts nothing (mswjs/msw#2811), so
+// startMockServer builds a network on the `fetch/web` interceptor. On msw 2 the
+// same assertions hold through `setupServer`, which does intercept Bun's fetch.
+test('a global fetch to a host nothing serves is answered by the handlers', async () => {
+	const { server } = startMockServer(
+		[http.get('http://unserved.invalid/a', () => HttpResponse.json({ a: 1 }))],
+		{ onUnhandledRequest: 'bypass' },
+	);
+	try {
+		const response = await fetch('http://unserved.invalid/a');
+		expect(await response.json()).toEqual({ a: 1 });
+		// server.use / resetHandlers are the surface the control drives.
+		server.use(
+			http.get('http://unserved.invalid/a', () => HttpResponse.json({ a: 2 })),
+		);
+		expect(await (await fetch('http://unserved.invalid/a')).json()).toEqual({
+			a: 2,
+		});
+		server.resetHandlers();
+		expect(await (await fetch('http://unserved.invalid/a')).json()).toEqual({
+			a: 1,
+		});
+	} finally {
+		server.close();
+	}
+});
+
+test('after close(), fetch is no longer intercepted', async () => {
+	const { server } = startMockServer([
+		http.get('http://unserved.invalid/b', () => HttpResponse.json({})),
+	]);
+	server.close();
+	await expect(fetch('http://unserved.invalid/b')).rejects.toThrow();
+});
+
+test('an unmatched request is bypassed, or errors with onUnhandledRequest: error', async () => {
+	const { server } = startMockServer([], { onUnhandledRequest: 'error' });
+	try {
+		await expect(fetch('http://unserved.invalid/c')).rejects.toThrow();
+	} finally {
+		server.close();
 	}
 });

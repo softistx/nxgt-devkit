@@ -1,6 +1,7 @@
 import type { AnyHandler } from 'msw';
 import { setupServer } from 'msw/node';
 import { createMockControl, type MockControlOptions } from '../control';
+import { createWebServer, isBun } from './web-server';
 
 export type StartMockServerOptions = Omit<MockControlOptions, 'server'> & {
 	/** What to do with a request no handler matches. Defaults to `'bypass'`. */
@@ -36,9 +37,11 @@ const registry = globalThis as { [STARTED]?: Started };
  * ran when that server was built.
  *
  * `control` is the HTTP/programmatic channel for e2e specs (`./control`).
- * Under Bun with msw 3 it intercepts nothing: msw 3's interceptors do not see
- * Bun's native `fetch` (mswjs/msw#2811). There, give the client
- * `createMockFetch`'s fetch (`./fetch`), or stay on msw 2.
+ * Under Bun with msw 3, `setupServer` would intercept nothing (its
+ * interceptors patch `node:net`, which Bun's `fetch` never reaches,
+ * mswjs/msw#2811), so the server is a custom network whose only source is
+ * the `fetch/web` interceptor: it patches `globalThis.fetch`, and only
+ * `fetch` (not `node:http` clients). Same `{ server, control }`.
  */
 export function startMockServer(
 	handlers: AnyHandler[],
@@ -50,7 +53,12 @@ export function startMockServer(
 	// The control is built before the server listens: under production it
 	// throws, so no server is left listening. `setupServer` only creates the
 	// server; `listen()` below is what intercepts.
-	const server = setupServer(...handlers);
+	// Under Bun, msw 3's `setupServer` intercepts nothing: use a network on
+	// the `fetch/web` interceptor (`./web-server`). Node, and msw 2, keep
+	// `setupServer`.
+	const server =
+		(isBun() ? createWebServer(handlers) : undefined) ??
+		setupServer(...handlers);
 	const control = createMockControl({ ...controlOptions, server });
 	// `as never`: msw 3 renamed the option to `onUnhandledFrame` and each major
 	// ignores the other's, so the options type fits neither.

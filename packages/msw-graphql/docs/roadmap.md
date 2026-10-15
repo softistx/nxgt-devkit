@@ -13,10 +13,7 @@ Nothing is planned yet.
 
 ## Later
 
-- **`startMockServer` on msw 3 under Bun** — once
-  [mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811) is fixed,
-  `startMockServer` works under Bun with msw 3 too. Until then, use
-  `createMockFetch`, or msw 2.
+Nothing is parked.
 
 ## Not planned
 
@@ -39,8 +36,12 @@ Tests only, no release:
 - **`enableMocking` in a real browser** — Chromium, a test server serving
   msw's worker script, a handler answering a fetch.
 
-Next minor, unreleased:
+Next minor, unreleased (0.3.0):
 
+- **`startMockServer` on msw 3 under Bun** — it builds its server on msw's
+  `fetch/web` interceptor (`defineNetwork`, `msw/experimental`) where
+  `setupServer` intercepts nothing, with the same `{ server, control }`. It
+  patches `fetch` only; Node and msw 2 are unchanged.
 - **Idempotent `startMockServer`** — a second call in the same process returns
   the running server and control (its arguments are ignored), so an SSR entry
   re-evaluated under HMR does not stack listeners.

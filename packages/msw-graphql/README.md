@@ -22,9 +22,9 @@ bun add -d @graphql-tools/schema @graphql-tools/mock   # only for /schema
 | `@graphql-tools/schema` | `^10.0.0` | optional, only `/schema` |
 | `@graphql-tools/mock` | `^9.1.0` | optional, only `/schema` |
 
-msw 3 needs Node >= 22.12. An SSR app whose server **runs on Bun** uses
-`createMockFetch` from `/fetch` (msw 2 or 3), or `startMockServer` on msw 2:
-see [Traps](#traps) and [docs/guide/runtimes.md](docs/guide/runtimes.md).
+msw 3 needs Node >= 22.12. `startMockServer` also runs under Bun, on msw 2 or
+3 (on msw 3 it patches `fetch` only): see [Traps](#traps) and
+[docs/guide/runtimes.md](docs/guide/runtimes.md).
 
 The package is ESM only and its declarations use extensionless relative
 imports, so `tsconfig.json` needs `"moduleResolution": "bundler"`.
@@ -113,7 +113,8 @@ The server runs the mocks in its own process, because its loaders call the API
 from the server. The control is mounted so a spec can reset and steer them.
 
 First choice, when your API client takes a `fetch`: `createMockFetch` answers
-through the handlers with no global patch, on Node or Bun, msw 2 or 3.
+through the handlers with no global patch, on Node or Bun, msw 2 or 3, and it
+covers a client that is not built on `fetch` too.
 
 ```ts
 // server.ts: run by Node >= 22.12 or by Bun, msw 2 or 3
@@ -140,7 +141,8 @@ if (process.env.MOCKS === 'true') {
 ```
 
 Alternative, for a client that cannot take a `fetch`: `startMockServer` patches
-the process instead (Node, or Bun on msw 2 only). Same options, same `control`.
+the process instead (Node, or Bun, msw 2 or 3; under Bun with msw 3 it patches
+`globalThis.fetch` only). Same options, same `control`.
 It is idempotent per process: a second call returns the first call's
 `{ server, control }` and ignores its arguments.
 
@@ -192,11 +194,12 @@ await control.reset();
 
 ## Traps
 
-- **msw 3 does not intercept Bun's `fetch`**
-  ([mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811)). On a server
-  running on Bun, use `createMockFetch` from `/fetch` (msw 2 or 3), or keep
-  `startMockServer` on `msw ^2.12.10`; check with the one-line probe in
-  [docs/guide/runtimes.md](docs/guide/runtimes.md).
+- **A plain msw 3 `setupServer` does not intercept Bun's `fetch`**
+  ([mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811)).
+  `startMockServer` works around it (0.3.0): under Bun with msw 3 it builds
+  its server on msw's `fetch/web` interceptor, so it mocks `fetch` but not
+  `node:http` clients. Your own `setupServer` calls under Bun need the same, or
+  `createMockFetch`; see [docs/guide/runtimes.md](docs/guide/runtimes.md).
 - **`typescript-msw` handlers do not work on msw 3.** `graphql.query` is gone
   from `msw`; generate them with
   [`@nxgt/graphql-codegen-msw`](https://www.npmjs.com/package/@nxgt/graphql-codegen-msw), or use
