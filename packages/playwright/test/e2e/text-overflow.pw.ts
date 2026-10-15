@@ -154,6 +154,18 @@ test('include limits the search', async ({ page }) => {
 	await expectNoTextOverflow(page, { include: 'main' });
 });
 
+test('an include matching nothing fails by name instead of passing', async ({
+	page,
+}) => {
+	await page.setContent(html(`<span style="${CLIP}">${WIDE}</span>`));
+	const message = await failure(
+		expectNoTextOverflow(page, { include: ['.nav', '#typo'] }),
+	);
+	expect(message).toContain(
+		'expectNoTextOverflow: `include` matched no element (.nav, #typo)',
+	);
+});
+
 test('max limits the list, not the count', async ({ page }) => {
 	await page.setContent(
 		html(

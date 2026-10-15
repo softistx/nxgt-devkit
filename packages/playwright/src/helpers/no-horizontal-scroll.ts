@@ -61,7 +61,9 @@ export function formatOverflow({
 
 /**
  * Measures the box `root` stands for — the document when it is `<html>`, else
- * `root` itself — in the page. Self-contained: Playwright serialises it.
+ * `root` itself — in the page. Self-contained: Playwright serialises it, so
+ * its `describe` is duplicated with text-overflow/measure.ts and
+ * tap-targets/measure.ts: a change is made in all three.
  */
 function measure(root: Element, max: number): HorizontalOverflow | null {
 	const isDocument = root === document.documentElement;

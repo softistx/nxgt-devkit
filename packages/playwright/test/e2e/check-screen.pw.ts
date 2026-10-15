@@ -91,6 +91,28 @@ test('textOverflow: true fails on a clipped text; the default passes the same pa
 	});
 });
 
+test('textOverflow as a function of the test: phones only', async ({
+	page,
+}, testInfo) => {
+	await page.setContent(CLIPPED);
+	const seen: unknown[] = [];
+	const run = () =>
+		checkScreen(page, testInfo, 'clipped-phone', {
+			a11y: false,
+			textOverflow: (info) => {
+				seen.push(info);
+				return isMobileProject(info) ? true : { exclude: '#title' };
+			},
+		});
+	if (isMobileProject(testInfo)) {
+		const error = await run().catch((e: Error) => e);
+		expect((error as Error).message).toContain('Text overflows its box');
+	} else {
+		await run();
+	}
+	expect(seen).toEqual([testInfo]);
+});
+
 const THREE = doc(
 	['a', 'b', 'c']
 		.map(

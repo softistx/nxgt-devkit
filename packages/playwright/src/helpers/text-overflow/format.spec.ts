@@ -58,7 +58,7 @@ describe('formatTextOverflow', () => {
 		const message = formatTextOverflow(
 			Array.from({ length: 7 }, () => spills),
 			viewport,
-			2,
+			{ max: 2 },
 		);
 		expect(message.split('\n')[0]).toContain('in 7 elements');
 		expect(message.match(/^ {2}- /gm)).toHaveLength(2);

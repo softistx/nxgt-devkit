@@ -71,6 +71,20 @@ describe('storybookProject', () => {
 		);
 	});
 
+	test('capture with more than one browser throws; one browser is fine', () => {
+		expect(() =>
+			storybookProject({ capture: true, browsers: ['chromium', 'firefox'] }),
+		).toThrow(
+			'`capture` needs a single browser but `browsers` is [chromium, firefox]',
+		);
+		expect(() =>
+			storybookProject({ capture: true, browsers: ['firefox', 'firefox'] }),
+		).not.toThrow();
+		expect(() =>
+			storybookProject({ browsers: ['chromium', 'firefox'] }),
+		).not.toThrow();
+	});
+
 	test('executablePath without chromium throws; the environment variable is ignored', () => {
 		expect(() =>
 			storybookProject({ browsers: ['firefox'], executablePath: '/opt/c' }),

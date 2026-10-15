@@ -281,7 +281,7 @@ type TextOverflowOptions = {
 };
 
 function expectNoTextOverflow(page: Page, options?: TextOverflowOptions): Promise<void>;
-function formatTextOverflow(found: OverflowingText[], viewport: { width: number; height: number }, max?: number): string;
+function formatTextOverflow(found: OverflowingText[], viewport: { width: number; height: number }, options?: { max?: number }): string;
 ```
 
 ```ts
@@ -325,12 +325,14 @@ Text overflows its box in 2 elements (412x839 viewport):
 Let the text wrap, give a clipped one its full text in a title or aria-label, or exclude it.
 ```
 
-`SmallTapTarget` is one offender: `selector` (`tag#id.class`), `name` (its
-label), `width` and `height` in rounded CSS pixels, and with `spacing` `near`,
-the selector of the target that crowds it.
+`OverflowingText` is one offender: `selector` (`tag#id.class` of the box),
+`text` (the first 40 characters), `kind` (`'clipped'` or `'spills'`),
+`ellipsis` (the box has `text-overflow: ellipsis`), `textWidth` and `boxWidth`
+in rounded CSS pixels and `axis` (`'x'`, or `'y'` for a box clipped
+vertically, where `textWidth` and `boxWidth` hold the heights: `96px of text in
+a 48px-tall box`).
 
-The message counts every offender and lists at most `max`. A box clipped
-vertically reports its heights, `96px of text in a 48px-tall box`.
+The message counts every offender and lists at most `max`.
 
 ### Giving a clipped text its full text
 
@@ -341,6 +343,11 @@ vertically reports its heights, `96px of text in a 48px-tall box`.
 A `title` or an `aria-label` on the box, or on a link or button around it that
 holds nothing else, is enough. A tooltip a script draws is not a `title`: add
 the attribute as well, or `exclude` the box. Text you let wrap needs nothing.
+
+An `include` that matches no element throws
+(``expectNoTextOverflow: `include` matched no element (<selectors>)``) instead
+of passing: a typo would otherwise turn the check off. A list passes the test
+as soon as one of its selectors matches.
 
 `checkScreen` runs it with `textOverflow` ([screens.md](screens.md#one-call-per-screen-checkscreen)).
 It checks once, as the page is now: wait for the content first.
@@ -391,7 +398,9 @@ What counts as a tap target (`DEFAULT_TAP_TARGETS`): `a[href]`, `button`,
 `input` (not `hidden`), `select`, `textarea`, `summary`, the roles `button`,
 `link`, `checkbox`, `radio`, `switch`, `tab`, `menuitem` and `option`, anything
 with a `tabindex` other than `-1`, and anything with an `onclick` attribute.
-`targets` replaces the list (spread `DEFAULT_TAP_TARGETS` to add to it).
+`targets` replaces the list (spread `DEFAULT_TAP_TARGETS` to add to it); an
+empty list throws (``expectTapTargets: `targets` is empty``). An `include` that
+matches no element throws too, instead of measuring nothing and passing.
 A checkbox or radio is measured together with its labels (a tap on the label
 toggles it), so a small box inside a 44px row passes. The input and its
 labels count as one bounding box, so a `for` label far from its input
@@ -418,8 +427,18 @@ neighbour.
   - button#close.icon "Close"  32x32px
   - a.nav-link "Home"  60x24px
   - input "Remember me"  16x16px, too close to a.forgot
-Make each at least 44x44px (padding or a ::after grows the tap area without moving the layout), or exclude it.
+Make each at least 44x44px (padding, or min-width and min-height, on the element itself), or exclude it.
 ```
+
+`SmallTapTarget` is one offender: `selector` (`tag#id.class`), `name` (its
+label), `width` and `height` in rounded CSS pixels, and with `spacing` `near`,
+the selector of the target that crowds it.
+
+The size is the element's border box, as `getBoundingClientRect` reports it:
+grow it with `padding`, or `min-width` and `min-height`, on the element
+itself. An absolutely positioned `::after` that extends the hit area is not
+part of that box, so it never makes a target pass; `exclude` the target when
+the design cannot grow.
 
 The message counts every offender and lists at most `max`. Run it on a phone
 viewport: a desktop layout has small targets on purpose, which is why

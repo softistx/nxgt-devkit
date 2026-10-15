@@ -1,10 +1,8 @@
 import type { Page } from '@playwright/test';
+import { toList } from '../list';
 import { formatTextOverflow } from './format';
 import { measure } from './measure';
 import type { TextOverflowOptions } from './types';
-
-const list = (v: string | readonly string[] | undefined): string[] =>
-	v === undefined ? [] : typeof v === 'string' ? [v] : [...v];
 
 /**
  * Fails when a text does not fit the box that holds it, the way a label
@@ -30,11 +28,16 @@ export async function expectNoTextOverflow(
 	page: Page,
 	{ include, exclude, max = 5 }: TextOverflowOptions = {},
 ): Promise<void> {
-	const { viewport, found } = await page.evaluate(measure, {
-		include: list(include),
-		exclude: list(exclude),
+	const { viewport, found, matched } = await page.evaluate(measure, {
+		include: toList(include),
+		exclude: toList(exclude),
 	});
+	if (matched === 0) {
+		throw new Error(
+			`expectNoTextOverflow: \`include\` matched no element (${toList(include).join(', ')}). Fix the selector, or drop \`include\` to check the whole body.`,
+		);
+	}
 	if (found.length > 0) {
-		throw new Error(formatTextOverflow(found, viewport, max));
+		throw new Error(formatTextOverflow(found, viewport, { max }));
 	}
 }

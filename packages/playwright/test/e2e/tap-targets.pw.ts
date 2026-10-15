@@ -155,6 +155,31 @@ test('include limits the search, exclude silences a target', async ({
 	await expectTapTargets(page, { exclude: ['nav a', 'footer'] });
 });
 
+test('an empty targets list throws a named error, not a selector SyntaxError', async ({
+	page,
+}) => {
+	await page.setContent(html(sized('button', 20)));
+	expect(await failure(expectTapTargets(page, { targets: [] }))).toContain(
+		'expectTapTargets: `targets` is empty.',
+	);
+});
+
+test('an include matching nothing fails by name instead of passing', async ({
+	page,
+}) => {
+	await page.setContent(html(sized('button', 20)));
+	const message = await failure(
+		expectTapTargets(page, { include: ['.nav', '#typo'] }),
+	);
+	expect(message).toContain('expectTapTargets: `include` matched no element');
+	expect(message).toContain('.nav, #typo');
+	// One selector of the list matching is enough.
+	await expectTapTargets(page, {
+		include: ['.nav', 'body'],
+		exclude: 'button',
+	});
+});
+
 test('targets replaces what counts', async ({ page }) => {
 	await page.setContent(
 		html(sized('button', 20) + sized('div', 20, 20, '', 'Go', 'chip')),

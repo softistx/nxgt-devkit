@@ -3,6 +3,8 @@ import type { OverflowingText } from './types';
 export type Measured = {
 	viewport: { width: number; height: number };
 	found: OverflowingText[];
+	/** How many roots `include` matched (the body without `include`). */
+	matched: number;
 };
 
 /**
@@ -20,8 +22,9 @@ export async function measure(args: {
 	await document.fonts.ready;
 	const SKIP =
 		'script,style,noscript,template,svg,input,textarea,select,option,[contenteditable]:not([contenteditable=false])';
-	// Duplicated on purpose with tap-targets/measure.ts (Playwright serialises
-	// each measure alone): a change to collapse, brief or describe is made in both.
+	// Duplicated on purpose with tap-targets/measure.ts and the `measure` in
+	// helpers/no-horizontal-scroll.ts (Playwright serialises each alone): a
+	// change to collapse, brief or describe is made in all three.
 	const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 	const brief = (s: string) => (s.length > 40 ? `${s.slice(0, 40)}…` : s);
 	const clipsOn = (v: string) => v === 'hidden' || v === 'clip';
@@ -176,5 +179,6 @@ export async function measure(args: {
 	return {
 		viewport: { width: window.innerWidth, height: window.innerHeight },
 		found,
+		matched: roots.length,
 	};
 }

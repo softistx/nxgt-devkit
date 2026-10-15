@@ -20,6 +20,7 @@ export type StorybookProjectOptions = {
 	/**
 	 * Screenshot the stories carrying the capture tag into WebP previews. Only
 	 * those stories run. Default `false`: every story renders as a smoke test.
+	 * Throws with more than one of `browsers`: they would write the same file.
 	 */
 	capture?: boolean | PreviewCaptureOptions;
 	/** Default `{ width: 1280, height: 800 }`. */
@@ -71,6 +72,11 @@ export function storybookProject(
 	if (options.executablePath && !browsers.includes('chromium')) {
 		throw new Error(
 			`storybookProject: \`executablePath\` is a Chromium binary but \`browsers\` is [${browsers.join(', ')}]. Add 'chromium' or drop \`executablePath\`.`,
+		);
+	}
+	if (options.capture && browsers.length > 1) {
+		throw new Error(
+			`storybookProject: \`capture\` needs a single browser but \`browsers\` is [${browsers.join(', ')}]. Every browser writes the same preview file; name one.`,
 		);
 	}
 	const executablePath =

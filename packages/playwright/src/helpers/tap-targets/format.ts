@@ -17,7 +17,7 @@ export function formatTapTargets(
 	}
 	if (n > max) lines.push(`  … and ${n - max} more`);
 	lines.push(
-		`Make each at least ${size}x${size}px (padding or a ::after grows the tap area without moving the layout), or exclude it.`,
+		`Make each at least ${size}x${size}px (padding, or min-width and min-height, on the element itself), or exclude it.`,
 	);
 	return lines.join('\n');
 }

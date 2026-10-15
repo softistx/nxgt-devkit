@@ -25,7 +25,7 @@ describe('formatTapTargets', () => {
 				'2 tap targets are smaller than 44x44px (412x839 viewport):',
 				'  - button.icon "Close"  32x32px',
 				'  - a#home  20x18px',
-				'Make each at least 44x44px (padding or a ::after grows the tap area without moving the layout), or exclude it.',
+				'Make each at least 44x44px (padding, or min-width and min-height, on the element itself), or exclude it.',
 			].join('\n'),
 		);
 	});

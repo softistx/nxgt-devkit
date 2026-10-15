@@ -3,6 +3,8 @@ import type { TapTargetBox } from './types';
 export type Measured = {
 	viewport: { width: number; height: number };
 	boxes: TapTargetBox[];
+	/** How many roots `include` matched (the document without `include`). */
+	matched: number;
 };
 
 /**
@@ -19,9 +21,9 @@ export async function measure(args: {
 }): Promise<Measured> {
 	// Web fonts change box sizes.
 	await document.fonts.ready;
-	// Duplicated on purpose with text-overflow/measure.ts (Playwright
-	// serialises each measure alone): a change to collapse, brief or
-	// describe is made in both.
+	// Duplicated on purpose with text-overflow/measure.ts and the `measure` in
+	// helpers/no-horizontal-scroll.ts (Playwright serialises each alone): a
+	// change to collapse, brief or describe is made in all three.
 	const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 	const say = {
 		brief: (s: string) => (s.length > 40 ? `${s.slice(0, 40)}…` : s),
@@ -144,5 +146,6 @@ export async function measure(args: {
 	return {
 		viewport: { width: window.innerWidth, height: window.innerHeight },
 		boxes,
+		matched: roots.length,
 	};
 }

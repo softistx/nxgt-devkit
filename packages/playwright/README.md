@@ -695,6 +695,9 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
   touch `document`. `storybookProject()` already registers the setup file.
 - **Only one story per component should carry `preview`**: they share one file
   name, so the last one captured wins.
+- **`capture` takes a single browser**: every browser writes the same preview
+  file, so `storybookProject({ capture: true, browsers: [...two or more] })`
+  throws. Run the cross-browser smoke test as a second project without `capture`.
 
 ## Documentation
 

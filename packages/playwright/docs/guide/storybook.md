@@ -99,8 +99,9 @@ storybookProject({ browsers: ['chromium', 'firefox', 'webkit'] });
 Each story then runs once per browser, reported under the instance name
 (`chromium`, `firefox`, `webkit`), so a layout that only Firefox gets wrong
 fails there. Download the browsers first (`bunx playwright install firefox
-webkit`). With `capture`, every browser writes the same preview file: keep
-`browsers` to the default for the `previews` project.
+webkit`). `capture` takes a single browser: every browser would write the same preview
+file, so `capture` with two or more `browsers` throws. Keep the cross-browser
+run in a project without `capture`.
 
 `executablePath` is a Chromium binary: it is applied to the `chromium`
 instance only, and Firefox and WebKit keep Playwright's downloads. Giving it

@@ -4,7 +4,7 @@
 | --- | --- |
 | [guide/config.md](guide/config.md) | you are writing `playwright.config.ts`: ports, browsers, phone projects, the web server, the auth setup project, CI defaults |
 | [guide/pages-and-fixtures.md](guide/pages-and-fixtures.md) | you are writing page objects, signing accounts in once with storage state, or adding a `login` fixture |
-| [guide/helpers.md](guide/helpers.md) | a fill is lost after the page loads, a submit button flickers enabled, a check runs mid-animation, a toast must be gone, a phone layout scrolls sideways or a label runs past its box, or you need screenshot file names |
+| [guide/helpers.md](guide/helpers.md) | a fill is lost after the page loads, a submit button flickers enabled, a check runs mid-animation, a toast must be gone, a phone layout scrolls sideways, a label runs past its box or a tap target is smaller than a thumb, or you need screenshot file names |
 | [guide/hydration.md](guide/hydration.md) | a click is lost because the page has not hydrated yet, or you want every `goto` to wait for hydration |
 | [guide/screens.md](guide/screens.md) | you want full-page screens of each page on desktop and phone, to review the design, or one `checkScreen` call that saves, scans and checks each screen |
 | [guide/pwa.md](guide/pwa.md) | the app has a service worker: running its specs against a production build, offline, a new worker version, or what its caches hold and what a sign-out leaves |

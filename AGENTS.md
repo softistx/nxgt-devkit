@@ -75,7 +75,7 @@ Every peer is **optional** and each subpath needs only its own:
 
 `./mock-server` copies the wire types of `@nxgt/msw-graphql/control` (`ServerOverride`) on purpose, so it imports neither msw nor that package; `test/e2e/mock-server.pw.ts` imports both (`@nxgt/msw-graphql` is a devDependency) and fails to typecheck if the two types drift, and `test/server.ts` mounts the real control it drives. That spec runs in its own config (`test/playwright.mock-server.config.ts`, one worker): server mocks are process-global.
 
-The in-page `measure` functions (`src/helpers/text-overflow/measure.ts`, `src/helpers/tap-targets/measure.ts`) each carry their own `collapse` / `brief` / `describe` because Playwright serialises them; a change to one is made in both.
+The in-page `measure` functions (`src/helpers/text-overflow/measure.ts`, `src/helpers/tap-targets/measure.ts`, and `measure` in `src/helpers/no-horizontal-scroll.ts`) each carry their own `collapse` / `brief` / `describe` because Playwright serialises them; a change to one is made in all three.
 
 The root barrel (`packages/playwright/src/index.ts`) re-exports `./auth`,
 `./config`, `./helpers`, `./pages`, `./pwa` and `./screens`; `./csp` and

@@ -43,11 +43,15 @@ export type CheckScreenOptions = {
 	/**
 	 * `expectNoTextOverflow`: a text that runs past its box, or is clipped
 	 * with nothing to read it in full. `true` checks the whole body, an
-	 * options object is `expectNoTextOverflow`'s own. Default `false`: a
+	 * options object is `expectNoTextOverflow`'s own, and a function of the
+	 * test picks per project, as `tapTargets` does. Default `false`: a
 	 * design may clip on purpose, so a screen opts in. Runs after the
 	 * sideways-scroll check.
 	 */
-	textOverflow?: boolean | TextOverflowOptions;
+	textOverflow?:
+		| boolean
+		| TextOverflowOptions
+		| ((testInfo: TestInfo) => boolean | TextOverflowOptions);
 	/**
 	 * `expectTapTargets`: a link, button or control smaller than 44x44 CSS
 	 * pixels, a thumb's size. `true` checks the document in every project, an
@@ -110,12 +114,12 @@ export async function checkScreen(
 			scroller: typeof scroller === 'function' ? scroller(testInfo) : scroller,
 		});
 	}
-	if (textOverflow) {
+	const texts =
+		typeof textOverflow === 'function' ? textOverflow(testInfo) : textOverflow;
+	if (texts) {
 		await expectNoTextOverflow(
 			page,
-			textOverflow === true
-				? { max }
-				: { ...textOverflow, max: textOverflow.max ?? max },
+			texts === true ? { max } : { ...texts, max: texts.max ?? max },
 		);
 	}
 	const taps =

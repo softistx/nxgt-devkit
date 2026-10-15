@@ -1,12 +1,10 @@
 import type { Page } from '@playwright/test';
+import { toList } from '../list';
 import { formatTapTargets } from './format';
 import { judgeTapTargets } from './judge';
 import { measure } from './measure';
 import { DEFAULT_TAP_TARGETS } from './targets';
 import type { TapTargetOptions } from './types';
-
-const list = (v: string | readonly string[] | undefined): string[] =>
-	v === undefined ? [] : typeof v === 'string' ? [v] : [...v];
 
 /**
  * Fails when a tap target is smaller than a comfortable touch target,
@@ -40,11 +38,22 @@ export async function expectTapTargets(
 		max = 5,
 	}: TapTargetOptions = {},
 ): Promise<void> {
-	const { viewport, boxes } = await page.evaluate(measure, {
-		targets: list(targets),
-		include: list(include),
-		exclude: list(exclude),
+	const selectors = toList(targets);
+	if (selectors.length === 0) {
+		throw new Error(
+			'expectTapTargets: `targets` is empty. Name at least one selector, or drop `targets` for DEFAULT_TAP_TARGETS (spread it to add to it).',
+		);
+	}
+	const { viewport, boxes, matched } = await page.evaluate(measure, {
+		targets: selectors,
+		include: toList(include),
+		exclude: toList(exclude),
 	});
+	if (matched === 0) {
+		throw new Error(
+			`expectTapTargets: \`include\` matched no element (${toList(include).join(', ')}). Fix the selector, or drop \`include\` to check the whole document.`,
+		);
+	}
 	const found = judgeTapTargets(boxes, { size, spacing });
 	if (found.length > 0) {
 		throw new Error(formatTapTargets(found, viewport, { size, max }));

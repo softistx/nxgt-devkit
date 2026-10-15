@@ -4,7 +4,7 @@ import type { OverflowingText } from './types';
 export function formatTextOverflow(
 	found: readonly OverflowingText[],
 	viewport: { width: number; height: number },
-	max = 5,
+	{ max = 5 }: { max?: number } = {},
 ): string {
 	const n = found.length;
 	const lines = [

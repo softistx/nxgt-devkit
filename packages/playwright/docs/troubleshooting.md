@@ -17,6 +17,7 @@ throws itself are quoted exactly.
   - [`Chromium distribution 'msedge' is not found`](#chromium-distribution-msedge-is-not-found)
   - [`` storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`. ``](#storybookproject-executablepath-is-a-chromium-binary-but-browsers-is-list-add-chromium-or-drop-executablepath)
   - [`` storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit. ``](#storybookproject-browsers-is-empty-name-at-least-one-of-chromium-firefox-webkit)
+  - [`` storybookProject: `capture` needs a single browser but `browsers` is [<list>]. Every browser writes the same preview file; name one. ``](#storybookproject-capture-needs-a-single-browser-but-browsers-is-list-every-browser-writes-the-same-preview-file-name-one)
 - [Import](#import)
   - [`vitest/browser can be imported only inside the Browser Mode`](#vitestbrowser-can-be-imported-only-inside-the-browser-mode)
 - [Configuration](#configuration)
@@ -63,6 +64,10 @@ throws itself are quoted exactly.
 - [Responsive](#responsive)
   - [`Text overflows its box in <n> elements`](#text-overflows-its-box-in-n-elements)
   - [A clipped label fails although it shows a tooltip](#a-clipped-label-fails-although-it-shows-a-tooltip)
+  - [`<n> tap targets are smaller than 44x44px`](#n-tap-targets-are-smaller-than-44x44px)
+  - [`` expectTapTargets: `targets` is empty. ``](#expecttaptargets-targets-is-empty)
+  - [`` expectTapTargets: `include` matched no element (<selectors>) ``](#expecttaptargets-include-matched-no-element-selectors)
+  - [Tap targets pass in axe but fail `expectTapTargets`](#tap-targets-pass-in-axe-but-fail-expecttaptargets)
 - [Content-Security-Policy](#content-security-policy)
   - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
   - [`expectNoncedPage` failures](#expectnoncedpage-failures)
@@ -239,6 +244,21 @@ storybookProject({ browsers: ['chromium', 'firefox'], executablePath: '/usr/bin/
 **When:** `storybookProject({ browsers: [] })`.
 **Why:** an empty list would leave the project with no browser to run in.
 **Fix:** drop the option for the default (`['chromium']`) or name the browsers.
+
+### `` storybookProject: `capture` needs a single browser but `browsers` is [<list>]. Every browser writes the same preview file; name one. ``
+
+**When:** `storybookProject({ capture: true, browsers: ['chromium', 'firefox'] })`.
+**Why:** every browser writes the same preview file for a story, so the last
+browser's render would win without a warning.
+**Fix:** keep one browser for the project that captures, and the others on a
+second `storybookProject` without `capture`:
+
+```ts
+projects: [
+	storybookProject({ browsers: ['chromium', 'firefox'] }),
+	storybookProject({ capture: true }),
+],
+```
 
 ## Import
 
@@ -917,16 +937,34 @@ The message continues `(412x839 viewport):` and lists the targets, each as
 **Why:** a link, button or control is smaller than a thumb: an icon button of
 32px, a text link whose box is 20px tall. With `spacing: true` a smaller one
 also fails when another target is within `size` of it (`, too close to <x>`).
-**Fix:** grow the tap area without moving the layout, with padding or an
-`::after` that extends past the box, or leave the target out:
+**Fix:** grow the element's own box, with `padding` or `min-width` and
+`min-height`, or leave the target out. The check reads the border box, so an
+absolutely positioned `::after` that extends the hit area never makes it pass:
 
 ```css
-.icon-button { position: relative; }
-.icon-button::after { content: ''; position: absolute; inset: -6px; }
+.icon-button { min-width: 44px; min-height: 44px; }
 ```
 
 `expectTapTargets(page, { exclude: '.legal a' })` leaves a target out;
 `{ size: 24 }` asks for WCAG 2.5.8's minimum instead.
+
+### `` expectTapTargets: `targets` is empty. ``
+
+**When:** `expectTapTargets(page, { targets: [] })`, for example a list built
+from a filter that matched nothing.
+**Why:** an empty list is no selector at all, and there is nothing to measure.
+**Fix:** name at least one selector, or drop `targets` for `DEFAULT_TAP_TARGETS`
+(spread it to add to it).
+
+### `` expectTapTargets: `include` matched no element (<selectors>) ``
+
+**When:** `expectTapTargets` (or `checkScreen` with `tapTargets`), and none of
+`include`'s selectors is in the page. `expectNoTextOverflow` says the same with
+its own name.
+**Why:** a typo, or a page that has not rendered that part yet. The check
+would otherwise measure nothing and pass.
+**Fix:** correct the selector, wait for the content before checking, or drop
+`include` to check the whole page.
 
 ### Tap targets pass in axe but fail `expectTapTargets`
 
