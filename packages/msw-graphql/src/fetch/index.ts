@@ -1,5 +1,10 @@
 import { createMockControl, type MockControlOptions } from '../control';
-import { answer, createHandlerStore, unmarkBypass } from '../handlers';
+import {
+	answer,
+	createHandlerStore,
+	extraInit,
+	unmarkBypass,
+} from '../handlers';
 
 export type CreateMockFetchOptions = Omit<MockControlOptions, 'server'> & {
 	/** Throw on a request no handler matches, instead of sending it for real. */
@@ -39,8 +44,10 @@ export function createMockFetch(
 		request.signal.throwIfAborted();
 		const real = fallback ?? globalThis.fetch;
 		// `bypass(request)`: a resolver fetching the real thing skips the handlers.
+		// A `Request` drops Bun's extra options (`unix`, `tls`...): pass them on.
+		const extra = extraInit(init);
 		const unmarked = unmarkBypass(request);
-		if (unmarked) return real(unmarked);
+		if (unmarked) return real(unmarked, extra);
 		const mocked = await answer(server.listHandlers(), request);
 		if (mocked) return mocked;
 		// `null`: a handler called `passthrough()`, which is not an unhandled request.
@@ -49,7 +56,7 @@ export function createMockFetch(
 				`createMockFetch: no handler for ${request.method} ${request.url}.`,
 			);
 		}
-		return real(request);
+		return real(request, extra);
 	};
 	return { fetch: mockFetch as typeof fetch, control, server };
 }

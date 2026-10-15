@@ -58,11 +58,13 @@ export async function answer(
 export function unmarkBypass(request: Request): Request | undefined {
 	const accept = request.headers.get('accept');
 	if (!accept?.includes('msw/passthrough')) return;
-	const headers = new Headers(request.headers);
 	const next = accept.replace(/(,\s+)?msw\/passthrough/, '');
-	if (next) headers.set('accept', next);
-	else headers.delete('accept');
-	return new Request(request, { headers });
+	// In place, like msw: Bun ignores an EMPTY `headers` in `new Request(request,
+	// { headers })` and keeps the input's, so a copy could not drop the header.
+	// Callers pass a Request they built themselves, never the caller's own.
+	if (next) request.headers.set('accept', next);
+	else request.headers.delete('accept');
+	return request;
 }
 
 /**

@@ -393,6 +393,7 @@ test('the control channel (fail, override, reset) drives the server startMockSer
 	}
 });
 
+// Catches an I/O hang only: a microtask loop never yields to this timer.
 const withTimeout = <T>(promise: Promise<T>, ms = 3000): Promise<T> =>
 	Promise.race([
 		promise,
@@ -403,16 +404,22 @@ const withTimeout = <T>(promise: Promise<T>, ms = 3000): Promise<T> =>
 
 test('fetch(bypass(request)) in a resolver reaches the real server once', async () => {
 	let hits = 0;
+	let entries = 0;
+	let accept: string | null = 'unset';
 	const real = Bun.serve({
 		port: 0,
-		fetch: () => {
+		fetch: (request) => {
 			hits++;
+			accept = request.headers.get('accept');
 			return Response.json({ n: 1 });
 		},
 	});
 	const url = `http://localhost:${real.port}/b`;
 	const server = fetchServer(
 		http.get(url, async ({ request }) => {
+			// A microtask loop cannot be timed out: fail on the second entry.
+			if (++entries > 1)
+				throw new Error('bypass(request) re-entered the handlers');
 			const body = (await fetch(bypass(request)).then((r) => r.json())) as {
 				n: number;
 			};
@@ -424,6 +431,8 @@ test('fetch(bypass(request)) in a resolver reaches the real server once', async 
 		const response = await withTimeout(fetch(url));
 		expect(await response.json()).toEqual({ n: 1, patched: true });
 		expect(hits).toBe(1);
+		// A plain fetch(url) has no accept: the marker must not reach the server.
+		expect(accept ?? '').not.toContain('msw');
 	} finally {
 		server.close();
 		await real.stop(true);
@@ -437,7 +446,16 @@ test('a wrapper put on fetch after listen() is no longer answered by a closed se
 	const before = globalThis.fetch;
 	server.listen({ onUnhandledRequest: 'bypass' });
 	const patched = globalThis.fetch;
-	const wrapper = ((input, init) => patched(input, init)) as typeof fetch;
+	let depth = 0;
+	const wrapper = (async (input, init) => {
+		if (++depth > 3)
+			throw new Error('the wrapper re-entered itself through the patch');
+		try {
+			return await patched(input, init);
+		} finally {
+			depth--;
+		}
+	}) as typeof fetch;
 	globalThis.fetch = wrapper;
 	try {
 		expect(await (await fetch(url)).text()).toBe('mock');
@@ -481,6 +499,24 @@ test('Bun’s extra fetch options survive a Request input and a stream body', as
 			),
 		);
 		expect(await post.text()).toBe('POST:payload');
+		const streamed = await withTimeout(
+			fetch('http://localhost/x', {
+				unix,
+				method: 'POST',
+				body: new Blob(['streamed']).stream(),
+				duplex: 'half',
+			} as RequestInit),
+		);
+		expect(await streamed.text()).toBe('POST:streamed');
+		const bypassed = await withTimeout(
+			fetch(
+				bypass(
+					new Request('http://localhost/x', { method: 'POST', body: 'marked' }),
+				),
+				{ unix } as RequestInit,
+			),
+		);
+		expect(await bypassed.text()).toBe('POST:marked');
 	} finally {
 		server.close();
 		await real.stop(true);
