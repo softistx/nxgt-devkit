@@ -18,6 +18,7 @@ throws itself are quoted exactly.
   - [`` storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`. ``](#storybookproject-executablepath-is-a-chromium-binary-but-browsers-is-list-add-chromium-or-drop-executablepath)
   - [`` storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit. ``](#storybookproject-browsers-is-empty-name-at-least-one-of-chromium-firefox-webkit)
   - [`` storybookProject: `capture` needs a single browser but `browsers` is [<list>]. Every browser writes the same preview file; name one. ``](#storybookproject-capture-needs-a-single-browser-but-browsers-is-list-every-browser-writes-the-same-preview-file-name-one)
+  - [`` storybookProject: `capture` cannot use 'webkit' (`browsers` is [<list>]): WebKit cannot encode WebP previews. Capture with chromium or firefox. ``](#storybookproject-capture-cannot-use-webkit-browsers-is-list-webkit-cannot-encode-webp-previews-capture-with-chromium-or-firefox)
 - [Import](#import)
   - [`vitest/browser can be imported only inside the Browser Mode`](#vitestbrowser-can-be-imported-only-inside-the-browser-mode)
 - [Configuration](#configuration)
@@ -80,6 +81,7 @@ throws itself are quoted exactly.
   - [`Access denied to "…". See Vite config documentation for "server.fs"`](#access-denied-to--see-vite-config-documentation-for-serverfs)
   - [`Cannot modify file "…". File writing is disabled`](#cannot-modify-file--file-writing-is-disabled)
   - [`EncodingError: The source image cannot be decoded.`](#encodingerror-the-source-image-cannot-be-decoded)
+  - [`This browser cannot encode WebP previews: canvas.toDataURL("image/webp") returned another format (WebKit does this). Capture with chromium or firefox.`](#this-browser-cannot-encode-webp-previews-canvastodataurlimagewebp-returned-another-format-webkit-does-this-capture-with-chromium-or-firefox)
 
 ## Install
 
@@ -258,6 +260,23 @@ second `storybookProject` without `capture`:
 projects: [
 	storybookProject({ browsers: ['chromium', 'firefox'] }),
 	storybookProject({ capture: true }),
+],
+```
+
+### `` storybookProject: `capture` cannot use 'webkit' (`browsers` is [<list>]): WebKit cannot encode WebP previews. Capture with chromium or firefox. ``
+
+**When:** `storybookProject({ capture: true, browsers: ['webkit'] })`, or any
+`browsers` list that includes `'webkit'` with `capture`.
+**Why:** the preview is encoded as WebP, and WebKit cannot encode WebP. The
+config is refused up front instead of failing in the browser (see
+[the runtime error](#this-browser-cannot-encode-webp-previews-canvastodataurlimagewebp-returned-another-format-webkit-does-this-capture-with-chromium-or-firefox)).
+**Fix:** capture in `chromium` or `firefox`, and keep WebKit in a project
+without `capture`:
+
+```ts
+projects: [
+	storybookProject({ browsers: ['chromium', 'firefox', 'webkit'] }),
+	storybookProject({ capture: true, browsers: ['chromium'] }),
 ],
 ```
 
@@ -1179,4 +1198,22 @@ const png = await page.screenshot({ element: document.body, save: false });
 const image = new Image();
 image.src = `data:image/png;base64,${png}`;
 await image.decode();
+```
+
+### `This browser cannot encode WebP previews: canvas.toDataURL("image/webp") returned another format (WebKit does this). Capture with chromium or firefox.`
+
+The config-time twin of this error is [``storybookProject: `capture` cannot use 'webkit' …``](#storybookproject-capture-cannot-use-webkit-browsers-is-list-webkit-cannot-encode-webp-previews-capture-with-chromium-or-firefox).
+
+**When:** a `storybookProject({ capture })` runs in WebKit.
+**Why:** the preview is encoded with `canvas.toDataURL('image/webp')`. WebKit
+cannot encode WebP and silently returns PNG data, which would be saved under a
+`.webp` name. Chromium and Firefox encode it.
+**Fix:** capture in `chromium` or `firefox`, and keep WebKit in a project
+without `capture`.
+
+```ts
+projects: [
+	storybookProject({ browsers: ['chromium', 'firefox', 'webkit'] }),
+	storybookProject({ capture: true, browsers: ['chromium'] }),
+]
 ```

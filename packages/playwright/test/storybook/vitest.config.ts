@@ -16,10 +16,16 @@ export default defineConfig({
 				browsers,
 				tags: { include: ['expected-failure'] },
 			}),
-			storybookProject({
-				browsers: ['chromium'],
-				capture: { dir: '.probe-previews', settle: 0 },
-			}),
+			// Chromium-only (WebKit cannot encode WebP), and left out when the
+			// run names no chromium, so it never needs a browser the run lacks.
+			...(browsers.includes('chromium')
+				? [
+						storybookProject({
+							browsers: ['chromium'],
+							capture: { dir: '.probe-previews', settle: 0 },
+						}),
+					]
+				: []),
 		],
 	},
 });

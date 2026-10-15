@@ -85,6 +85,19 @@ describe('storybookProject', () => {
 		).not.toThrow();
 	});
 
+	test('capture with webkit throws; firefox is fine', () => {
+		expect(() =>
+			storybookProject({ capture: true, browsers: ['webkit'] }),
+		).toThrow('WebKit cannot encode WebP previews');
+		expect(() =>
+			storybookProject({ capture: true, browsers: ['chromium', 'webkit'] }),
+		).toThrow('WebKit cannot encode WebP previews');
+		expect(() =>
+			storybookProject({ capture: true, browsers: ['firefox'] }),
+		).not.toThrow();
+		expect(() => storybookProject({ browsers: ['webkit'] })).not.toThrow();
+	});
+
 	test('executablePath without chromium throws; the environment variable is ignored', () => {
 		expect(() =>
 			storybookProject({ browsers: ['firefox'], executablePath: '/opt/c' }),

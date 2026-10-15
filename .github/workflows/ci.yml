@@ -131,3 +131,34 @@ jobs:
         run: bun run test
       - name: Verify the built artifacts load
         run: bun run verify:artifacts
+
+  storybook-browsers:
+    # NOT a required check. @nxgt/playwright/storybook promises Firefox and
+    # WebKit, and the main job runs Chromium only. This runs the Storybook
+    # fixture there. Red means a real engine difference (or an upstream
+    # Playwright change): read it, do not retry it away.
+    name: Storybook in Firefox and WebKit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Build packages
+        run: bun run build
+      # Own key: the main job's cache holds Chromium only, and a shared key
+      # would let one job's save hide the other's browsers.
+      - name: Cache the Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-ffwk-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+      - name: Install Firefox and WebKit
+        working-directory: packages/playwright
+        run: bunx playwright install --with-deps firefox webkit
+      - name: Storybook fixture in Firefox and WebKit
+        working-directory: packages/playwright
+        env:
+          STORYBOOK_BROWSERS: firefox,webkit
+        run: bun test ./test/storybook/
