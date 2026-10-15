@@ -1,5 +1,11 @@
 # @nxgt/msw-graphql
 
+## 0.3.0
+
+### Minor Changes
+
+- [#52](https://github.com/softistx/nxgt-devkit/pull/52) [`5d3caab`](https://github.com/softistx/nxgt-devkit/commit/5d3caab4ea40ef7f0ee2586e28be1a7115b2a749) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `startMockServer` now intercepts `fetch` under Bun with msw 3. msw 3's `setupServer` patches `node:net`, which Bun's `fetch` never reaches (mswjs/msw#2811, closed as expected behaviour), so under Bun it built a server that mocked nothing. Under Bun with msw 3 the server now patches `globalThis.fetch` itself and resolves each request with msw's public `getResponse` (the function `createMockFetch` uses; they share their code), falling back to the original `fetch` when no handler answers. It is built on `getResponse`, not on `msw/experimental`, because an experimental msw API may change in a minor. Same `{ server, control }`, with `listen`, `close` (restores `fetch` when nothing wrapped it since; otherwise the closed patch forwards to the original), `use`, `resetHandlers`, `restoreHandlers`, `listHandlers` and the `bypass` / `warn` / `error` policies with msw's messages. The one difference from `setupServer` under Bun: `server.events` and `server.boundary()` throw an error saying why. It patches `globalThis.fetch` only, so a `node:http` client is not mocked there; `createMockFetch` still covers it. Node and msw 2 are unchanged. `bypass()` is supported: a resolver doing `fetch(bypass(request))` reaches the real server (msw marks it with `accept: msw/passthrough`; the marker is stripped), in `startMockServer` under Bun and in `createMockFetch`. Behaviour change in `createMockFetch`: a handler's `passthrough()` is now sent to `fallback` (or the real `fetch`), as msw does, instead of returning msw's 302 response to the caller; it is not an unhandled request, so `strict` does not throw for it.
+
 ## 0.2.1
 
 ### Patch Changes
