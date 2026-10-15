@@ -1,6 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import {
 	cspNonce,
+	cspTest,
 	expectNoncedPage,
 	loadPolicy,
 	watchCsp,
@@ -126,4 +127,10 @@ base.describe('expectNoncedPage', () => {
 			/no <script>/,
 		);
 	});
+});
+
+cspTest('cspTest passes a clean page', async ({ page, cspViolations }) => {
+	await page.goto('/csp/good');
+	await expect(page).toHaveTitle('ran');
+	expect(cspViolations).toEqual([]);
 });

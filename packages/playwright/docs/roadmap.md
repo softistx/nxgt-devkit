@@ -37,10 +37,9 @@ Nothing is in progress.
 
 ## Shipped
 
-- **Playwright 1.61 floor** — the `@playwright/test` peer is `^1.61.0`: from that version `goOffline` also takes a service worker's own fetches offline. 0.7.0.
-
-Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
-
+- **Playwright 1.61 floor** — the `@playwright/test` peer is `^1.61.0`: from
+  that version `goOffline` also takes a service worker's own fetches offline.
+  0.7.0.
 - **Application checks in one call** — `/csp` fails a test on a
   Content-Security-Policy refusal and checks the nonce on every script, the
   2.4.11 focus check keeps a focused field out from under a sticky bar, and
@@ -80,3 +79,5 @@ Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).
   answer in the runner and in its workers. 0.3.0.
 - **PWA cache checks** — `serviceWorkerControlled`, `cachedUrls` and
   `expectNotCached`. 0.3.0.
+
+Older entries are in [`CHANGELOG.md`](../CHANGELOG.md).

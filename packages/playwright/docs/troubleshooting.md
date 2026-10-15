@@ -85,7 +85,7 @@ you import needs a peer you have not installed.
 
 | Subpath | Install |
 | --- | --- |
-| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./pwa`, `./react-router` | `@playwright/test` (the root re-exports `./screens`: see below) |
+| `.`, `./config`, `./pages`, `./auth`, `./helpers`, `./pwa`, `./csp`, `./react-router` | `@playwright/test` (the root re-exports `./screens`: see below) |
 | `./a11y` | `@playwright/test`, `@axe-core/playwright` |
 | `./screens` | `@playwright/test`, plus `@axe-core/playwright` when `checkScreen`'s scan runs (the default, or an options object) |
 | `./msw` | `@playwright/test`, `msw`, `@msw/playwright` |

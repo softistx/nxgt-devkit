@@ -1,16 +1,17 @@
 import type { Locator, Page } from '@playwright/test';
 import { nextFrames } from '../helpers/frames';
-import { DEFAULT_ACTIONS } from './options';
+import { DEFAULT_UNSTICK } from './options';
 
 /** The default `field` selector: `@nxgt/material`'s field wrappers. */
 const DEFAULT_FIELD = '[data-slot$="-field"]';
 
 export type FocusOptions = {
 	/**
-	 * CSS selector of the sticky bar the focused control must end above.
-	 * Default: the first of `DEFAULT_UNSTICK`, a form's actions.
+	 * CSS selector, or a list of them (joined with `, `), of the sticky bar the
+	 * focused control must end above: the list an app passes to `unstick` works
+	 * here. Default: `DEFAULT_UNSTICK`, a form's actions.
 	 */
-	actions?: string;
+	actions?: string | readonly string[];
 	/**
 	 * CSS selector of the wrapper around a control whose bottom counts too
 	 * (a field's error line sits under its input). Default:
@@ -104,6 +105,10 @@ async function check(
 	return result;
 }
 
+/** The selector a `FocusOptions.actions` stands for. */
+const selectorOf = (actions: string | readonly string[] = DEFAULT_UNSTICK) =>
+	typeof actions === 'string' ? actions : actions.join(', ');
+
 /**
  * The focused control, and its field's error beneath it, are not hidden under
  * the sticky bar (WCAG 2.4.11 Focus Not Obscured, which axe does not check).
@@ -122,7 +127,7 @@ export async function expectFocusAboveActions(
 ): Promise<void> {
 	const result = await check(
 		page,
-		options.actions ?? DEFAULT_ACTIONS,
+		selectorOf(options.actions),
 		options.field ?? DEFAULT_FIELD,
 	);
 	if (result.kind === 'no-focus') {
@@ -141,7 +146,7 @@ export async function expectFieldsAboveActions(
 	page: Page,
 	options: FocusFieldsOptions = {},
 ): Promise<void> {
-	const actions = options.actions ?? DEFAULT_ACTIONS;
+	const actions = selectorOf(options.actions);
 	const field = options.field ?? DEFAULT_FIELD;
 	const limit = options.limit ?? 40;
 	const until =

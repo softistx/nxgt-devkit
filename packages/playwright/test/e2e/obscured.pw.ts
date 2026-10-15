@@ -4,6 +4,7 @@ import {
 	expectFocusAboveActions,
 	withA11y,
 } from '../../src/a11y';
+import { DEFAULT_UNSTICK } from '../../src/a11y/options';
 
 const BAR = 80;
 const fields = (count: number) =>
@@ -197,4 +198,18 @@ test('nothing focused is an error; the tabbing starts from the page', async ({
 		'nothing is focused: focus a control before checking',
 	);
 	await expectFieldsAboveActions(page);
+});
+
+test('actions takes a list: the selectors are joined, and named in the error', async ({
+	page,
+}) => {
+	await page.setContent(form({ padded: false }));
+	await page.locator('#f0').focus();
+	const list = ['.nothing', ...DEFAULT_UNSTICK];
+	await expect(
+		expectFieldsAboveActions(page, { actions: list }),
+	).rejects.toThrow('the sticky bar .nothing, [data-slot="form-actions"]');
+	await page.setContent(form({ padded: true }));
+	await page.locator('#f0').focus();
+	await expectFieldsAboveActions(page, { actions: list });
 });

@@ -68,10 +68,9 @@ function attribute(tag: string, name: string): string | undefined {
  */
 export function scriptTags(html: string): ScriptTag[] {
 	const tags: ScriptTag[] = [];
-	for (const [tag, name] of html
-		.replace(COMMENTS, '')
-		.matchAll(TAGS)
-		.map((m) => [m[0], m[1]] as const)) {
+	for (const m of html.replace(COMMENTS, '').matchAll(TAGS)) {
+		const tag = m[0];
+		const name = m[1];
 		if (name?.toLowerCase() === 'link') {
 			const rel = attribute(tag, 'rel') ?? '';
 			if (!rel.toLowerCase().split(/\s+/).includes('modulepreload')) continue;
