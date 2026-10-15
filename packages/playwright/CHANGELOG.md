@@ -1,5 +1,13 @@
 # @nxgt/playwright
 
+## 0.8.1
+
+### Patch Changes
+
+- [#59](https://github.com/softistx/nxgt-devkit/pull/59) [`b89a2d5`](https://github.com/softistx/nxgt-devkit/commit/b89a2d5e918cb33180b8578b2dd0f948bd2505c8) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `storybookProject({ capture, browsers })` with `webkit` now throws at config time, and the capture throws if a browser answers with a non-WebP image. WebKit cannot encode WebP: it silently returned PNG data, which was written under a `.webp` name. Capture with `chromium` or `firefox`.
+  
+  The capture also names an empty or oversized canvas (`toDataURL` answers `"data:,"`) with its width and height, instead of blaming the browser.
+
 ## 0.8.0
 
 ### Minor Changes
