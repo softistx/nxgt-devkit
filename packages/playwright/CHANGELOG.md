@@ -1,5 +1,17 @@
 # @nxgt/playwright
 
+## 0.7.0
+
+### Minor Changes
+
+- [#38](https://github.com/softistx/nxgt-devkit/pull/38) [`2ed2849`](https://github.com/softistx/nxgt-devkit/commit/2ed2849ab6f6434c701a43776f6024a72252cb78) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `@nxgt/playwright/a11y`: `expectFocusAboveActions` and `expectFieldsAboveActions` check WCAG 2.4.11 (Focus Not Obscured), which axe does not: the focused control, and its field's error, end above the sticky form actions, and Tab through the form up to the submit keeps each control clear of the bar. Options `actions`, `field`, `until` and `limit`; the `a11y` fixture carries both as `focusAboveActions` and `fieldsAboveActions`.
+
+- [#42](https://github.com/softistx/nxgt-devkit/pull/42) [`e80dd7d`](https://github.com/softistx/nxgt-devkit/commit/e80dd7d9bda9b98b226d7023742ae25a0d5bce5c) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `checkScreen` to `@nxgt/playwright/screens`: one call per screen that waits for web fonts and motion, saves the screen when the run saves them (before the checks, so a failing one still leaves the image), then runs the accessibility scan and the no-sideways-scroll check. `a11y` takes `expectAccessible`'s options, a function that replaces the scan, or `false`; `scroller` is a selector or a function of the test (a phone project can name another one); `@axe-core/playwright` is loaded only when the default scan runs.
+
+- [#37](https://github.com/softistx/nxgt-devkit/pull/37) [`663eac5`](https://github.com/softistx/nxgt-devkit/commit/663eac5ea7ed1c5eb23b40fffb044609d22c21c3) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `@nxgt/playwright/csp`: `watchCsp` and `withCspGuard` / `cspTest` fail a test whose pages meet a Content-Security-Policy refusal, and `expectNoncedPage` checks that a page's `script-src` names a fresh nonce that every script and module preload carries.
+
+- [#39](https://github.com/softistx/nxgt-devkit/pull/39) [`cb27263`](https://github.com/softistx/nxgt-devkit/commit/cb272631d80353ba26bda73d21711a4d97d53759) Thanks [@SteveGT96](https://github.com/SteveGT96)! - The `@playwright/test` peer range moves from `^1.55.0` to `^1.61.0`. Below 1.61, `context.setOffline(true)` does not reach a service worker's own fetches, so after `goOffline(page)` (`@nxgt/playwright/pwa`) a fetch of an uncached URL still answers `200`. Upgrade `@playwright/test` to 1.61 or newer.
+
 ## 0.6.0
 
 ### Minor Changes
