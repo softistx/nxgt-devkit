@@ -203,6 +203,13 @@ instead of the built-in; and it emits nothing, so `build.ts` needs tsc for
 the declarations anyway.
 
 - `bun test src` — the pure logic: names, config, the Storybook project shape.
+- `bun test ./test/storybook/` — a real-browser Storybook fixture (stories, a
+  `.storybook`, a Vitest browser project made by `storybookProject`). Part of
+  the package's `test` script. It imports the built `@nxgt/playwright/storybook`,
+  so `bun run build` comes first. `STORYBOOK_BROWSERS=chromium,firefox,webkit`
+  picks the browsers (chromium by default); ci.yml's non-required
+  `storybook-browsers` job runs Firefox and WebKit. The lower-peers leg below
+  runs it too.
 - `playwright test -c test/playwright.config.ts` — the pages, fixtures, fills
   and msw against `test/server.ts`, a Bun server whose form resets its input
   once 250 ms after load, the way hydration does. The config is written with
