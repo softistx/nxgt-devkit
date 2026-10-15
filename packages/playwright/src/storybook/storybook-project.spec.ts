@@ -19,15 +19,67 @@ describe('storybookProject', () => {
 		});
 	});
 
+	const launchPath = (instance?: { provider?: unknown }) =>
+		(
+			instance?.provider as {
+				options?: { launchOptions?: { executablePath?: string } };
+			}
+		)?.options?.launchOptions?.executablePath;
+
+	test('runs in Chromium only by default', () => {
+		const project = storybookProject();
+		expect(project.test?.browser?.instances).toEqual([{ browser: 'chromium' }]);
+	});
+
+	test('browsers: one instance each, in order, duplicates dropped', () => {
+		const project = storybookProject({
+			browsers: ['chromium', 'firefox', 'webkit', 'firefox'],
+		});
+		expect(project.test?.browser?.instances).toEqual([
+			{ browser: 'chromium' },
+			{ browser: 'firefox' },
+			{ browser: 'webkit' },
+		]);
+	});
+
+	test('an empty list of browsers throws', () => {
+		expect(() => storybookProject({ browsers: [] })).toThrow(
+			'storybookProject: `browsers` is empty.',
+		);
+	});
+
 	test('a system Chromium from the environment', () => {
 		process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = '/usr/bin/chromium';
 		const project = storybookProject();
 		delete process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
-		const provider = project.test?.browser?.provider as {
-			options?: { launchOptions?: { executablePath?: string } };
-		};
-		expect(provider.options?.launchOptions?.executablePath).toBe(
+		expect(launchPath(project.test?.browser?.instances?.[0])).toBe(
 			'/usr/bin/chromium',
 		);
+	});
+
+	test('executablePath goes on the chromium instance only', () => {
+		const project = storybookProject({
+			browsers: ['firefox', 'chromium', 'webkit'],
+			executablePath: '/opt/chromium',
+		});
+		const [firefox, chromium, webkit] = project.test?.browser?.instances ?? [];
+		expect(launchPath(chromium)).toBe('/opt/chromium');
+		expect(firefox).toEqual({ browser: 'firefox' });
+		expect(webkit).toEqual({ browser: 'webkit' });
+		expect(launchPath(project.test?.browser as { provider?: unknown })).toBe(
+			undefined,
+		);
+	});
+
+	test('executablePath without chromium throws; the environment variable is ignored', () => {
+		expect(() =>
+			storybookProject({ browsers: ['firefox'], executablePath: '/opt/c' }),
+		).toThrow(
+			'`executablePath` is a Chromium binary but `browsers` is [firefox]',
+		);
+		process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = '/usr/bin/chromium';
+		const project = storybookProject({ browsers: ['firefox'] });
+		delete process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+		expect(project.test?.browser?.instances).toEqual([{ browser: 'firefox' }]);
 	});
 });
