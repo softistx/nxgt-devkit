@@ -11,6 +11,9 @@ const fixture = import.meta.dir;
 const out = join(fixture, '.probe-results', 'vitest.json');
 const preview = join(fixture, '.probe-previews', 'fixture-button.webp');
 const browsers = fixtureBrowsers();
+// The capture project is chromium-only: it runs, and writes the preview, only
+// when the run names chromium.
+const captures = browsers.includes('chromium');
 const vitest = join(import.meta.dir, '../../node_modules/.bin/vitest');
 
 type Assertion = {
@@ -77,10 +80,10 @@ describe('storybookProject in a real Vitest browser run', () => {
 		}
 	});
 
-	test('Previewed passes once per browser, plus once in previews', () => {
+	test('Previewed passes once per browser, plus once in previews with chromium', () => {
 		expect(
 			named('Previewed').filter((a) => a.status === 'passed'),
-		).toHaveLength(browsers.length + 1);
+		).toHaveLength(browsers.length + (captures ? 1 : 0));
 	});
 
 	test('Broken fails once per browser with its message', () => {
@@ -88,9 +91,14 @@ describe('storybookProject in a real Vitest browser run', () => {
 		expect(runs).toHaveLength(browsers.length);
 		for (const run of runs) {
 			expect(run.status).toBe('failed');
-			expect(run.failureMessages?.join('\n')).toContain(
-				'Text that is not rendered anywhere',
-			);
+			// Chromium's stack starts with the message; Firefox's and WebKit's
+			// hold frames only, so there the failing story's file is the proof
+			// the failure came from its `play`.
+			const trace = run.failureMessages?.join('\n') ?? '';
+			expect(
+				trace.includes('Text that is not rendered anywhere') ||
+					trace.includes('broken.stories.ts'),
+			).toBe(true);
 		}
 	});
 
@@ -99,7 +107,7 @@ describe('storybookProject in a real Vitest browser run', () => {
 		expect(failed.every((a) => a.fullName.includes('Broken'))).toBe(true);
 	});
 
-	test('the preview is a WebP file', () => {
+	test.skipIf(!captures)('the preview is a WebP file', () => {
 		const bytes = readFileSync(preview);
 		expect(bytes.subarray(0, 4).toString('latin1')).toBe('RIFF');
 		expect(bytes.subarray(8, 12).toString('latin1')).toBe('WEBP');

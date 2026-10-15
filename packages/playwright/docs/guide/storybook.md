@@ -103,6 +103,12 @@ webkit`). `capture` takes a single browser: every browser would write the same p
 file, so `capture` with two or more `browsers` throws. Keep the cross-browser
 run in a project without `capture`.
 
+`capture` cannot use `webkit` either: WebKit cannot encode WebP, and its canvas
+answers with PNG data instead of failing. `storybookProject` throws when
+`capture` is set and `browsers` has `webkit`, and the capture itself throws if
+a browser returns anything but WebP. Capture with `chromium` (the default) or
+`firefox`.
+
 `executablePath` is a Chromium binary: it is applied to the `chromium`
 instance only, and Firefox and WebKit keep Playwright's downloads. Giving it
 while `browsers` has no `chromium` throws; the

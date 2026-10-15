@@ -1180,3 +1180,21 @@ const image = new Image();
 image.src = `data:image/png;base64,${png}`;
 await image.decode();
 ```
+
+### `This browser cannot encode WebP previews: canvas.toDataURL("image/webp") returned another format (WebKit does this). Capture with chromium or firefox.`
+
+Also thrown at config time as ``storybookProject: `capture` cannot use 'webkit' …``.
+
+**When:** a `storybookProject({ capture })` runs in WebKit.
+**Why:** the preview is encoded with `canvas.toDataURL('image/webp')`. WebKit
+cannot encode WebP and silently returns PNG data, which would be saved under a
+`.webp` name. Chromium and Firefox encode it.
+**Fix:** capture in `chromium` or `firefox`, and keep WebKit in a project
+without `capture`.
+
+```ts
+projects: [
+	storybookProject({ browsers: ['chromium', 'firefox', 'webkit'] }),
+	storybookProject({ capture: true, browsers: ['chromium'] }),
+]
+```

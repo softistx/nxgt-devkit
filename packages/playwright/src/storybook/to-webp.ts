@@ -8,6 +8,18 @@ export type WebpOptions = {
 };
 
 /**
+ * A browser that cannot encode a format answers `toDataURL` with PNG data
+ * instead of failing (WebKit does this for WebP), which would be written under
+ * a `.webp` name. Throws when `url` is not WebP.
+ */
+export function assertWebp(url: string): void {
+	if (url.startsWith('data:image/webp')) return;
+	throw new Error(
+		'This browser cannot encode WebP previews: canvas.toDataURL("image/webp") returned another format (WebKit does this). Capture with chromium or firefox.',
+	);
+}
+
+/**
  * Crops a PNG screenshot of `frame` to `box` plus `padding`, scales it to
  * `maxWidth`, and encodes WebP through a canvas — in the browser, so no native
  * image library.
@@ -42,5 +54,6 @@ export async function toWebp(
 			canvas.height,
 		);
 	const url = canvas.toDataURL('image/webp', quality);
+	assertWebp(url);
 	return url.slice(url.indexOf(',') + 1);
 }
