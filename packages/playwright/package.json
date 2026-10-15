@@ -121,7 +121,7 @@
 	},
 	"scripts": {
 		"build": "bun run ../../build.ts",
-		"test": "bun test src && bun test ./test/storybook/ && playwright test -c test/playwright.config.ts && playwright test -c test/playwright.mock-server.config.ts",
+		"test": "bun test src ./scripts/ && bun test ./test/storybook/ && playwright test -c test/playwright.config.ts && playwright test -c test/playwright.mock-server.config.ts",
 		"test:lower-peers": "bun run scripts/test-lower-peers.ts",
 		"typecheck": "tsc --noEmit"
 	},
