@@ -1,10 +1,22 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { defineAppConfig } from '../config/define-app-config';
 import { PROJECTS_ENV } from '../config/selected-projects';
 import { isPwaRun, pwaProject } from './project';
 
 const server = (config: ReturnType<typeof defineAppConfig>) =>
 	([] as unknown[]).concat(config.webServer ?? []) as Record<string, unknown>[];
+
+// `defineAppConfig` reads `process.env` too: a `PW_PORT` exported for the e2e
+// suite (two worktrees at once) must not move the ports these specs expect.
+const ENV = { ...process.env };
+beforeEach(() => {
+	delete process.env.CI;
+	delete process.env.PW_PORT;
+	delete process.env.PW_BASE_URL;
+});
+afterEach(() => {
+	process.env = { ...ENV };
+});
 
 describe('pwaProject', () => {
 	test('a production build on its port, one Chromium project, nothing else', () => {

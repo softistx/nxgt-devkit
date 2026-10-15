@@ -47,7 +47,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/config` | `defineAppConfig`, `selectedProjects`, `projectsFromArgv`, `PROJECTS_ENV`; types `AppConfigOptions`, `Browser`, `DeviceName`, `MobileProject` | Node |
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
-| `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
+| `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `expectNoTextOverflow`, `formatTextOverflow`, `screenshotName` | Node |
 | `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
@@ -329,6 +329,21 @@ test('fits', async ({ page }, testInfo) => {
 });
 ```
 
+A label that runs past its button, or a title cut short by an ellipsis with
+nothing to read it in full, is a phone bug no scroll check sees.
+`expectNoTextOverflow` fails on them (text that wraps, a box that scrolls and
+a clipped text with a `title` or an `aria-label` pass); `checkScreen` runs it
+with `textOverflow: true`:
+
+```ts
+import { expectNoTextOverflow } from '@nxgt/playwright/helpers';
+
+test('labels fit a phone', async ({ page }) => {
+	await page.goto('/projects');
+	await expectNoTextOverflow(page, { exclude: '.marquee' });
+});
+```
+
 ### Screens
 
 Saves every screen of a run, full page, under `<dir>/<project>/<name>.png`,
@@ -349,7 +364,7 @@ import { checkScreen } from '@nxgt/playwright/screens';
 test('projects', async ({ page }, testInfo) => {
 	await page.goto('/projects');
 	// Fonts and motion settled, screen saved when SCREENS=1, then the axe scan
-	// and the no-sideways-scroll check. Options: `a11y`, `scroller`, …
+	// and the no-sideways-scroll check. Options: `a11y`, `scroller`, `textOverflow`, …
 	await checkScreen(page, testInfo, 'projects');
 });
 ```

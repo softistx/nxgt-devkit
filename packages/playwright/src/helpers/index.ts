@@ -18,4 +18,10 @@ export {
 	type OverflowingElement,
 } from './no-horizontal-scroll';
 export { screenshotName } from './screenshot-name';
+export {
+	expectNoTextOverflow,
+	formatTextOverflow,
+	type OverflowingText,
+	type TextOverflowOptions,
+} from './text-overflow';
 export { type ToastsGoneOptions, toastsGone } from './toasts';
