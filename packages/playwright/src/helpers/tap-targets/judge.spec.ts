@@ -63,4 +63,18 @@ describe('judgeTapTargets', () => {
 			),
 		).toEqual([]);
 	});
+
+	test('a box whose hit area fills the square passes, with or without spacing', () => {
+		const padded = { ...box('input.check', 0, 0, 20), hitArea: true as const };
+		expect(judgeTapTargets([padded], strict)).toEqual([]);
+		expect(judgeTapTargets([padded, box('a.big', 30, 0, 100)], spaced)).toEqual(
+			[],
+		);
+	});
+
+	test('a hit-area box is still a neighbour, by its visible box', () => {
+		const padded = { ...box('input.check', 0, 0, 20), hitArea: true as const };
+		const found = judgeTapTargets([padded, box('a.small', 30, 0, 20)], spaced);
+		expect(found).toMatchObject([{ selector: 'a.small', near: 'input.check' }]);
+	});
 });

@@ -1,0 +1,5 @@
+---
+'@nxgt/playwright': minor
+---
+
+`expectTapTargets` (and `checkScreen`'s `tapTargets`) now measure the real hit area, not only the visible box. A checkbox, switch, radio or close button drawn at 20px with an invisible 44px `::before` / `::after` (often under `@media (pointer: coarse)`) passes, as long as the pseudo-element is hit-testable: every point of a 5x5 grid over the `size` square (44px by default) centred on the control's box (with its labels, for a checkbox or radio) must hit the control, its descendants or its labels. A full `size` square of hit area must be on screen: at the viewport's edge the square is moved inside the viewport, not cut. A control off screen, or whose square sticks out of the viewport, is scrolled into view for the probe and the scroll positions (the window, every scrolled ancestor, through slots and shadow roots) are put back; the page's scroll listeners fire during the check. `hitArea: false` restores the previous behaviour, the visible box only. The failure message is unchanged.

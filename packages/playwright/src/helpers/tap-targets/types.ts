@@ -8,6 +8,13 @@ export type TapTargetBox = {
 	top: number;
 	width: number;
 	height: number;
+	/**
+	 * Set by `probeHitAreas` when the box is smaller than `size` but an
+	 * invisible hit area (a `::before` / `::after`; a checkbox's or radio's
+	 * label counts) covers the `size` square centred on the box: the judge
+	 * counts it as large enough.
+	 */
+	hitArea?: true;
 };
 
 /** A tap target that is too small, or too close to another one. */
@@ -38,6 +45,24 @@ export type TapTargetOptions = {
 	 * circle (WCAG 2.5.8's spacing exception, at this `size`). Default `false`.
 	 */
 	spacing?: boolean;
+	/**
+	 * Measure the real hit area, not only the visible box. Only a candidate is
+	 * probed: a target smaller than `size` that has a `::before` / `::after`
+	 * with content (on it, on a checkbox's or radio's label, or on a
+	 * descendant), a descendant drawn outside its box, or a custom element or
+	 * shadow root (as the target, inside it, or in a checkbox's or radio's
+	 * label). Any other is judged on its box, which is what it hit-tests as. A
+	 * candidate still passes when a `size` square centred on its box (with its
+	 * labels, for a checkbox or radio) is hit by the target itself, its
+	 * descendants (a `::before` / `::after` counts as the element) or, for a
+	 * checkbox or radio, its labels: the design system that draws a 20px
+	 * checkbox with an invisible 44px `::before`. The square is probed with
+	 * `document.elementFromPoint` on a 5x5 grid, so the pseudo-element must be
+	 * hit-testable (not `pointer-events: none`, not covered). A target off
+	 * screen is scrolled into view for the probe and the scroll positions are
+	 * restored. Default `true`; `false` judges the visible box only, as 0.8 did.
+	 */
+	hitArea?: boolean;
 	/**
 	 * Which elements are tap targets: a selector or a list of them.
 	 * Default `DEFAULT_TAP_TARGETS`; this replaces it, so spread it to add.
