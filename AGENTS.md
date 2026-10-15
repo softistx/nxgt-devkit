@@ -180,7 +180,10 @@ the declarations anyway.
   and msw against `test/server.ts`, a Bun server whose form resets its input
   once 250 ms after load, the way hydration does. The config is written with
   `defineAppConfig` itself. Specs are `*.pw.ts` so `bun test` never picks
-  them up.
+  them up. `PW_PORT` moves the server and its URL in both test configs
+  (default 4599, read there and in `test/server.ts`): run two worktrees at
+  once with `PW_PORT=4600`, or `reuseExistingServer` makes them share one
+  server.
 
 `@nxgt/msw-graphql`'s `bun run test` also runs `test/vite` (`bun test`: a
 fixture built with `vite build`, whose output must hold the inlined SDL) and
