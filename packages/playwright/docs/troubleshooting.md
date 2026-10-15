@@ -58,6 +58,9 @@ throws itself are quoted exactly.
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
   - [`The scroll container <tag#id.class> scrolls horizontally`](#the-scroll-container-tagidclass-scrolls-horizontally)
+- [Responsive](#responsive)
+  - [`Text overflows its box in <n> elements`](#text-overflows-its-box-in-n-elements)
+  - [A clipped label fails although it shows a tooltip](#a-clipped-label-fails-although-it-shows-a-tooltip)
 - [Content-Security-Policy](#content-security-policy)
   - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
   - [`expectNoncedPage` failures](#expectnoncedpage-failures)
@@ -848,6 +851,37 @@ see it: an inner scroller never widens the document.
 **Fix:** narrow the listed elements, or wrap a wide table in its own
 `overflow-x: auto` box. A selector that matches nothing (an error page without
 the shell) checks the document only.
+
+## Responsive
+
+### `Text overflows its box in <n> elements`
+
+The message continues `(412x839 viewport):` and lists the boxes, each as
+`tag#id.class`, `clipped` or `spills`, the text, and the widths.
+
+**When:** `expectNoTextOverflow`, or `checkScreen` with `textOverflow`.
+**Why:** a text is wider (or, in a clamped box, taller) than its box. `spills`:
+the box leaves it visible, so it runs over what is beside it. `clipped`: the
+box hides the rest (`overflow: hidden`, usually with `text-overflow: ellipsis`
+or a line clamp) and nothing gives the full text.
+**Fix:** let the text wrap (`white-space: normal`, a `min-width: 0` on a flex
+child), widen the box, or, for a clipped text that is meant to be, give it
+its full text and exclude nothing:
+
+```html
+<span class="title" title="Quarterly report for the whole group">Quarterly report for the whole group</span>
+```
+
+or leave the box out: `expectNoTextOverflow(page, { exclude: '.marquee' })`.
+
+### A clipped label fails although it shows a tooltip
+
+**When:** the label is cut with an ellipsis, a tooltip shows the full text on
+hover, and the check still says `clipped … no title`.
+**Why:** the check reads attributes, not what a script draws on hover. A
+tooltip component's popup is not a `title`.
+**Fix:** add `title` or `aria-label` with the full text to the box (or to the
+link around it that holds nothing else), or exclude the box.
 
 ## Content-Security-Policy
 

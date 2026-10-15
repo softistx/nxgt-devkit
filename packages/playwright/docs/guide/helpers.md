@@ -266,6 +266,76 @@ which change widths) before calling it.
 phone lays the page out 980px wide and zooms it out to fit: nothing scrolls,
 however wide the content. Add the tag to the app's document.
 
+## `expectNoTextOverflow`
+
+Fails when a text does not fit the box that holds it: a button whose label
+runs past its edge, a title cut short by `text-overflow: ellipsis` or a line
+clamp with nothing to read it in full. A phone shows them first, and neither
+the sideways-scroll check (a clipped text widens nothing) nor axe sees them.
+
+```ts
+type TextOverflowOptions = {
+	include?: string | readonly string[]; // default: the whole body
+	exclude?: string | readonly string[];
+	max?: number; // default 5
+};
+
+function expectNoTextOverflow(page: Page, options?: TextOverflowOptions): Promise<void>;
+function formatTextOverflow(found: OverflowingText[], viewport: { width: number; height: number }, max?: number): string;
+```
+
+```ts
+import { test } from '@playwright/test';
+import { expectNoTextOverflow } from '@nxgt/playwright/helpers';
+
+test('labels fit a phone', async ({ page }) => {
+	await page.goto('/projects');
+	await expectNoTextOverflow(page, { exclude: '.marquee' });
+});
+```
+
+It waits for web fonts, then compares each text with the box that holds it
+(the nearest ancestor that is not `inline`), tolerating one pixel of rounding.
+Sideways, the text's rectangles are compared with the box's padding box;
+vertically, a box that holds inline content only is compared by `scrollHeight`
+and `clientHeight` (a line clamp, or a fixed height). What happens next
+depends on the box's `overflow` on that axis:
+
+| `overflow` | Result |
+| --- | --- |
+| `hidden`, `clip` | `clipped`: fails, unless the box (or an ancestor that holds only its text) has a non-empty `title` or `aria-label`. |
+| `visible` | `spills`: always fails, the text runs over what is beside it. |
+| `auto`, `scroll` | passes, the reader can scroll to it. |
+
+Not measured: `script`, `style`, `svg`, form controls (`input`, `textarea`,
+`select`), `contenteditable`, whatever is not rendered (`display: none`,
+`visibility: hidden`, `opacity: 0`) and a text hidden for screen readers only
+(`position: absolute` with `clip` or `clip-path`, the usual `sr-only`). A card
+that clips a decoration but not its text passes: only text is measured.
+
+```
+Text overflows its box in 2 elements (412x839 viewport):
+  - span.title  clipped with an ellipsis, no title: "Quarterly report for the…"  312px of text in a 180px box
+  - button#save  spills: "Enregistrer les modifications"  160px of text in a 120px box
+Let the text wrap, give a clipped one its full text in a title or aria-label, or exclude it.
+```
+
+The message counts every offender and lists at most `max`. A box clipped
+vertically reports its heights, `96px of text in a 48px-tall box`.
+
+### Giving a clipped text its full text
+
+```html
+<span class="title" title="Quarterly report for the whole group">Quarterly report for the whole group</span>
+```
+
+A `title` or an `aria-label` on the box, or on a link or button around it that
+holds nothing else, is enough. A tooltip a script draws is not a `title`: add
+the attribute as well, or `exclude` the box. Text you let wrap needs nothing.
+
+`checkScreen` runs it with `textOverflow` ([screens.md](screens.md#one-call-per-screen-checkscreen)).
+It checks once, as the page is now: wait for the content first.
+
 ## `screenshotName`
 
 The slug `BasePage.screenshot()` names its files with.

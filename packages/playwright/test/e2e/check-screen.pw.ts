@@ -70,6 +70,26 @@ test('horizontalScroll: false skips the check', async ({ page }, testInfo) => {
 	await checkScreen(page, testInfo, 'wide-ok', { horizontalScroll: false });
 });
 
+const CLIPPED = doc(
+	'<p id="title" style="width:100px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:16px monospace">WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW</p>',
+);
+
+test('textOverflow: true fails on a clipped text; the default passes the same page', async ({
+	page,
+}, testInfo) => {
+	await page.setContent(CLIPPED);
+	await checkScreen(page, testInfo, 'clipped-default');
+	const error = await checkScreen(page, testInfo, 'clipped', {
+		textOverflow: true,
+	}).catch((e: Error) => e);
+	expect((error as Error).message).toContain(
+		'Text overflows its box in 1 element',
+	);
+	await checkScreen(page, testInfo, 'clipped-excluded', {
+		textOverflow: { exclude: '#title' },
+	});
+});
+
 test('scroller, as a selector or a function of the test, is checked', async ({
 	page,
 }, testInfo) => {

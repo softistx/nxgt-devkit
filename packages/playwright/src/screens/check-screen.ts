@@ -7,6 +7,10 @@ import {
 	type NoHorizontalScrollOptions,
 } from '../helpers/no-horizontal-scroll';
 import {
+	expectNoTextOverflow,
+	type TextOverflowOptions,
+} from '../helpers/text-overflow';
+import {
 	type SaveScreenOptions,
 	saveScreen,
 	savingScreens,
@@ -32,9 +36,17 @@ export type CheckScreenOptions = {
 		| ((testInfo: TestInfo) => string | Locator | undefined);
 	/** `false` skips the sideways-scroll check. Default `true`. */
 	horizontalScroll?: boolean;
+	/**
+	 * `expectNoTextOverflow`: a text that runs past its box, or is clipped
+	 * with nothing to read it in full. `true` checks the whole body, an
+	 * options object is `expectNoTextOverflow`'s own. Default `false`: a
+	 * design may clip on purpose, so a screen opts in. Runs after the
+	 * sideways-scroll check.
+	 */
+	textOverflow?: boolean | TextOverflowOptions;
 	/** `saveScreen`'s options, used when the run saves screens. */
 	save?: SaveScreenOptions;
-	/** `expectNoHorizontalScroll`'s `max`. */
+	/** `expectNoHorizontalScroll`'s `max`, and `expectNoTextOverflow`'s unless it sets its own. */
 	max?: NoHorizontalScrollOptions['max'];
 };
 
@@ -42,8 +54,8 @@ export type CheckScreenOptions = {
  * Everything a screen goes through, in one call: waits for web fonts and for
  * motion to end, saves the screen when the run saves them (`SCREENS=1`) —
  * before the checks, so a failing one still leaves the image to look at —
- * then scans it for accessibility violations and checks that nothing scrolls
- * sideways.
+ * then scans it for accessibility violations, checks that nothing scrolls
+ * sideways and, when asked, that no text overflows its box.
  *
  * ```ts
  * await page.goto('/students');
@@ -60,6 +72,7 @@ export async function checkScreen(
 		a11y,
 		scroller,
 		horizontalScroll = true,
+		textOverflow = false,
 		save,
 		max,
 	}: CheckScreenOptions = {},
@@ -72,9 +85,16 @@ export async function checkScreen(
 	if (savingScreens(testInfo)) await saveScreen(page, testInfo, name, save);
 	if (typeof a11y === 'function') await a11y(page);
 	else if (a11y !== false) await expectAccessible(page, { ...a11y, testInfo });
-	if (!horizontalScroll) return;
-	await expectNoHorizontalScroll(page, {
-		max,
-		scroller: typeof scroller === 'function' ? scroller(testInfo) : scroller,
-	});
+	if (horizontalScroll) {
+		await expectNoHorizontalScroll(page, {
+			max,
+			scroller: typeof scroller === 'function' ? scroller(testInfo) : scroller,
+		});
+	}
+	if (textOverflow) {
+		await expectNoTextOverflow(
+			page,
+			textOverflow === true ? { max } : { max, ...textOverflow },
+		);
+	}
 }
