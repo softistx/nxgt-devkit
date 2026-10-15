@@ -67,6 +67,7 @@ throws itself are quoted exactly.
   - [`<n> tap targets are smaller than 44x44px`](#n-tap-targets-are-smaller-than-44x44px)
   - [`` expectTapTargets: `targets` is empty. ``](#expecttaptargets-targets-is-empty)
   - [`` expectTapTargets: `include` matched no element (<selectors>) ``](#expecttaptargets-include-matched-no-element-selectors)
+  - [`` expectNoTextOverflow: `include` matched no element (<selectors>) ``](#expectnotextoverflow-include-matched-no-element-selectors)
   - [Tap targets pass in axe but fail `expectTapTargets`](#tap-targets-pass-in-axe-but-fail-expecttaptargets)
 - [Content-Security-Policy](#content-security-policy)
   - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
@@ -965,6 +966,15 @@ its own name.
 would otherwise measure nothing and pass.
 **Fix:** correct the selector, wait for the content before checking, or drop
 `include` to check the whole page.
+
+### `` expectNoTextOverflow: `include` matched no element (<selectors>) ``
+
+**When:** `expectNoTextOverflow` (or `checkScreen` with `textOverflow`), and
+none of `include`'s selectors is in the page.
+**Why and fix:** as for
+[`expectTapTargets`](#expecttaptargets-include-matched-no-element-selectors):
+correct the selector, wait for the content, or drop `include` to check the
+whole body.
 
 ### Tap targets pass in axe but fail `expectTapTargets`
 
