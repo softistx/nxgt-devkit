@@ -1,6 +1,7 @@
 import type { AnyHandler } from 'msw';
 import { setupServer } from 'msw/node';
 import { createMockControl, type MockControlOptions } from '../control';
+import { createFetchServer, isBun, isMsw3Server } from './bun-server';
 
 export type StartMockServerOptions = Omit<MockControlOptions, 'server'> & {
 	/** What to do with a request no handler matches. Defaults to `'bypass'`. */
@@ -8,6 +9,10 @@ export type StartMockServerOptions = Omit<MockControlOptions, 'server'> & {
 };
 
 type Started = {
+	/**
+	 * msw's `setupServer` API. Under Bun with msw 3 it is a smaller server (see
+	 * `startMockServer`): `events` and `boundary()` throw there.
+	 */
 	server: ReturnType<typeof setupServer>;
 	control: ReturnType<typeof createMockControl>;
 };
@@ -36,9 +41,14 @@ const registry = globalThis as { [STARTED]?: Started };
  * ran when that server was built.
  *
  * `control` is the HTTP/programmatic channel for e2e specs (`./control`).
- * Under Bun with msw 3 it intercepts nothing: msw 3's interceptors do not see
- * Bun's native `fetch` (mswjs/msw#2811). There, give the client
- * `createMockFetch`'s fetch (`./fetch`), or stay on msw 2.
+ * Under Bun with msw 3, `setupServer` would intercept nothing (its
+ * interceptors patch `node:net`, which Bun's `fetch` never reaches,
+ * mswjs/msw#2811), so the server patches `globalThis.fetch` itself and
+ * resolves each request with msw's public `getResponse`, falling back to the
+ * original `fetch` when no handler answers. Same `{ server, control }`, with
+ * `listen`, `close`, `use`, `resetHandlers`, `restoreHandlers` and
+ * `listHandlers`; `events` and `boundary()` throw there. It mocks `fetch`
+ * only, not `node:http` clients.
  */
 export function startMockServer(
 	handlers: AnyHandler[],
@@ -50,7 +60,13 @@ export function startMockServer(
 	// The control is built before the server listens: under production it
 	// throws, so no server is left listening. `setupServer` only creates the
 	// server; `listen()` below is what intercepts.
-	const server = setupServer(...handlers);
+	// Under Bun, msw 3's `setupServer` intercepts nothing: patch `fetch` with
+	// `getResponse` (`./bun-server`). Node, and msw 2, keep `setupServer`.
+	const node = setupServer(...handlers);
+	const server =
+		isBun() && isMsw3Server(node)
+			? (createFetchServer(handlers) as unknown as typeof node)
+			: node;
 	const control = createMockControl({ ...controlOptions, server });
 	// `as never`: msw 3 renamed the option to `onUnhandledFrame` and each major
 	// ignores the other's, so the options type fits neither.

@@ -6,7 +6,9 @@ were reproduced while writing this page.
 - Install and codegen: [`Generate [FAILED...]`](#generate-failed-cannot-read-properties-of-undefined-reading-map),
   [`Module '"msw"' has no exported member 'graphql'`](#module-msw-has-no-exported-member-graphql),
   [Node >= 22.12](#msw-3-needs-node--2212)
-- Runtime: [not intercepted under Bun](#failed-to-replace-a-global-value-at-_wraphandle-not-a-global-value),
+- Runtime: [not intercepted under Bun (before 0.3.0)](#failed-to-replace-a-global-value-at-_wraphandle-not-a-global-value),
+  [`server.events` under Bun](#nxgtmsw-graphql-serverevents-is-not-available-under-bun-with-msw-3),
+  [`server.boundary()` under Bun](#nxgtmsw-graphql-serverboundary-is-not-available-under-bun-with-msw-3),
   [production](#createmockcontrol-is-dev-and-test-only-node_env-is-production),
   [`createMockFetch: no handler`](#createmockfetch-no-handler-for-method-url),
   [control answers](#the-control-answers-415-404-405-or-400),
@@ -65,15 +67,17 @@ bun add -d msw@^2.12.10
 
 ## `Failed to replace a global value at "_wrapHandle": not a global value.`
 
-**When:** `startMockServer` under Bun with msw 3. The message is logged, the
-request is not mocked and goes to the network (`ENOTFOUND`). Measured.
+**When:** a plain `setupServer` from `msw/node` (msw 3) under Bun, or
+`startMockServer` from a version of this package before 0.3.0. The message is
+logged, the request is not mocked and goes to the network (`ENOTFOUND`).
+Measured.
 **Why:** msw 3's Node server patches `node:net`, which does not intercept
-Bun's native `fetch`. msw 2.15 does intercept under Bun.
-This is [mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811).
-**Fix:** when the API client takes a `fetch`, use `createMockFetch` from
-`@nxgt/msw-graphql/fetch`, which works on msw 3 under Bun. Otherwise use
-msw 2 on a server that runs on Bun; a server run by Node >= 22.12 can use
-msw 3 with `startMockServer`.
+Bun's native `fetch` (msw 2.15 does). msw closed
+[mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811) as expected.
+**Fix:** `startMockServer` patches `fetch` itself under Bun with msw 3 since 0.3.0:
+upgrade `@nxgt/msw-graphql`. It patches `globalThis.fetch` only, so a client
+built on `node:http` (axios' Node adapter, `got`) is not mocked under Bun; give
+such a client `createMockFetch`'s fetch, or run it under Node:
 
 ```ts
 import { createMockFetch } from '@nxgt/msw-graphql/fetch';
@@ -82,19 +86,41 @@ const { fetch, control } = createMockFetch(handlers);
 const client = createClient({ url, fetch }); // your API client
 ```
 
-Or, for a client that cannot take a fetch:
+For your own `setupServer` calls (outside `startMockServer`), see
+[runtimes](guide/runtimes.md#node-and-bun). To check what a plain `setupServer`
+does on your install:
 
 ```bash
-bun add -d msw@^2.12.10
 bun -e "import{setupServer}from'msw/node';import{http,HttpResponse}from'msw';const s=setupServer(http.get('http://probe.test/x',()=>HttpResponse.json({ok:true})));s.listen({onUnhandledFrame:'bypass',onUnhandledRequest:'bypass'});fetch('http://probe.test/x').then(()=>console.log('intercepted'),()=>console.log('NOT intercepted')).finally(()=>s.close())"   # prints "intercepted" or "NOT intercepted"
 ```
 
 The probe lives in this package's `scripts/` folder in the repository.
 
+## `@nxgt/msw-graphql: server.events is not available under Bun with msw 3`
+
+**When:** reading `server.events` on the server `startMockServer` returns,
+under Bun with msw 3.
+**Why:** under Bun with msw 3 the server patches `globalThis.fetch` and resolves
+requests with msw's public `getResponse`. It has no event emitter nor async
+context; it is the one difference from `setupServer`, and it is typed as
+`setupServer`'s so Node code compiles unchanged.
+**Fix:** run that code under Node or msw 2, or observe requests in a handler.
+`listen`, `close`, `use`, `resetHandlers`, `restoreHandlers` and `listHandlers`
+work.
+
+## `@nxgt/msw-graphql: server.boundary() is not available under Bun with msw 3`
+
+**When:** calling `server.boundary()` on the server `startMockServer` returns,
+under Bun with msw 3.
+**Why:** same as `server.events`: this server has no async context to scope.
+**Fix:** run that code under Node or msw 2, or isolate state per test with
+`resetHandlers()`.
+
 ## `createMockFetch: no handler for <METHOD> <url>.`
 
 **When:** `createMockFetch(handlers, { strict: true })` gets a request that no
-handler answers.
+handler matches (a handler that calls `passthrough()` is not one: that request
+goes to `fallback`).
 **Why:** with `strict`, an unhandled request throws instead of going to the
 real `fetch` (or to `fallback`).
 **Fix:** add a handler for that URL, or drop `strict` so that it passes through:

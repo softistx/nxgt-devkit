@@ -1,5 +1,8 @@
 import { expect, test } from 'bun:test';
-import { HttpResponse, http } from 'msw';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { bypass, HttpResponse, http, passthrough } from 'msw';
 import { schema } from '../../test/schema';
 import { bearerToken, createExecutor, graphqlEndpoint } from '../index';
 import { createMockState } from '../state';
@@ -146,4 +149,81 @@ test('an aborted signal rejects, as the real fetch does', async () => {
 	await expect(
 		fetch(url, { method: 'POST', signal: AbortSignal.abort() }),
 	).rejects.toThrow();
+});
+
+test('a handler that calls passthrough() goes to the fallback, even with strict', async () => {
+	const mock = createMockFetch(
+		[http.get('http://p.test/x', () => passthrough())],
+		{
+			strict: true,
+			fallback: (async (_input: RequestInfo | URL) =>
+				new Response('real')) as typeof globalThis.fetch,
+		},
+	);
+	expect(await (await mock.fetch('http://p.test/x')).text()).toBe('real');
+});
+
+test('fetch(bypass(request)) in a resolver reaches the fallback once', async () => {
+	let hits = 0;
+	let entries = 0;
+	let accept: string | null = 'unset';
+	const fallback = (async (input: RequestInfo | URL) => {
+		hits++;
+		accept = (input as Request).headers.get('accept');
+		return Response.json({ n: 1 });
+	}) as unknown as typeof fetch;
+	const { fetch } = createMockFetch(
+		[
+			http.get('http://b.test/x', async ({ request }) => {
+				// A microtask loop cannot be timed out: fail on the second entry.
+				if (++entries > 1)
+					throw new Error('bypass(request) re-entered the handlers');
+				const body = (await globalThis
+					.fetch(bypass(request))
+					.then((r) => r.json())) as object;
+				return HttpResponse.json({ ...body, patched: true });
+			}),
+		],
+		{ fallback, strict: true },
+	);
+	// The resolver's own fetch is the global one: route it through the mock.
+	const before = globalThis.fetch;
+	globalThis.fetch = fetch;
+	try {
+		const response = await Promise.race([
+			fetch('http://b.test/x'),
+			new Promise<never>((_, r) =>
+				setTimeout(() => r(new Error('timeout')), 3000),
+			),
+		]);
+		expect(await response.json()).toEqual({ n: 1, patched: true });
+		expect(hits).toBe(1);
+		// A plain fetch(url) has no accept: the marker must not reach the fallback.
+		expect(accept ?? '').not.toContain('msw');
+	} finally {
+		globalThis.fetch = before;
+	}
+});
+
+test('Bun’s extra options reach the fallback of a bypass and of an unhandled request', async () => {
+	const dir = mkdtempSync(join(tmpdir(), 'msw-unix-'));
+	const unix = join(dir, 's.sock');
+	const real = Bun.serve({
+		unix,
+		fetch: async (request) => new Response(`${request.method}:${request.url}`),
+	});
+	const { fetch } = createMockFetch([], { fallback: globalThis.fetch });
+	try {
+		const unhandled = await fetch('http://localhost/u', {
+			unix,
+		} as RequestInit);
+		expect(await unhandled.text()).toBe('GET:http://localhost/u');
+		const bypassed = await fetch(bypass(new Request('http://localhost/b')), {
+			unix,
+		} as RequestInit);
+		expect(await bypassed.text()).toBe('GET:http://localhost/b');
+	} finally {
+		await real.stop(true);
+		rmSync(dir, { recursive: true, force: true });
+	}
 });

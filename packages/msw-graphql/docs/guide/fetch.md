@@ -1,10 +1,12 @@
 # createMockFetch
 
 A `fetch` answered by your handlers, with no global patch: for an SSR/BFF app
-whose API client takes an injected `fetch`. It is the way to mock the API on
-Bun with msw 3, where `startMockServer` does not intercept Bun's native `fetch`
-([mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811)). It works on
-msw 2 and 3, under Node and under Bun.
+whose API client takes an injected `fetch`. It works on msw 2 and 3, under Node and
+under Bun, and patches nothing, so it also fits where a global patch is unwanted.
+(Before 0.3.0 it was the only way to mock the API under Bun with msw 3, where a
+plain `setupServer` does not intercept Bun's native `fetch`,
+[mswjs/msw#2811](https://github.com/mswjs/msw/issues/2811); `startMockServer`
+now covers that case for `fetch` clients.)
 
 ```ts
 import { createMockFetch } from '@nxgt/msw-graphql/fetch';
@@ -44,7 +46,7 @@ type CreateMockFetchOptions = Omit<MockControlOptions, 'server'> & {
 | `scenarios` | `Record<string, (args?) => unknown>` | `{}` | Named app states |
 | `path` | `string` | `'/__mocks'` | Where the control's HTTP routes are mounted |
 | `state` | `MockState` | `mockState` | The state shared with the executor: pass the same one to both, or neither |
-| `strict` | `boolean` | `false` | Throw `createMockFetch: no handler for GET <url>.` on a request no handler matches |
+| `strict` | `boolean` | `false` | Throw `createMockFetch: no handler for GET <url>.` on a request no handler matches (a handler's `passthrough()` is not an unhandled request) |
 | `fallback` | `typeof fetch` | the global `fetch` | Where an unhandled request goes |
 
 ```ts
