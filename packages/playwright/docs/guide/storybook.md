@@ -1,7 +1,7 @@
 # Storybook
 
 `storybookProject` turns your Storybook stories into Vitest browser tests —
-each story rendered in a headless Chromium, through
+each story rendered in a headless browser (Chromium by default), through
 `@storybook/addon-vitest` — and, with `capture`, saves a cropped WebP preview
 of every component whose story is tagged `preview`.
 
@@ -62,8 +62,9 @@ The project it returns:
   Tailwind's), aliases and `define`, so stories build like the app;
 - `plugins: [storybookTest({ configDir, tags })]` from
   `@storybook/addon-vitest/vitest-plugin`;
-- `test.browser`: enabled, headless, one instance per entry of `browsers` (default one `chromium`) through
-  `@vitest/browser-playwright`, at `viewport`;
+- `test.browser`: enabled, headless, one instance per entry of `browsers`
+  (default one `chromium`) through `@vitest/browser-playwright`, at
+  `viewport`;
 - `test.setupFiles`: this package's `storybook/setup` first (it registers
   the capture `afterEach`), then yours;
 - `test.provide`: the capture options, or `false`.

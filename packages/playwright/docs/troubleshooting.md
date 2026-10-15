@@ -15,8 +15,8 @@ throws itself are quoted exactly.
   - [`Executable doesn't exist at …/chromium_headless_shell-<revision>/…`](#executable-doesnt-exist-at-chromium_headless_shell-revision)
   - [`BEWARE: your OS is not officially supported by Playwright`](#beware-your-os-is-not-officially-supported-by-playwright)
   - [`Chromium distribution 'msedge' is not found`](#chromium-distribution-msedge-is-not-found)
-  - [`storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`.`](#storybookproject-executablepath-is-a-chromium-binary-but-browsers-is-list-add-chromium-or-drop-executablepath)
-  - [`storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit.`](#storybookproject-browsers-is-empty-name-at-least-one-of-chromium-firefox-webkit)
+  - [`` storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`. ``](#storybookproject-executablepath-is-a-chromium-binary-but-browsers-is-list-add-chromium-or-drop-executablepath)
+  - [`` storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit. ``](#storybookproject-browsers-is-empty-name-at-least-one-of-chromium-firefox-webkit)
 - [Import](#import)
   - [`vitest/browser can be imported only inside the Browser Mode`](#vitestbrowser-can-be-imported-only-inside-the-browser-mode)
 - [Configuration](#configuration)
@@ -217,7 +217,7 @@ its cache.
 export default defineAppConfig({ port: 5174, browsers: ['chromium', 'firefox'] });
 ```
 
-### `storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`.`
+### `` storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`. ``
 
 **When:** `storybookProject()` runs in the Vitest config.
 **Why:** `executablePath` points at a Chromium binary, and `browsers` names
@@ -231,7 +231,7 @@ when there is no Chromium instance.
 storybookProject({ browsers: ['chromium', 'firefox'], executablePath: '/usr/bin/chromium' });
 ```
 
-### `storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit.`
+### `` storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit. ``
 
 **When:** `storybookProject({ browsers: [] })`.
 **Why:** an empty list would leave the project with no browser to run in.
