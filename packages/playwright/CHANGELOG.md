@@ -1,5 +1,15 @@
 # @nxgt/playwright
 
+## 0.8.0
+
+### Minor Changes
+
+- [#47](https://github.com/softistx/nxgt-devkit/pull/47) [`1bb81b2`](https://github.com/softistx/nxgt-devkit/commit/1bb81b24cc2ad063008c6ac3a79ba1e23adf3539) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `storybookProject({ browsers })` runs the stories in Chromium, Firefox and/or WebKit, one Vitest browser instance each (default `['chromium']`, so nothing changes). `executablePath` applies to the `chromium` instance only and throws when `browsers` has no `chromium`. New type `StorybookBrowser`. `capture` with more than one browser throws (they would write the same preview file). The returned project's `test.browser.provider` is now a bare `playwright()`: the Chromium `executablePath` moved to the `chromium` instance's own `provider` (the launched browser is the same), so code that reads `provider.launchOptions` on the project reads the instance instead.
+
+- [#48](https://github.com/softistx/nxgt-devkit/pull/48) [`f99fe2b`](https://github.com/softistx/nxgt-devkit/commit/f99fe2bcdb81b5636836f42220e6429dc4efdeec) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `expectTapTargets`, `formatTapTargets(found, viewport, { size, max })` and `DEFAULT_TAP_TARGETS` in `/helpers` (and the root), with the types `TapTargetOptions` and `SmallTapTarget`: links, buttons and controls of at least 44x44 CSS pixels, and `checkScreen`'s `tapTargets` option (off by default; `true`, an options object, or a function of the test for phone-only). WCAG 2.5.8's 24px stays axe's `target-size`, which `expectAccessible` already runs. An empty `targets`, or an `include` matching no element, throws a named error. The size is the element's border box: grow it with padding or `min-width` / `min-height`.
+
+- [#46](https://github.com/softistx/nxgt-devkit/pull/46) [`90797a6`](https://github.com/softistx/nxgt-devkit/commit/90797a6d23588c909a18356cdc4e7e4eb03061f3) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `expectNoTextOverflow` and `formatTextOverflow(found, viewport, { max })` in `/helpers` (and the root), with the types `TextOverflowOptions` and `OverflowingText`, and `checkScreen`'s `textOverflow` option (off by default; `true`, an options object, or a function of the test for phone-only). An `include` matching no element throws instead of passing.
+
 ## 0.7.0
 
 ### Minor Changes

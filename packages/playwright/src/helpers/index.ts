@@ -18,4 +18,17 @@ export {
 	type OverflowingElement,
 } from './no-horizontal-scroll';
 export { screenshotName } from './screenshot-name';
+export {
+	DEFAULT_TAP_TARGETS,
+	expectTapTargets,
+	formatTapTargets,
+	type SmallTapTarget,
+	type TapTargetOptions,
+} from './tap-targets';
+export {
+	expectNoTextOverflow,
+	formatTextOverflow,
+	type OverflowingText,
+	type TextOverflowOptions,
+} from './text-overflow';
 export { type ToastsGoneOptions, toastsGone } from './toasts';

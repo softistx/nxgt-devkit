@@ -8,7 +8,7 @@ roadmap in its `docs/roadmap.md`.
 
 | Package | What it is | Roadmap |
 | --- | --- | --- |
-| [`@nxgt/playwright`](packages/playwright) | Playwright config, page objects, login, msw and mock-server fixtures (including server-side mock control for SSR apps), PWA helpers, hydration and screen helpers, and Storybook stories as Vitest browser tests with preview capture | [roadmap](packages/playwright/docs/roadmap.md) |
+| [`@nxgt/playwright`](packages/playwright) | Playwright config, page objects, login, msw and mock-server fixtures (including server-side mock control for SSR apps), PWA helpers, hydration and screen helpers, accessibility, CSP and responsive checks, and Storybook stories as Vitest browser tests with preview capture | [roadmap](packages/playwright/docs/roadmap.md) |
 | [`@nxgt/msw-graphql`](packages/msw-graphql) | Mock a GraphQL API with msw by executing the real operations against your schema, with a control channel for e2e specs | [roadmap](packages/msw-graphql/docs/roadmap.md) |
 
 ## Planned

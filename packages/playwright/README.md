@@ -47,7 +47,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/config` | `defineAppConfig`, `selectedProjects`, `projectsFromArgv`, `PROJECTS_ENV`; types `AppConfigOptions`, `Browser`, `DeviceName`, `MobileProject` | Node |
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
-| `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `screenshotName` | Node |
+| `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `expectNoTextOverflow`, `formatTextOverflow`, `expectTapTargets`, `formatTapTargets`, `DEFAULT_TAP_TARGETS`, `screenshotName` | Node |
 | `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
@@ -55,7 +55,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/csp` | `watchCsp`, `withCspGuard`, `cspTest`, `expectNoncedPage`, `cspNonce`, `loadPolicy`; types `CspGuardFixtures`, `ExpectNoncedPageOptions`, `LoadedPolicy` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
-| `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
+| `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `StorybookBrowser`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
 | `@nxgt/playwright/storybook/capture` | `capturePreview` | **browser only** |
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
@@ -329,6 +329,41 @@ test('fits', async ({ page }, testInfo) => {
 });
 ```
 
+A label that runs past its button, or a title cut short by an ellipsis with
+nothing to read it in full, is a phone bug no scroll check sees.
+`expectNoTextOverflow` fails on them (text that wraps, a box that scrolls and
+a clipped text with a `title` or an `aria-label` pass); `checkScreen` runs it
+with `textOverflow: true`:
+
+```ts
+import { expectNoTextOverflow } from '@nxgt/playwright/helpers';
+
+test('labels fit a phone', async ({ page }) => {
+	await page.goto('/projects');
+	await expectNoTextOverflow(page, { exclude: '.marquee' });
+});
+```
+
+An icon button a mouse hits and a thumb misses is the third. `expectTapTargets`
+fails on a link, button or control smaller than 44x44 CSS pixels (a 24px
+minimum is axe's `target-size`, which `expectAccessible` already runs);
+`checkScreen` takes `tapTargets: (info) => isMobileProject(info)` for phones
+only:
+
+```ts
+import { expectTapTargets } from '@nxgt/playwright/helpers';
+
+test('tap targets fit a thumb', async ({ page }) => {
+	await page.goto('/projects');
+	await expectTapTargets(page, { exclude: '.legal a' });
+});
+```
+
+**Trap:** a page without `<meta name="viewport" content="width=device-width,
+initial-scale=1">` is laid out 980px wide on a phone and zoomed out, so
+`expectNoHorizontalScroll` always passes and tap targets are measured at a
+size nobody sees. Add the tag to the app's document first.
+
 ### Screens
 
 Saves every screen of a run, full page, under `<dir>/<project>/<name>.png`,
@@ -349,7 +384,7 @@ import { checkScreen } from '@nxgt/playwright/screens';
 test('projects', async ({ page }, testInfo) => {
 	await page.goto('/projects');
 	// Fonts and motion settled, screen saved when SCREENS=1, then the axe scan
-	// and the no-sideways-scroll check. Options: `a11y`, `scroller`, …
+	// and the no-sideways-scroll check. Options: `a11y`, `scroller`, `textOverflow`, `tapTargets`, …
 	await checkScreen(page, testInfo, 'projects');
 });
 ```
@@ -584,6 +619,7 @@ export default defineConfig({
 		projects: [
 			{ extends: true, test: { name: 'unit', environment: 'node' } },
 			storybookProject(), // every story renders in Chromium
+			// storybookProject({ browsers: ['chromium', 'firefox'] }), // …and in Firefox
 			storybookProject({ capture: true }), // stories tagged `preview` → docs/previews/*.webp
 		],
 	},
@@ -659,6 +695,9 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
   touch `document`. `storybookProject()` already registers the setup file.
 - **Only one story per component should carry `preview`**: they share one file
   name, so the last one captured wins.
+- **`capture` takes a single browser**: every browser writes the same preview
+  file, so `storybookProject({ capture: true, browsers: [...two or more] })`
+  throws. Run the cross-browser smoke test as a second project without `capture`.
 
 ## Documentation
 

@@ -1,5 +1,6 @@
 import type { AxeBuilder } from '@axe-core/playwright';
 import { type Page, type TestInfo, test } from '@playwright/test';
+import { toList } from '../helpers/list';
 import { formatViolations } from './format';
 import {
 	type A11yOptions,
@@ -49,9 +50,6 @@ export async function loadAxe(
 	}
 }
 
-const list = (value: string | readonly string[] | undefined) =>
-	value === undefined ? [] : typeof value === 'string' ? [value] : value;
-
 /**
  * Runs axe on the page as it is now and returns its results, without
  * asserting anything. The options are `expectAccessible`'s.
@@ -65,15 +63,15 @@ export async function accessibilityScan(
 	let builder = new AxeBuilder({ page }).withTags([
 		...(options.tags ?? DEFAULT_TAGS),
 	]);
-	for (const selector of list(options.include))
+	for (const selector of toList(options.include))
 		builder = builder.include(selector);
-	for (const selector of list(options.exclude))
+	for (const selector of toList(options.exclude))
 		builder = builder.exclude(selector);
 	const disabled = (options.disableRules ?? []).map(({ rule }) => rule);
 	if (disabled.length > 0) builder = builder.disableRules(disabled);
 	return withOverlaysInFlow(
 		page,
-		options.unstick === undefined ? DEFAULT_UNSTICK : list(options.unstick),
+		options.unstick === undefined ? DEFAULT_UNSTICK : toList(options.unstick),
 		() => builder.analyze(),
 	);
 }
