@@ -73,6 +73,12 @@ jobs:
       - name: playwright on the lowest @playwright/test
         working-directory: packages/playwright
         run: bun run scripts/test-lower-peers.ts --playwright 1.61.1
+      # The storybook entry promises vitest ^4.0.0 and @storybook/addon-vitest
+      # >=10.3.0; the workspace holds 4.1 and 10.6, so the floors' newest patches
+      # run the typecheck, the unit specs and the fixture in a scratch copy.
+      - name: playwright/storybook on the lowest vitest and addon-vitest
+        working-directory: packages/playwright
+        run: bun run scripts/test-lower-peers.ts --vitest 4.0.18 --storybook 10.3.6
       # The build exits 0 on packages that throw the instant they are imported.
       # This packs them, installs them as a consumer does and imports every
       # declared subpath but the browser-only ones.
