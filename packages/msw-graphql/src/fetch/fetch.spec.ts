@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { HttpResponse, http, passthrough } from 'msw';
+import { bypass, HttpResponse, http, passthrough } from 'msw';
 import { schema } from '../../test/schema';
 import { bearerToken, createExecutor, graphqlEndpoint } from '../index';
 import { createMockState } from '../state';
@@ -158,4 +158,38 @@ test('a handler that calls passthrough() goes to the fallback, even with strict'
 		},
 	);
 	expect(await (await mock.fetch('http://p.test/x')).text()).toBe('real');
+});
+
+test('fetch(bypass(request)) in a resolver reaches the fallback once', async () => {
+	let hits = 0;
+	const fallback = (async () => {
+		hits++;
+		return Response.json({ n: 1 });
+	}) as unknown as typeof fetch;
+	const { fetch } = createMockFetch(
+		[
+			http.get('http://b.test/x', async ({ request }) => {
+				const body = (await globalThis
+					.fetch(bypass(request))
+					.then((r) => r.json())) as object;
+				return HttpResponse.json({ ...body, patched: true });
+			}),
+		],
+		{ fallback, strict: true },
+	);
+	// The resolver's own fetch is the global one: route it through the mock.
+	const before = globalThis.fetch;
+	globalThis.fetch = fetch;
+	try {
+		const response = await Promise.race([
+			fetch('http://b.test/x'),
+			new Promise<never>((_, r) =>
+				setTimeout(() => r(new Error('timeout')), 3000),
+			),
+		]);
+		expect(await response.json()).toEqual({ n: 1, patched: true });
+		expect(hits).toBe(1);
+	} finally {
+		globalThis.fetch = before;
+	}
 });

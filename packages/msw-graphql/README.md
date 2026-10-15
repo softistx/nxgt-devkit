@@ -115,7 +115,7 @@ from the server. The control is mounted so a spec can reset and steer them.
 
 First choice, when your API client takes a `fetch`: `createMockFetch` answers
 through the handlers with no global patch, on Node or Bun, msw 2 or 3, and it
-covers a client that is not built on `fetch` too.
+covers any client that can be given a `fetch`.
 
 ```ts
 // server.ts: run by Node >= 22.12 or by Bun, msw 2 or 3

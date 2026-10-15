@@ -46,7 +46,7 @@ type CreateMockFetchOptions = Omit<MockControlOptions, 'server'> & {
 | `scenarios` | `Record<string, (args?) => unknown>` | `{}` | Named app states |
 | `path` | `string` | `'/__mocks'` | Where the control's HTTP routes are mounted |
 | `state` | `MockState` | `mockState` | The state shared with the executor: pass the same one to both, or neither |
-| `strict` | `boolean` | `false` | Throw `createMockFetch: no handler for GET <url>.` on a request no handler matches |
+| `strict` | `boolean` | `false` | Throw `createMockFetch: no handler for GET <url>.` on a request no handler matches (a handler's `passthrough()` is not an unhandled request) |
 | `fallback` | `typeof fetch` | the global `fetch` | Where an unhandled request goes |
 
 ```ts

@@ -8,6 +8,7 @@ were reproduced while writing this page.
   [Node >= 22.12](#msw-3-needs-node--2212)
 - Runtime: [not intercepted under Bun (before 0.3.0)](#failed-to-replace-a-global-value-at-_wraphandle-not-a-global-value),
   [`server.events` under Bun](#nxgtmsw-graphql-serverevents-is-not-available-under-bun-with-msw-3),
+  [`server.boundary()` under Bun](#nxgtmsw-graphql-serverboundary-is-not-available-under-bun-with-msw-3),
   [production](#createmockcontrol-is-dev-and-test-only-node_env-is-production),
   [`createMockFetch: no handler`](#createmockfetch-no-handler-for-method-url),
   [control answers](#the-control-answers-415-404-405-or-400),
@@ -97,8 +98,8 @@ The probe lives in this package's `scripts/` folder in the repository.
 
 ## `@nxgt/msw-graphql: server.events is not available under Bun with msw 3`
 
-**When:** reading `server.events` or calling `server.boundary()` on the server
-`startMockServer` returns, under Bun with msw 3 (also `server.boundary()`).
+**When:** reading `server.events` on the server `startMockServer` returns,
+under Bun with msw 3.
 **Why:** under Bun with msw 3 the server patches `globalThis.fetch` and resolves
 requests with msw's public `getResponse`. It has no event emitter nor async
 context; it is the one difference from `setupServer`, and it is typed as
@@ -107,10 +108,19 @@ context; it is the one difference from `setupServer`, and it is typed as
 `listen`, `close`, `use`, `resetHandlers`, `restoreHandlers` and `listHandlers`
 work.
 
+## `@nxgt/msw-graphql: server.boundary() is not available under Bun with msw 3`
+
+**When:** calling `server.boundary()` on the server `startMockServer` returns,
+under Bun with msw 3.
+**Why:** same as `server.events`: this server has no async context to scope.
+**Fix:** run that code under Node or msw 2, or isolate state per test with
+`resetHandlers()`.
+
 ## `createMockFetch: no handler for <METHOD> <url>.`
 
 **When:** `createMockFetch(handlers, { strict: true })` gets a request that no
-handler answers.
+handler matches (a handler that calls `passthrough()` is not one: that request
+goes to `fallback`).
 **Why:** with `strict`, an unhandled request throws instead of going to the
 real `fetch` (or to `fallback`).
 **Fix:** add a handler for that URL, or drop `strict` so that it passes through:

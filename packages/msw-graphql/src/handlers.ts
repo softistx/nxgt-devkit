@@ -20,7 +20,8 @@ export function createHandlerStore(handlers: readonly unknown[]) {
 		/** Makes the `once` handlers that already answered answer again. */
 		restoreHandlers() {
 			for (const handler of current)
-				(handler as { isUsed?: boolean }).isUsed = false;
+				if ('isUsed' in (handler as object))
+					(handler as { isUsed: boolean }).isUsed = false;
 		},
 		listHandlers: (): readonly unknown[] => current,
 	};
@@ -28,7 +29,7 @@ export function createHandlerStore(handlers: readonly unknown[]) {
 
 export type HandlerStore = ReturnType<typeof createHandlerStore>;
 
-/** The `x-msw-intention` header msw's `passthrough()` and `bypass()` set. */
+/** The `x-msw-intention` header msw's `passthrough()` sets on its response. */
 const INTENTION = 'x-msw-intention';
 
 /**
@@ -50,12 +51,27 @@ export async function answer(
 
 /**
  * Whether a request is one `bypass(request)` marked (a resolver fetching the
- * real thing): it skips the handlers, and the marker is stripped before it is
- * sent.
+ * real thing): it skips the handlers. msw's `bypass()` appends `msw/passthrough`
+ * to the request's `accept` header; the token is stripped before the request is
+ * sent, the way msw's own `deleteRequestPassthroughHeader` does.
  */
 export function unmarkBypass(request: Request): Request | undefined {
-	if (request.headers.get(INTENTION) !== 'bypass') return;
+	const accept = request.headers.get('accept');
+	if (!accept?.includes('msw/passthrough')) return;
 	const headers = new Headers(request.headers);
-	headers.delete(INTENTION);
+	const next = accept.replace(/(,\s+)?msw\/passthrough/, '');
+	if (next) headers.set('accept', next);
+	else headers.delete('accept');
 	return new Request(request, { headers });
+}
+
+/**
+ * The caller's `fetch` init without what a `Request` already carries (body,
+ * headers, method), so it can ride along as the second argument and keep
+ * Bun's extra options (`unix`, `tls`, `proxy`...).
+ */
+export function extraInit(init?: RequestInit): RequestInit | undefined {
+	if (!init) return;
+	const { body, headers, method, ...extra } = init;
+	return extra;
 }

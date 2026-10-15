@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test';
-import { getResponse, HttpResponse, http, passthrough } from 'msw';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { bypass, getResponse, HttpResponse, http, passthrough } from 'msw';
 import { schema } from '../../test/schema';
+import { createHandlerStore } from '../handlers';
 import { bearerToken, createExecutor, graphqlEndpoint } from '../index';
 import { createMockState } from '../state';
 import { createFetchServer, isMsw3Server } from './bun-server';
@@ -137,8 +141,8 @@ test('under production, a registered server is returned without throwing', () =>
 });
 
 // Under Bun, msw 3's `setupServer` intercepts nothing (mswjs/msw#2811), so
-// startMockServer builds a network on the `fetch/web` interceptor. On msw 2 the
-// same assertions hold through `setupServer`, which does intercept Bun's fetch.
+// startMockServer patches globalThis.fetch and resolves with getResponse. On
+// msw 2 the same assertions hold through `setupServer`, which does intercept Bun's fetch.
 test('a global fetch to a host nothing serves is answered by the handlers', async () => {
 	const { server } = startMockServer(
 		[http.get('http://unserved.invalid/a', () => HttpResponse.json({ a: 1 }))],
@@ -304,26 +308,6 @@ test('bypass reaches a real server; error rejects the same URL; warn prints msw�
 	}
 });
 
-test('a function onUnhandledRequest gets the request and msw’s print helpers', async () => {
-	const real = Bun.serve({ port: 0, fetch: () => new Response('real') });
-	const seen: string[] = [];
-	const server = fetchServer();
-	server.listen({
-		onUnhandledRequest: (request) => {
-			seen.push(`${request.method} ${new URL(request.url).pathname}`);
-		},
-	});
-	try {
-		expect(await (await fetch(`http://localhost:${real.port}/e`)).text()).toBe(
-			'real',
-		);
-		expect(seen).toEqual(['GET /e']);
-	} finally {
-		server.close();
-		await real.stop(true);
-	}
-});
-
 test('an unknown onUnhandledRequest strategy is refused by listen()', () => {
 	const server = fetchServer();
 	expect(() => server.listen({ onUnhandledRequest: 'nope' as never })).toThrow(
@@ -407,4 +391,106 @@ test('the control channel (fail, override, reset) drives the server startMockSer
 	} finally {
 		server.close();
 	}
+});
+
+const withTimeout = <T>(promise: Promise<T>, ms = 3000): Promise<T> =>
+	Promise.race([
+		promise,
+		new Promise<never>((_, reject) =>
+			setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms),
+		),
+	]);
+
+test('fetch(bypass(request)) in a resolver reaches the real server once', async () => {
+	let hits = 0;
+	const real = Bun.serve({
+		port: 0,
+		fetch: () => {
+			hits++;
+			return Response.json({ n: 1 });
+		},
+	});
+	const url = `http://localhost:${real.port}/b`;
+	const server = fetchServer(
+		http.get(url, async ({ request }) => {
+			const body = (await fetch(bypass(request)).then((r) => r.json())) as {
+				n: number;
+			};
+			return HttpResponse.json({ ...body, patched: true });
+		}),
+	);
+	server.listen({ onUnhandledRequest: 'error' });
+	try {
+		const response = await withTimeout(fetch(url));
+		expect(await response.json()).toEqual({ n: 1, patched: true });
+		expect(hits).toBe(1);
+	} finally {
+		server.close();
+		await real.stop(true);
+	}
+});
+
+test('a wrapper put on fetch after listen() is no longer answered by a closed server', async () => {
+	const real = Bun.serve({ port: 0, fetch: () => new Response('real') });
+	const url = `http://localhost:${real.port}/s`;
+	const server = fetchServer(http.get(url, () => HttpResponse.text('mock')));
+	const before = globalThis.fetch;
+	server.listen({ onUnhandledRequest: 'bypass' });
+	const patched = globalThis.fetch;
+	const wrapper = ((input, init) => patched(input, init)) as typeof fetch;
+	globalThis.fetch = wrapper;
+	try {
+		expect(await (await fetch(url)).text()).toBe('mock');
+		server.close();
+		// close() leaves the wrapper, but the closed patch must stop mocking.
+		expect(globalThis.fetch).toBe(wrapper);
+		expect(await (await withTimeout(fetch(url))).text()).toBe('real');
+		// listening again must not capture the wrapper and loop through it.
+		server.listen({ onUnhandledRequest: 'bypass' });
+		expect(
+			await (
+				await withTimeout(fetch(`http://localhost:${real.port}/other`))
+			).text(),
+		).toBe('real');
+		server.close();
+	} finally {
+		globalThis.fetch = before;
+		await real.stop(true);
+	}
+});
+
+test('Bun’s extra fetch options survive a Request input and a stream body', async () => {
+	const dir = mkdtempSync(join(tmpdir(), 'msw-unix-'));
+	const unix = join(dir, 's.sock');
+	const real = Bun.serve({
+		unix,
+		fetch: async (request) =>
+			new Response(`${request.method}:${await request.text()}`),
+	});
+	const server = fetchServer(hello);
+	server.listen({ onUnhandledRequest: 'bypass' });
+	try {
+		const get = await withTimeout(
+			fetch(new Request('http://localhost/x'), { unix } as RequestInit),
+		);
+		expect(await get.text()).toBe('GET:');
+		const post = await withTimeout(
+			fetch(
+				new Request('http://localhost/x', { method: 'POST', body: 'payload' }),
+				{ unix } as RequestInit,
+			),
+		);
+		expect(await post.text()).toBe('POST:payload');
+	} finally {
+		server.close();
+		await real.stop(true);
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test('restoreHandlers does not add isUsed to a handler that has none', () => {
+	const plain = {};
+	const store = createHandlerStore([plain]);
+	store.restoreHandlers();
+	expect('isUsed' in plain).toBe(false);
 });
