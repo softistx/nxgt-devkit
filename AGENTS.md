@@ -105,11 +105,6 @@ CI runs it for graphql 16 and for msw 2, with full versions (`16 3.0.3`,
 `17 2.15.0`); on msw 2 it also runs `scripts/bun-fetch-probe.ts --expect
 intercepted`, which prints whether the installed msw sees Bun's fetch.
 
-Both scripts trap SIGINT and SIGTERM to remove their scratch folder (a signal
-skips the `finally`) and re-raise the signal. That handler is duplicated in
-`test-matrix.ts` and `test-lower-peers.ts` on purpose: a shared helper would
-cross the package boundary.
-
 `@nxgt/playwright/msw`'s lower peer range (msw 2.12.10 with `@msw/playwright`
 0.6.7) is measured by `packages/playwright/scripts/test-lower-peers.ts` (`bun
 run test:lower-peers` there; CI runs it): in a scratch copy of the workspace it
@@ -131,6 +126,11 @@ given only to the newest patch of the floor's minor. The floor is 1.61 because
 `pwa.pw.ts` "offline, the worker answers from its cache" fails on 1.55.1, 1.56.1,
 1.57.0, 1.58.2, 1.59.1 and 1.60.0, and passes on 1.61.0 and every later minor
 tried. `--grep <title>` bisects a failing spec across versions.
+
+`test-matrix.ts` and `test-lower-peers.ts` carry the same SIGINT/SIGTERM
+handler (a signal skips their `finally`): it removes the scratch folder and
+re-raises the signal. Change both; a shared helper would cross the package
+boundary.
 
 **Newest peers.** `.github/workflows/newest-peers.yml` (weekly, and on demand)
 and ci.yml's `newest-peers` job (pull requests only; not a required check) run
