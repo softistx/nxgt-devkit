@@ -1,69 +1,33 @@
+import type { Measured } from './measure';
+
 /**
  * Probes the real hit area of the undersized tap targets `measure` listed.
- * Self-contained: Playwright serialises it, so it imports nothing at run time
- * and every helper lives inside it. It re-runs `measure`'s selection (same
- * `targets`, `include`, `exclude` and skip rules) to find the same elements
- * in the same order; `indices` are positions in that order.
+ * Meant for `handle.evaluate(probeHitAreas, { size })` on the handle
+ * `page.evaluateHandle(measure, …)` returned: it receives the elements
+ * `measure` selected (`result.elements`, `result.data.probe` the positions to
+ * probe) and never selects again, so the page changing between the two calls
+ * (a hydration, a class removed) cannot make it test another element. One
+ * that is no longer connected is skipped, and gets no hit area.
  *
- * DUPLICATED ON PURPOSE with `measure.ts` (Playwright serialises each alone):
- * `collapse`, the skip predicates (`is`), the `roots` / `targets` selection
- * loop and the checkbox / radio union box (`rectOf`, `boxOf` there). A change
- * to one is made in both; AGENTS.md lists the duplication.
+ * Self-contained: Playwright serialises it, so it imports nothing at run
+ * time (the `Measured` import is a type) and every helper lives inside it.
+ * ACCEPTED LENGTH EXCEPTION: it is long for that reason, as `measure` is.
+ * Nothing is duplicated with `measure.ts` any more.
  *
  * Unlike `measure` it scrolls: a target whose `size` square is not on screen
- * is scrolled to the middle, probed, and every scrolled ancestor (along the
- * flat tree, so shadow roots and slots count) and the window are put back.
+ * (or not inside the visible area of its scrolling ancestors) is scrolled to
+ * the middle, probed, and every scrolled ancestor (along the flat tree, so
+ * shadow roots and slots count) and the window are put back.
  *
  * @returns the indices whose `size` square is hit, at every point of a 5x5
  * grid inset 1px, by the target, its descendants (a `::before` / `::after`
  * hit-tests as its element) or, for a checkbox or radio, its labels.
  */
-export async function probeHitAreas(args: {
-	size: number;
-	targets: string[];
-	include: string[];
-	exclude: string[];
-	indices: number[];
-}): Promise<number[]> {
-	await document.fonts.ready;
+export function probeHitAreas(
+	result: Measured,
+	args: { size: number },
+): number[] {
 	const { size } = args;
-	const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
-	const is = {
-		excluded: (el: Element) => args.exclude.some((s) => el.closest(s) !== null),
-		srOnly: (el: Element) => {
-			const r = el.getBoundingClientRect();
-			if (r.width <= 1 || r.height <= 1) return true;
-			for (let p: Element | null = el; p; p = p.parentElement) {
-				const s = getComputedStyle(p);
-				if (
-					(s.position === 'absolute' || s.position === 'fixed') &&
-					(s.clip !== 'auto' || s.clipPath !== 'none')
-				) {
-					return true;
-				}
-			}
-			return false;
-		},
-		unavailable: (el: Element) =>
-			!el.checkVisibility({ visibilityProperty: true }) ||
-			el.matches(':disabled') ||
-			el.closest('[aria-disabled=true],[inert]') !== null ||
-			getComputedStyle(el).pointerEvents === 'none',
-		inline: (el: Element) => {
-			if (getComputedStyle(el).display !== 'inline') return false;
-			let top: Element = el;
-			for (
-				let p = el.parentElement;
-				p && /^(inline|contents)$/.test(getComputedStyle(p).display);
-				p = p.parentElement
-			) {
-				top = p;
-			}
-			return [...(top.parentElement?.childNodes ?? [])].some(
-				(n) => n.nodeType === Node.TEXT_NODE && collapse(n.textContent ?? ''),
-			);
-		},
-	};
 
 	const labelsOf = (el: Element): HTMLLabelElement[] =>
 		el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type)
@@ -85,27 +49,6 @@ export async function probeHitAreas(args: {
 		};
 	};
 
-	// The targets in the order `measure` boxed them.
-	const roots = args.include.length
-		? args.include.flatMap((s) => [...document.querySelectorAll(s)])
-		: [document.documentElement];
-	const seen = new Set<Element>();
-	const selected: Element[] = [];
-	for (const root of roots) {
-		for (const el of root.querySelectorAll(args.targets.join(','))) {
-			if (seen.has(el)) continue;
-			seen.add(el);
-			if (
-				is.excluded(el) ||
-				is.unavailable(el) ||
-				is.srOnly(el) ||
-				is.inline(el)
-			)
-				continue;
-			if (rectOf(el)) selected.push(el);
-		}
-	}
-
 	// The viewport without a classic scrollbar. In quirks mode (no doctype)
 	// the root's client size is the whole document's, and the body's is the
 	// viewport's.
@@ -115,6 +58,35 @@ export async function probeHitAreas(args: {
 				? document.body
 				: document.documentElement;
 		return { cw: root.clientWidth, ch: root.clientHeight };
+	};
+	// The next ancestor along the flat tree: a slotted node continues in its
+	// slot, the top of a shadow tree in its host.
+	const flatParent = (p: Element): Element | null =>
+		p.assignedSlot ??
+		p.parentElement ??
+		(p.getRootNode() as ShadowRoot).host ??
+		null;
+	// Whether the square is within the visible (client) area of every
+	// ancestor that clips or scrolls. The document's own scrolling is the
+	// viewport's, checked by `square`.
+	const visibleInAncestors = (el: Element, x: number, y: number) => {
+		for (let p = flatParent(el); p; p = flatParent(p)) {
+			if (p === document.documentElement || p === document.body) continue;
+			const s = getComputedStyle(p);
+			if (s.overflowX === 'visible' && s.overflowY === 'visible') continue;
+			const r = p.getBoundingClientRect();
+			const left = r.left + p.clientLeft;
+			const top = r.top + p.clientTop;
+			if (
+				x < left ||
+				y < top ||
+				x + size > left + p.clientWidth ||
+				y + size > top + p.clientHeight
+			) {
+				return false;
+			}
+		}
+		return true;
 	};
 	// The `size` square centred on the box, moved inside the viewport. `inside`:
 	// it fit without moving.
@@ -153,13 +125,6 @@ export async function probeHitAreas(args: {
 		}
 		return true;
 	};
-	// The next ancestor along the flat tree: a slotted node continues in its
-	// slot, the top of a shadow tree in its host.
-	const flatParent = (p: Element): Element | null =>
-		p.assignedSlot ??
-		p.parentElement ??
-		(p.getRootNode() as ShadowRoot).host ??
-		null;
 
 	const covers = (el: Element): boolean => {
 		const { cw, ch } = viewport();
@@ -167,11 +132,14 @@ export async function probeHitAreas(args: {
 		const before = rectOf(el);
 		if (!before) return false;
 		const at = square(before);
-		if (at.inside) return hits(el, at.x, at.y);
-		// Off screen, or the square sticks out: scroll the target to the middle,
-		// probe, and put everything back (an unrestored scroll changes what the
-		// next check sees). A square the page's edge still keeps out is moved
-		// inside the viewport, so a full `size` square of hit area is on screen.
+		if (at.inside && visibleInAncestors(el, at.x, at.y)) {
+			return hits(el, at.x, at.y);
+		}
+		// Off screen, the square sticks out, or a scrolling ancestor hides it:
+		// scroll the target to the middle, probe, and put everything back (an
+		// unrestored scroll changes what the next check sees). A square the
+		// page's edge still keeps out is moved inside the viewport, so a full
+		// `size` square of hit area is on screen.
 		const saved: [Element, number, number][] = [];
 		for (let p = flatParent(el); p; p = flatParent(p)) {
 			saved.push([p, p.scrollLeft, p.scrollTop]);
@@ -197,8 +165,9 @@ export async function probeHitAreas(args: {
 		}
 	};
 
-	return args.indices.filter((i) => {
-		const el = selected[i];
-		return el !== undefined && covers(el);
+	return result.data.probe.filter((i) => {
+		const el = result.elements[i];
+		if (!el?.isConnected) return false;
+		return covers(el);
 	});
 }

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { expectTapTargets } from '../../src/helpers';
+import { probeHitAreas } from '../../src/helpers/tap-targets/hit-area';
+import { measure } from '../../src/helpers/tap-targets/measure';
 
 test.use({ viewport: { width: 412, height: 800 } });
 
@@ -389,6 +391,132 @@ test('a fixed control at the edge needs a full square on screen', async ({
 	// Offset so the whole 44px square sits on screen.
 	await page.setContent(fixedCorner('right:0;bottom:0'));
 	await expectTapTargets(page);
+});
+
+test('the same fixed corner in standards mode (with a doctype)', async ({
+	page,
+}) => {
+	const standards = (before: string) => `<!doctype html>${fixedCorner(before)}`;
+	await page.setContent(
+		standards('left:50%;top:50%;transform:translate(-50%,-50%)'),
+	);
+	expect(await page.evaluate(() => document.compatMode)).toBe('CSS1Compat');
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	await page.setContent(standards('right:0;bottom:0'));
+	await expectTapTargets(page);
+});
+
+test('several targets: exclude and a skipped one before, overlapping include roots, exactly the failing ones fail', async ({
+	page,
+}) => {
+	const small = (id: string, cls = '', attrs = '') =>
+		`<button id="${id}" class="box ${cls}" ${attrs} aria-label="${id}" style="position:relative;width:20px;height:20px"></button>`;
+	await page.setContent(
+		html(
+			`<style>.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style>
+			<main>${small('skipped-excluded', 'hit ex')}${small('skipped-disabled', 'hit', 'disabled')}${small('pass1', 'hit')}${small('fail1')}
+			<section>${small('pass2', 'hit')}${small('fail2')}</section></main>`,
+		),
+	);
+	const message = await failure(
+		expectTapTargets(page, {
+			include: ['main', 'main section'],
+			exclude: '.ex',
+		}),
+	);
+	expect(message.split('\n')[0]).toContain('2 tap targets are');
+	expect(message).toContain('button#fail1');
+	expect(message).toContain('button#fail2');
+	expect(message).not.toMatch(/pass1|pass2|skipped/);
+});
+
+test('the probe tests the measured elements, whatever the page does in between', async ({
+	page,
+}) => {
+	const hit = (id: string) =>
+		`<button id="${id}" class="box hit" aria-label="${id}" style="position:relative;width:20px;height:20px"></button>`;
+	await page.setContent(
+		html(
+			`<style>.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style>${hit('a')}${hit('b')}${hit('c')}`,
+		),
+	);
+	const handle = await page.evaluateHandle(measure, {
+		size: 44,
+		tolerance: 0.5,
+		hitArea: true,
+		targets: ['button'],
+		include: [],
+		exclude: [],
+	});
+	const data = await handle.evaluate((r) => r.data);
+	expect(data.probe).toEqual([0, 1, 2]);
+	// A removed target (index 0) and a class dropped from the last one: the
+	// probe must not shift to other elements.
+	await page.evaluate(() => {
+		document.getElementById('a')?.remove();
+		document.getElementById('c')?.classList.remove('hit');
+	});
+	expect(await handle.evaluate(probeHitAreas, { size: 44 })).toEqual([1]);
+	await handle.dispose();
+});
+
+test('a button with a child drawn 12px outside its box passes', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			'<button class="box" aria-label="Out" style="position:relative;width:20px;height:20px"><span style="position:absolute;inset:-12px"></span></button>',
+		),
+	);
+	await expectTapTargets(page);
+	expect(await failure(expectTapTargets(page, { hitArea: false }))).toContain(
+		'20x20px',
+	);
+});
+
+test('a custom element with an open shadow tree drawing 44px passes', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			'<button class="box" aria-label="Shadow" style="position:relative;width:20px;height:20px"><x-big></x-big></button>',
+		),
+	);
+	await page.evaluate(() => {
+		customElements.define(
+			'x-big',
+			class extends HTMLElement {
+				constructor() {
+					super();
+					this.attachShadow({ mode: 'open' }).innerHTML =
+						'<div style="position:absolute;left:-12px;top:-12px;width:44px;height:44px"></div>';
+				}
+			},
+		);
+	});
+	await expectTapTargets(page);
+	expect(await failure(expectTapTargets(page, { hitArea: false }))).toContain(
+		'20x20px',
+	);
+});
+
+test('a control scrolled out of its pane, inside the viewport, is scrolled in, probed and put back', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<div id="pane" style="height:200px;overflow:auto;padding:0 24px"><div style="height:500px"></div>${enlarged(44)}<div style="height:800px"></div></div><div style="height:1500px"></div>`,
+		),
+	);
+	await page.evaluate(() => {
+		(document.getElementById('pane') as HTMLElement).scrollTop = 10;
+	});
+	await expectTapTargets(page);
+	expect(
+		await page.evaluate(
+			() => (document.getElementById('pane') as HTMLElement).scrollTop,
+		),
+	).toBe(10);
 });
 
 test('scrollers in a shadow root around a slotted target are restored', async ({

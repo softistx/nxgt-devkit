@@ -1,6 +1,6 @@
 import type { TapTargetBox } from './types';
 
-export type Measured = {
+export type MeasuredData = {
 	viewport: { width: number; height: number };
 	boxes: TapTargetBox[];
 	/** How many roots `include` matched (the document without `include`). */
@@ -13,15 +13,30 @@ export type Measured = {
 };
 
 /**
+ * What `measure` returns, meant for `page.evaluateHandle`: `data` is read
+ * out of the page, `elements` stays in it. `elements[i]` is the element
+ * `data.boxes[i]` was measured from, so the probe tests the very elements
+ * that were measured, whatever the page did in between.
+ */
+export type Measured = {
+	data: MeasuredData;
+	elements: Element[];
+};
+
+/**
  * Measures every tap target under `include`, in CSS pixels. Self-contained:
  * Playwright serialises it, so it imports nothing at run time and every
  * helper lives inside it. It judges nothing about size; the caller does. It
  * only reads: it never scrolls. For the undersized targets that could have
  * an invisible hit area it also lists their index in `boxes`, and the caller
- * probes those with `probeHitAreas`, which re-runs this selection (its
- * skip predicates are a deliberate copy of `is` below).
+ * probes those with `probeHitAreas`, handed the same `elements` (select
+ * once: no second selection to drift from this one).
  * Four parts: the text helpers (`say`), the predicates (`is`), the geometry
  * (`boxOf`) and the hit-area candidates (`mayEnlarge`).
+ *
+ * ACCEPTED LENGTH EXCEPTION: this function is long because Playwright
+ * serialises it and it can import nothing, so every helper is a closure
+ * inside it; splitting it would need a module import at run time.
  */
 export async function measure(args: {
 	size: number;
@@ -144,8 +159,11 @@ export async function measure(args: {
 	// pseudo-element with content on it, on a label of a checkbox or radio, or
 	// on a descendant; a descendant drawn outside the box; a shadow tree.
 	// Anything else is hit-tested as the box, so it needs no probe.
+	// A custom element (its tag has a '-') may draw anything in a shadow tree,
+	// closed ones included, which the page cannot look into: it is a candidate.
+	const custom = (e: Element) => e.tagName.includes('-') || !!e.shadowRoot;
 	const mayEnlarge = (el: Element, box: TapTargetBox): boolean => {
-		if (el.shadowRoot) return true;
+		if (custom(el) || [...el.querySelectorAll('*')].some(custom)) return true;
 		const labels =
 			el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type)
 				? [...(el.labels ?? [])]
@@ -176,6 +194,7 @@ export async function measure(args: {
 		: [document.documentElement];
 	const seen = new Set<Element>();
 	const boxes: TapTargetBox[] = [];
+	const elements: Element[] = [];
 	const probe: number[] = [];
 	for (const root of roots) {
 		for (const el of root.querySelectorAll(args.targets.join(','))) {
@@ -199,12 +218,16 @@ export async function measure(args: {
 				probe.push(boxes.length);
 			}
 			boxes.push(box);
+			elements.push(el);
 		}
 	}
 	return {
-		viewport: { width: window.innerWidth, height: window.innerHeight },
-		boxes,
-		matched: roots.length,
-		probe,
+		data: {
+			viewport: { width: window.innerWidth, height: window.innerHeight },
+			boxes,
+			matched: roots.length,
+			probe,
+		},
+		elements,
 	};
 }

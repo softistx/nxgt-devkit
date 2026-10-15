@@ -46,8 +46,12 @@ export type TapTargetOptions = {
 	 */
 	spacing?: boolean;
 	/**
-	 * Measure the real hit area, not only the visible box. A target smaller
-	 * than `size` still passes when a `size` square centred on its box (with its labels, for a checkbox or radio) is hit
+	 * Measure the real hit area, not only the visible box. Only a candidate is
+	 * probed: a target smaller than `size` that has a `::before` / `::after`
+	 * with content (on it, on a checkbox's or radio's label, or on a
+	 * descendant), a descendant drawn outside its box, or a custom element or
+	 * shadow root (as the target or inside it). Any other is judged on its
+	 * box, which is what it hit-tests as. A candidate still passes when a `size` square centred on its box (with its labels, for a checkbox or radio) is hit
 	 * by the target itself, its descendants (a `::before` / `::after` counts as
 	 * the element) or, for a checkbox or radio, its labels: the design system
 	 * that draws a 20px checkbox with an invisible 44px `::before`. The square

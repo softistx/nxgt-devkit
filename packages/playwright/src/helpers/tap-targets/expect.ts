@@ -5,7 +5,7 @@ import { probeHitAreas } from './hit-area';
 import { judgeTapTargets, TOLERANCE } from './judge';
 import { measure } from './measure';
 import { DEFAULT_TAP_TARGETS } from './targets';
-import type { TapTargetOptions } from './types';
+import type { TapTargetBox, TapTargetOptions } from './types';
 
 /**
  * Fails when a tap target is smaller than a comfortable touch target,
@@ -58,28 +58,34 @@ export async function expectTapTargets(
 		include: toList(include),
 		exclude: toList(exclude),
 	};
-	const { viewport, boxes, matched, probe } = await page.evaluate(measure, {
+	// Selected once, in the page: the probe gets the very elements that were
+	// measured, however the page changes in between.
+	const handle = await page.evaluateHandle(measure, {
 		size,
 		tolerance: TOLERANCE,
 		hitArea,
 		...where,
 	});
-	if (matched === 0) {
-		throw new Error(
-			`expectTapTargets: \`include\` matched no element (${toList(include).join(', ')}). Fix the selector, or drop \`include\` to check the whole document.`,
-		);
-	}
-	if (probe.length > 0) {
-		// A second pass, because it scrolls: the first one only reads.
-		const covered = await page.evaluate(probeHitAreas, {
-			size,
-			...where,
-			indices: probe,
-		});
-		for (const i of covered) {
-			const box = boxes[i];
-			if (box) box.hitArea = true;
+	let boxes: TapTargetBox[];
+	let viewport: { width: number; height: number };
+	try {
+		const data = await handle.evaluate((r) => r.data);
+		if (data.matched === 0) {
+			throw new Error(
+				`expectTapTargets: \`include\` matched no element (${toList(include).join(', ')}). Fix the selector, or drop \`include\` to check the whole document.`,
+			);
 		}
+		({ boxes, viewport } = data);
+		if (data.probe.length > 0) {
+			// A second pass, because it scrolls: the first one only reads.
+			const covered = await handle.evaluate(probeHitAreas, { size });
+			for (const i of covered) {
+				const box = boxes[i];
+				if (box) box.hitArea = true;
+			}
+		}
+	} finally {
+		await handle.dispose();
 	}
 	const found = judgeTapTargets(boxes, { size, spacing });
 	if (found.length > 0) {

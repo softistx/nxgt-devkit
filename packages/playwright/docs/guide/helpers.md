@@ -445,13 +445,21 @@ itself, or give it a hit area (below).
 checkbox, a switch, a radio or a toast's close button small and gives it an
 invisible 44px `::before` / `::after`, often under `@media (pointer: coarse)`.
 The box stays small, the thumb does not miss it. For a target whose box is
-smaller than `size` in either dimension, the check probes the `size` by `size`
-square centred on the box with `document.elementFromPoint`, on a 5x5 grid
+smaller than `size` in either dimension and that could have a larger hit area,
+the check probes the `size` by `size` square centred on the box with `document.elementFromPoint`, on a 5x5 grid
 (points 1px inside the square's edges). The target passes when every probe hits
 the target itself, one of its descendants (a pseudo-element hit-tests as its
 element), or, for a checkbox or radio, one of its labels or their descendants.
 The square is centred on the target's box, joined with its labels' for a
-checkbox or radio. With `spacing`, such a target is not counted as undersized;
+checkbox or radio.
+
+What makes an undersized target a candidate for the probe: a `::before` or
+`::after` with `content` on it, on its checkbox or radio labels, or on a
+descendant; a descendant drawn outside its box (an absolutely positioned child
+with a negative inset); a custom element (a tag with a `-`) as the target or
+inside it, or a shadow root, since what a shadow tree draws cannot be read
+from the box. Every other undersized target is judged on its box alone, which
+is also its hit area. With `spacing`, such a target is not counted as undersized;
 its neighbours still judge it by its visible box.
 
 So the pseudo-element has to be hit-testable: not `pointer-events: none`, not
@@ -461,7 +469,8 @@ coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
 7 with touch, emulates `pointer: coarse`) and not in a desktop one, which is
 the point of running the check on phones.
 
-A target that is off screen, or whose square sticks out of the viewport, is
+A target that is off screen, whose square sticks out of the viewport, or that
+is scrolled out of the visible area of a scrolling ancestor, is
 scrolled to the middle (`scrollIntoView({ block: 'center', inline: 'center' })`,
 without smooth scrolling) for the probe, and the window and every scrolled
 ancestor (through slots and shadow roots) are put back where they were, so the
