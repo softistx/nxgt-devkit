@@ -9,9 +9,7 @@ Nothing is in progress.
 
 ## Next
 
-- **More responsive checks** — tap targets large enough on a phone, and text
-  that does not overflow its box, beside `expectNoHorizontalScroll`; `checkScreen` is where they would plug
-  in, one call per screen.
+Nothing is planned yet.
 
 ## Later
 
@@ -37,6 +35,13 @@ Nothing is in progress.
 
 ## Shipped
 
+- **Responsive checks** — `expectNoTextOverflow` fails on a label clipped
+  without its full text or spilling out of its box, `expectTapTargets` on a
+  control under 44x44px on a phone (24px stays axe's `target-size`), and
+  `checkScreen` runs either with `textOverflow` / `tapTargets`, off by default.
+  0.8.0.
+- **Stories in Firefox and WebKit** — `storybookProject({ browsers })` runs
+  the stories in each browser listed, Chromium by default. 0.8.0.
 - **Playwright 1.61 floor** — the `@playwright/test` peer is `^1.61.0`: from
   that version `goOffline` also takes a service worker's own fetches offline.
   0.7.0.

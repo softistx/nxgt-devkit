@@ -108,8 +108,9 @@ Three things to know:
 `checkScreen(page, testInfo, name, options?)` is what a screen goes through, in
 this order: web fonts loaded (`document.fonts.ready`), motion over (`settled`),
 the screen saved when the run saves them (before the checks, so a failing one
-still leaves the image to look at), the accessibility scan, then the
-no-sideways-scroll check.
+still leaves the image to look at), the accessibility scan, the
+no-sideways-scroll check, then, when asked, the text-overflow check and the
+tap-target check (last).
 
 ```ts
 // playwright/e2e/quality-students.spec.ts
@@ -134,13 +135,23 @@ test('students list', async ({ page }, testInfo) => {
 | `a11y` | `expectAccessible(page, { testInfo })` | An options object is `expectAccessible`'s own (`exclude`, `disableRules`, …). A function `(page) => Promise<unknown>` replaces the scan, for an app's wrapper around `expectAccessible`. `false` skips it. |
 | `scroller` | none | The inner scroll container `expectNoHorizontalScroll` checks too: a selector or a locator, or a function of the `testInfo` returning one (or `undefined` for the document only). |
 | `horizontalScroll` | `true` | `false` skips the sideways-scroll check. |
-| `max` | `5` | How many offending elements the sideways-scroll message lists. |
+| `textOverflow` | `false` | `true` runs `expectNoTextOverflow` on the whole body, an options object (`include`, `exclude`, `max`) is its own, and a function of the `testInfo` returning either picks per project, as `tapTargets` does. Off by default: a design may clip a text on purpose, and a screen opts in. |
+| `tapTargets` | `false` | `true` runs `expectTapTargets` (44x44px) in every project, an options object (`size`, `spacing`, `targets`, `include`, `exclude`, `max`) is its own, and a function of the `testInfo` returning either picks per project: `(info) => isMobileProject(info)` for phones only. Off by default: a desktop layout has small targets on purpose. WCAG 2.5.8's 24px is axe's `target-size`, already in the default `a11y` scan. Runs last. |
+| `max` | `5` | How many offending elements the sideways-scroll message lists (and the text-overflow and tap-target ones', unless `textOverflow` or `tapTargets` sets its own). |
 | `save` | none | `saveScreen`'s options (`dir`, `maxGrowth`, `screenshot`), used when the run saves screens. |
 
 `@axe-core/playwright` is needed when the scan runs (the default, or an options
 object), and loaded only then: with `a11y: false` or a function, `/screens` needs nothing beyond
 `@playwright/test`. A failure is the failure of the check that raised it
-(`expectAccessible`'s or `expectNoHorizontalScroll`'s message), unchanged.
+(`expectAccessible`'s, `expectNoHorizontalScroll`'s, `expectNoTextOverflow`'s or `expectTapTargets`'s message), unchanged.
+
+Phone-only tap targets:
+
+```ts
+await checkScreen(page, testInfo, 'students-list', {
+	tapTargets: (info) => isMobileProject(info),
+});
+```
 
 ## A check you compose yourself
 

@@ -266,6 +266,191 @@ which change widths) before calling it.
 phone lays the page out 980px wide and zooms it out to fit: nothing scrolls,
 however wide the content. Add the tag to the app's document.
 
+## `expectNoTextOverflow`
+
+Fails when a text does not fit the box that holds it: a button whose label
+runs past its edge, a title cut short by `text-overflow: ellipsis` or a line
+clamp with nothing to read it in full. A phone shows them first, and neither
+the sideways-scroll check (a clipped text widens nothing) nor axe sees them.
+
+```ts
+type TextOverflowOptions = {
+	include?: string | readonly string[]; // default: the whole body
+	exclude?: string | readonly string[];
+	max?: number; // default 5
+};
+
+function expectNoTextOverflow(page: Page, options?: TextOverflowOptions): Promise<void>;
+function formatTextOverflow(found: OverflowingText[], viewport: { width: number; height: number }, options?: { max?: number }): string;
+```
+
+```ts
+import { test } from '@playwright/test';
+import { expectNoTextOverflow } from '@nxgt/playwright/helpers';
+
+test('labels fit a phone', async ({ page }) => {
+	await page.goto('/projects');
+	await expectNoTextOverflow(page, { exclude: '.marquee' });
+});
+```
+
+It waits for web fonts, then compares each text with the box that holds it
+(the nearest ancestor that is not `inline`), tolerating one pixel of rounding.
+Sideways, the text's rectangles are compared with the box's padding box;
+vertically, a box that holds inline content only is compared by `scrollHeight`
+and `clientHeight` (a line clamp, or a fixed height). What happens next
+depends on the box's `overflow` on that axis:
+
+| `overflow` | Result |
+| --- | --- |
+| `hidden`, `clip` | `clipped`: fails, unless the box (or an ancestor that holds only its text) has a non-empty `title` or `aria-label`. |
+| `visible` | `spills`: always fails, the text runs over what is beside it. |
+| `auto`, `scroll` | passes, the reader can scroll to it. |
+
+Not measured: `script`, `style`, `svg`, form controls (`input`, `textarea`,
+`select`), `contenteditable`, whatever is not rendered (`display: none`,
+`visibility: hidden`, `opacity: 0`) and a text hidden for screen readers only
+(`position: absolute` with `clip` or `clip-path`, the usual `sr-only`). A card
+that clips a decoration but not its text passes: only text is measured.
+
+Limits: a text under a CSS `transform`, `scale` or `rotate` (on itself or on
+an ancestor) is skipped, because its rectangles and its box are then measured
+in different coordinate spaces; shadow DOM and iframes are not entered (run the
+check on the frame's own page).
+
+```
+Text overflows its box in 2 elements (412x839 viewport):
+  - span.title  clipped with an ellipsis, no title: "Quarterly report for the…"  312px of text in a 180px box
+  - button#save  spills: "Enregistrer les modifications"  160px of text in a 120px box
+Let the text wrap, give a clipped one its full text in a title or aria-label, or exclude it.
+```
+
+`OverflowingText` is one offender: `selector` (`tag#id.class` of the box),
+`text` (the first 40 characters), `kind` (`'clipped'` or `'spills'`),
+`ellipsis` (the box has `text-overflow: ellipsis`), `textWidth` and `boxWidth`
+in rounded CSS pixels and `axis` (`'x'`, or `'y'` for a box clipped
+vertically, where `textWidth` and `boxWidth` hold the heights: `96px of text in
+a 48px-tall box`).
+
+The message counts every offender and lists at most `max`.
+
+### Giving a clipped text its full text
+
+```html
+<span class="title" title="Quarterly report for the whole group">Quarterly report for the whole group</span>
+```
+
+A `title` or an `aria-label` on the box, or on a link or button around it that
+holds nothing else, is enough. A tooltip a script draws is not a `title`: add
+the attribute as well, or `exclude` the box. Text you let wrap needs nothing.
+
+An `include` that matches no element throws
+(``expectNoTextOverflow: `include` matched no element (<selectors>)``) instead
+of passing: a typo would otherwise turn the check off. A list passes the test
+as soon as one of its selectors matches.
+
+`checkScreen` runs it with `textOverflow` ([screens.md](screens.md#one-call-per-screen-checkscreen)).
+It checks once, as the page is now: wait for the content first.
+
+## `expectTapTargets`
+
+Fails when a link, a button or a form control is smaller than a thumb:
+**44x44 CSS pixels** by default, the size of a comfortable touch target, in
+the page's own pixels whatever the device pixel ratio. The icon button that
+fits a mouse and gets missed on a phone is the usual find.
+
+> **24px is axe's, not this check's.** WCAG 2.5.8 (Target Size, Minimum) asks
+> for 24x24px, or enough spacing around a smaller target. That is axe's
+> `target-size` rule, which `expectAccessible` and so `checkScreen`'s default
+> scan already run, on phones too. `expectTapTargets` is the stricter,
+> comfortable-touch size (44px is WCAG 2.5.5, level AAA, and the size platform
+> guidelines recommend), so it is off by default in `checkScreen`. Pass
+> `size: 24` for the WCAG minimum without its spacing exception.
+
+```ts
+type TapTargetOptions = {
+	size?: number; // default 44
+	spacing?: boolean; // default false
+	targets?: string | readonly string[]; // default DEFAULT_TAP_TARGETS
+	include?: string | readonly string[]; // default: the whole document
+	exclude?: string | readonly string[];
+	max?: number; // default 5
+};
+
+function expectTapTargets(page: Page, options?: TapTargetOptions): Promise<void>;
+function formatTapTargets(found: SmallTapTarget[], viewport: { width: number; height: number }, options?: { size?: number; max?: number }): string;
+const DEFAULT_TAP_TARGETS: readonly string[];
+```
+
+```ts
+import { test } from '@playwright/test';
+import { expectTapTargets } from '@nxgt/playwright/helpers';
+
+test.use({ viewport: { width: 412, height: 839 } });
+
+test('tap targets fit a thumb', async ({ page }) => {
+	await page.goto('/projects');
+	await expectTapTargets(page, { exclude: '.legal a' });
+});
+```
+
+What counts as a tap target (`DEFAULT_TAP_TARGETS`): `a[href]`, `button`,
+`input` (not `hidden`), `select`, `textarea`, `summary`, the roles `button`,
+`link`, `checkbox`, `radio`, `switch`, `tab`, `menuitem` and `option`, anything
+with a `tabindex` other than `-1`, and anything with an `onclick` attribute.
+`targets` replaces the list (spread `DEFAULT_TAP_TARGETS` to add to it); an
+empty list throws (``expectTapTargets: `targets` is empty``). An `include` that
+matches no element throws too, instead of measuring nothing and passing.
+A checkbox or radio is measured together with its labels (a tap on the label
+toggles it), so a small box inside a 44px row passes. The input and its
+labels count as one bounding box, so a `for` label far from its input
+includes the gap between them.
+
+Not measured: elements that are hidden (`display: none`, `visibility:
+hidden`), zero-sized, visually hidden (`sr-only`: a 1px box, or `clip` /
+`clip-path` on an absolute box, such as a skip link), `disabled`, `aria-disabled="true"`, `inert` or under
+`pointer-events: none`; and a link inside a sentence: an `inline` link with
+text of its own beside it in its block container, looking through inline
+wrappers (`<p><strong><a>x</a></strong> text</p>`; WCAG 2.5.8's inline
+exception). Only inline links are exempt: an `inline-block` link is measured,
+and so is the same link alone in its paragraph or list item. A target passes when its box
+is at least `size` by `size`, within half a pixel of rounding.
+
+`spacing: true` adds the spacing exception at this `size`: a smaller target
+passes when a circle of `size` diameter centred on it touches no other target
+and no other undersized target's circle. A target that contains it, or sits
+inside it, is the same control, not a neighbour. The failure names the
+neighbour.
+
+```
+3 tap targets are smaller than 44x44px (412x839 viewport):
+  - button#close.icon "Close"  32x32px
+  - a.nav-link "Home"  60x24px
+  - input "Remember me"  16x16px, too close to a.forgot
+Make each at least 44x44px (padding, or min-width and min-height, on the element itself), or exclude it.
+```
+
+`SmallTapTarget` is one offender: `selector` (`tag#id.class`), `name` (its
+label), `width` and `height` in rounded CSS pixels, and with `spacing` `near`,
+the selector of the target that crowds it.
+
+The size is the element's border box, as `getBoundingClientRect` reports it:
+grow it with `padding`, or `min-width` and `min-height`, on the element
+itself. An absolutely positioned `::after` that extends the hit area is not
+part of that box, so it never makes a target pass; `exclude` the target when
+the design cannot grow.
+
+The message counts every offender and lists at most `max`. Run it on a phone
+viewport: a desktop layout has small targets on purpose, which is why
+`checkScreen` takes `tapTargets` as a function of the test
+([screens.md](screens.md#one-call-per-screen-checkscreen)).
+
+**A page without the viewport meta tag measures a zoomed-out page.** A phone
+lays a page without `<meta name="viewport" content="width=device-width,
+initial-scale=1">` out 980px wide and shrinks it to fit, so the targets are
+measured at their layout size, 44px of CSS, but the person sees them at
+roughly 40% of that. Add the tag to the app's document first.
+
 ## `screenshotName`
 
 The slug `BasePage.screenshot()` names its files with.

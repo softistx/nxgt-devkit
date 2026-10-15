@@ -15,6 +15,9 @@ throws itself are quoted exactly.
   - [`Executable doesn't exist at …/chromium_headless_shell-<revision>/…`](#executable-doesnt-exist-at-chromium_headless_shell-revision)
   - [`BEWARE: your OS is not officially supported by Playwright`](#beware-your-os-is-not-officially-supported-by-playwright)
   - [`Chromium distribution 'msedge' is not found`](#chromium-distribution-msedge-is-not-found)
+  - [`` storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`. ``](#storybookproject-executablepath-is-a-chromium-binary-but-browsers-is-list-add-chromium-or-drop-executablepath)
+  - [`` storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit. ``](#storybookproject-browsers-is-empty-name-at-least-one-of-chromium-firefox-webkit)
+  - [`` storybookProject: `capture` needs a single browser but `browsers` is [<list>]. Every browser writes the same preview file; name one. ``](#storybookproject-capture-needs-a-single-browser-but-browsers-is-list-every-browser-writes-the-same-preview-file-name-one)
 - [Import](#import)
   - [`vitest/browser can be imported only inside the Browser Mode`](#vitestbrowser-can-be-imported-only-inside-the-browser-mode)
 - [Configuration](#configuration)
@@ -58,6 +61,14 @@ throws itself are quoted exactly.
   - [`color-contrast` fails, then passes on a retry](#color-contrast-fails-then-passes-on-a-retry)
   - [`expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide](#expectnohorizontalscroll-passes-on-a-phone-for-a-page-that-is-clearly-too-wide)
   - [`The scroll container <tag#id.class> scrolls horizontally`](#the-scroll-container-tagidclass-scrolls-horizontally)
+- [Responsive](#responsive)
+  - [`Text overflows its box in <n> elements`](#text-overflows-its-box-in-n-elements)
+  - [A clipped label fails although it shows a tooltip](#a-clipped-label-fails-although-it-shows-a-tooltip)
+  - [`<n> tap targets are smaller than 44x44px`](#n-tap-targets-are-smaller-than-44x44px)
+  - [`` expectTapTargets: `targets` is empty. ``](#expecttaptargets-targets-is-empty)
+  - [`` expectTapTargets: `include` matched no element (<selectors>) ``](#expecttaptargets-include-matched-no-element-selectors)
+  - [`` expectNoTextOverflow: `include` matched no element (<selectors>) ``](#expectnotextoverflow-include-matched-no-element-selectors)
+  - [Tap targets pass in axe but fail `expectTapTargets`](#tap-targets-pass-in-axe-but-fail-expecttaptargets)
 - [Content-Security-Policy](#content-security-policy)
   - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
   - [`expectNoncedPage` failures](#expectnoncedpage-failures)
@@ -213,6 +224,41 @@ its cache.
 
 ```ts
 export default defineAppConfig({ port: 5174, browsers: ['chromium', 'firefox'] });
+```
+
+### `` storybookProject: `executablePath` is a Chromium binary but `browsers` is [<list>]. Add 'chromium' or drop `executablePath`. ``
+
+**When:** `storybookProject()` runs in the Vitest config.
+**Why:** `executablePath` points at a Chromium binary, and `browsers` names
+no `chromium` instance to give it to. Firefox and WebKit cannot launch it, so
+the option is refused instead of being dropped silently.
+**Fix:** add `'chromium'` to `browsers`, or remove `executablePath`.
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` does not trigger this: it is ignored
+when there is no Chromium instance.
+
+```ts
+storybookProject({ browsers: ['chromium', 'firefox'], executablePath: '/usr/bin/chromium' });
+```
+
+### `` storybookProject: `browsers` is empty. Name at least one of chromium, firefox, webkit. ``
+
+**When:** `storybookProject({ browsers: [] })`.
+**Why:** an empty list would leave the project with no browser to run in.
+**Fix:** drop the option for the default (`['chromium']`) or name the browsers.
+
+### `` storybookProject: `capture` needs a single browser but `browsers` is [<list>]. Every browser writes the same preview file; name one. ``
+
+**When:** `storybookProject({ capture: true, browsers: ['chromium', 'firefox'] })`.
+**Why:** every browser writes the same preview file for a story, so the last
+browser's render would win without a warning.
+**Fix:** keep one browser for the project that captures, and the others on a
+second `storybookProject` without `capture`:
+
+```ts
+projects: [
+	storybookProject({ browsers: ['chromium', 'firefox'] }),
+	storybookProject({ capture: true }),
+],
 ```
 
 ## Import
@@ -848,6 +894,97 @@ see it: an inner scroller never widens the document.
 **Fix:** narrow the listed elements, or wrap a wide table in its own
 `overflow-x: auto` box. A selector that matches nothing (an error page without
 the shell) checks the document only.
+
+## Responsive
+
+### `Text overflows its box in <n> elements`
+
+The message continues `(412x839 viewport):` and lists the boxes, each as
+`tag#id.class`, `clipped` or `spills`, the text, and the widths. For a single
+box it says `1 element`.
+
+**When:** `expectNoTextOverflow`, or `checkScreen` with `textOverflow`.
+**Why:** a text is wider (or, in a clamped box, taller) than its box. `spills`:
+the box leaves it visible, so it runs over what is beside it. `clipped`: the
+box hides the rest (`overflow: hidden`, usually with `text-overflow: ellipsis`
+or a line clamp) and nothing gives the full text.
+**Fix:** let the text wrap (`white-space: normal`, a `min-width: 0` on a flex
+child), widen the box, or, for a clipped text that is meant to be, give it
+its full text in a `title` or `aria-label`, or leave the box out:
+
+```html
+<span class="title" title="Quarterly report for the whole group">Quarterly report for the whole group</span>
+```
+
+`expectNoTextOverflow(page, { exclude: '.marquee' })` leaves a box out. A text
+under a CSS `transform`, `scale` or `rotate`, in shadow DOM or in an iframe is
+never reported: the check does not measure it.
+
+### A clipped label fails although it shows a tooltip
+
+**When:** the label is cut with an ellipsis, a tooltip shows the full text on
+hover, and the check still says `clipped … no title`.
+**Why:** the check reads attributes, not what a script draws on hover. A
+tooltip component's popup is not a `title`.
+**Fix:** add `title` or `aria-label` with the full text to the box (or to the
+link around it that holds nothing else), or exclude the box.
+
+### `<n> tap targets are smaller than 44x44px`
+
+The message continues `(412x839 viewport):` and lists the targets, each as
+`tag#id.class "name"` with its size; for a single one it says `1 tap target is`.
+
+**When:** `expectTapTargets`, or `checkScreen` with `tapTargets`.
+**Why:** a link, button or control is smaller than a thumb: an icon button of
+32px, a text link whose box is 20px tall. With `spacing: true` a smaller one
+also fails when another target is within `size` of it (`, too close to <x>`).
+**Fix:** grow the element's own box, with `padding` or `min-width` and
+`min-height`, or leave the target out. The check reads the border box, so an
+absolutely positioned `::after` that extends the hit area never makes it pass:
+
+```css
+.icon-button { min-width: 44px; min-height: 44px; }
+```
+
+`expectTapTargets(page, { exclude: '.legal a' })` leaves a target out;
+`{ size: 24 }` asks for WCAG 2.5.8's minimum instead.
+
+### `` expectTapTargets: `targets` is empty. ``
+
+**When:** `expectTapTargets(page, { targets: [] })`, for example a list built
+from a filter that matched nothing.
+**Why:** an empty list is no selector at all, and there is nothing to measure.
+**Fix:** name at least one selector, or drop `targets` for `DEFAULT_TAP_TARGETS`
+(spread it to add to it).
+
+### `` expectTapTargets: `include` matched no element (<selectors>) ``
+
+**When:** `expectTapTargets` (or `checkScreen` with `tapTargets`), and none of
+`include`'s selectors is in the page. `expectNoTextOverflow` says the same with
+its own name.
+**Why:** a typo, or a page that has not rendered that part yet. The check
+would otherwise measure nothing and pass.
+**Fix:** correct the selector, wait for the content before checking, or drop
+`include` to check the whole page.
+
+### `` expectNoTextOverflow: `include` matched no element (<selectors>) ``
+
+**When:** `expectNoTextOverflow` (or `checkScreen` with `textOverflow`), and
+none of `include`'s selectors is in the page.
+**Why and fix:** as for
+[`expectTapTargets`](#expecttaptargets-include-matched-no-element-selectors):
+correct the selector, wait for the content, or drop `include` to check the
+whole body.
+
+### Tap targets pass in axe but fail `expectTapTargets`
+
+**When:** `expectAccessible` is green and `expectTapTargets` reports a 32px
+button.
+**Why:** two different bars. axe's `target-size` rule is WCAG 2.5.8: 24x24px,
+or a smaller target with enough space around it. `expectTapTargets` asks for
+44x44px, the comfortable touch size, so it is off by default in `checkScreen`.
+**Fix:** none is needed for WCAG 2.5.8. Keep the check for phones
+(`tapTargets: (info) => isMobileProject(info)`), or set `size: 24`.
 
 ## Content-Security-Policy
 

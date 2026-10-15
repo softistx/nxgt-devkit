@@ -7,6 +7,14 @@ import {
 	type NoHorizontalScrollOptions,
 } from '../helpers/no-horizontal-scroll';
 import {
+	expectTapTargets,
+	type TapTargetOptions,
+} from '../helpers/tap-targets';
+import {
+	expectNoTextOverflow,
+	type TextOverflowOptions,
+} from '../helpers/text-overflow';
+import {
 	type SaveScreenOptions,
 	saveScreen,
 	savingScreens,
@@ -32,9 +40,34 @@ export type CheckScreenOptions = {
 		| ((testInfo: TestInfo) => string | Locator | undefined);
 	/** `false` skips the sideways-scroll check. Default `true`. */
 	horizontalScroll?: boolean;
+	/**
+	 * `expectNoTextOverflow`: a text that runs past its box, or is clipped
+	 * with nothing to read it in full. `true` checks the whole body, an
+	 * options object is `expectNoTextOverflow`'s own, and a function of the
+	 * test picks per project, as `tapTargets` does. Default `false`: a
+	 * design may clip on purpose, so a screen opts in. Runs after the
+	 * sideways-scroll check.
+	 */
+	textOverflow?:
+		| boolean
+		| TextOverflowOptions
+		| ((testInfo: TestInfo) => boolean | TextOverflowOptions);
+	/**
+	 * `expectTapTargets`: a link, button or control smaller than 44x44 CSS
+	 * pixels, a thumb's size. `true` checks the document in every project, an
+	 * options object is `expectTapTargets`'s own, and a function of the test
+	 * picks per project: `(info) => isMobileProject(info)` for phones only.
+	 * Default `false`: a desktop layout has small targets on purpose. WCAG
+	 * 2.5.8's 24px minimum is axe's `target-size`, which the default `a11y`
+	 * scan already runs. Runs last.
+	 */
+	tapTargets?:
+		| boolean
+		| TapTargetOptions
+		| ((testInfo: TestInfo) => boolean | TapTargetOptions);
 	/** `saveScreen`'s options, used when the run saves screens. */
 	save?: SaveScreenOptions;
-	/** `expectNoHorizontalScroll`'s `max`. */
+	/** `expectNoHorizontalScroll`'s `max`, and `expectNoTextOverflow`'s and `expectTapTargets`'s unless they set their own. */
 	max?: NoHorizontalScrollOptions['max'];
 };
 
@@ -42,8 +75,9 @@ export type CheckScreenOptions = {
  * Everything a screen goes through, in one call: waits for web fonts and for
  * motion to end, saves the screen when the run saves them (`SCREENS=1`) —
  * before the checks, so a failing one still leaves the image to look at —
- * then scans it for accessibility violations and checks that nothing scrolls
- * sideways.
+ * then scans it for accessibility violations, checks that nothing scrolls
+ * sideways and, when asked, that no text overflows its box and that every tap target
+ * is big enough for a thumb.
  *
  * ```ts
  * await page.goto('/students');
@@ -60,6 +94,8 @@ export async function checkScreen(
 		a11y,
 		scroller,
 		horizontalScroll = true,
+		textOverflow = false,
+		tapTargets = false,
 		save,
 		max,
 	}: CheckScreenOptions = {},
@@ -72,9 +108,26 @@ export async function checkScreen(
 	if (savingScreens(testInfo)) await saveScreen(page, testInfo, name, save);
 	if (typeof a11y === 'function') await a11y(page);
 	else if (a11y !== false) await expectAccessible(page, { ...a11y, testInfo });
-	if (!horizontalScroll) return;
-	await expectNoHorizontalScroll(page, {
-		max,
-		scroller: typeof scroller === 'function' ? scroller(testInfo) : scroller,
-	});
+	if (horizontalScroll) {
+		await expectNoHorizontalScroll(page, {
+			max,
+			scroller: typeof scroller === 'function' ? scroller(testInfo) : scroller,
+		});
+	}
+	const texts =
+		typeof textOverflow === 'function' ? textOverflow(testInfo) : textOverflow;
+	if (texts) {
+		await expectNoTextOverflow(
+			page,
+			texts === true ? { max } : { ...texts, max: texts.max ?? max },
+		);
+	}
+	const taps =
+		typeof tapTargets === 'function' ? tapTargets(testInfo) : tapTargets;
+	if (taps) {
+		await expectTapTargets(
+			page,
+			taps === true ? { max } : { ...taps, max: taps.max ?? max },
+		);
+	}
 }
