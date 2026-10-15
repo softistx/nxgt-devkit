@@ -1,10 +1,8 @@
 import { storybookProject } from '@nxgt/playwright/storybook';
 import { defineConfig } from 'vitest/config';
+import { fixtureBrowsers } from './browsers';
 
-type Browser = 'chromium' | 'firefox' | 'webkit';
-const browsers = (process.env.STORYBOOK_BROWSERS?.split(',') ?? [
-	'chromium',
-]) as Browser[];
+const browsers = fixtureBrowsers();
 
 export default defineConfig({
 	test: {
