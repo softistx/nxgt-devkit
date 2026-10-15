@@ -218,7 +218,9 @@ packages" pull request. `scripts/publish.ts` publishes with `bun publish` and
 re-reads the registry before tagging. The token is `NPM_TOKEN`, read by
 `bunfig.toml`. It lives in the GitHub environment `npm` (deployment branches:
 `develop` only), never as a repository or organization secret, and the release
-job declares `environment: npm`.
+job declares `environment: npm`. Until the owner sets it there and removes
+the organization secret (visible to every repository), the job still reads
+the organization one.
 
 A new package starts `"private": true`; removing it is a commit of its own.
 
