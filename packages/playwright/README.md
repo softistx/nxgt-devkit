@@ -55,7 +55,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/csp` | `watchCsp`, `withCspGuard`, `cspTest`, `expectNoncedPage`, `cspNonce`, `loadPolicy`; types `CspGuardFixtures`, `ExpectNoncedPageOptions`, `LoadedPolicy` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
-| `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
+| `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `StorybookBrowser`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
 | `@nxgt/playwright/storybook/capture` | `capturePreview` | **browser only** |
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
@@ -619,6 +619,7 @@ export default defineConfig({
 		projects: [
 			{ extends: true, test: { name: 'unit', environment: 'node' } },
 			storybookProject(), // every story renders in Chromium
+			// storybookProject({ browsers: ['chromium', 'firefox'] }), // …and in Firefox
 			storybookProject({ capture: true }), // stories tagged `preview` → docs/previews/*.webp
 		],
 	},
