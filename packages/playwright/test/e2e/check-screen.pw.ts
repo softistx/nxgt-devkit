@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { isMobileProject } from '../../src/helpers';
 import { checkScreen } from '../../src/screens';
 import { SCREENS_METADATA_KEY } from '../../src/screens/dir';
 
@@ -115,6 +116,89 @@ test("checkScreen's max reaches textOverflow, and textOverflow's own max wins", 
 	expect(await listed({ textOverflow: true, max: 1 })).toBe(1);
 	expect(await listed({ textOverflow: { max: 2 }, max: 1 })).toBe(2);
 	expect(await listed({ textOverflow: { max: undefined }, max: 1 })).toBe(1);
+});
+
+const SMALL = doc(
+	'<button id="close" style="width:30px;height:30px" aria-label="Close">x</button>',
+);
+
+test('tapTargets is off by default; true fails with the message', async ({
+	page,
+}, testInfo) => {
+	await page.setContent(SMALL);
+	await checkScreen(page, testInfo, 'small-default', { a11y: false });
+	const error = await checkScreen(page, testInfo, 'small', {
+		a11y: false,
+		tapTargets: true,
+	}).catch((e: Error) => e);
+	expect((error as Error).message).toContain(
+		'1 tap target is smaller than 44x44px',
+	);
+	await checkScreen(page, testInfo, 'small-excluded', {
+		a11y: false,
+		tapTargets: { exclude: '#close' },
+	});
+});
+
+test('tapTargets as a function of the test: phones only', async ({
+	page,
+}, testInfo) => {
+	await page.setContent(SMALL);
+	const seen: unknown[] = [];
+	const run = () =>
+		checkScreen(page, testInfo, 'small-phone', {
+			a11y: false,
+			tapTargets: (info) => {
+				seen.push(info);
+				return isMobileProject(info);
+			},
+		});
+	if (isMobileProject(testInfo)) {
+		const error = await run().catch((e: Error) => e);
+		expect((error as Error).message).toContain('smaller than 44x44px');
+	} else {
+		await run();
+	}
+	expect(seen).toEqual([testInfo]);
+});
+
+test("checkScreen's max reaches tapTargets, and tapTargets' own max wins", async ({
+	page,
+}, testInfo) => {
+	await page.setContent(
+		doc(
+			Array.from(
+				{ length: 3 },
+				() => '<button style="width:30px;height:30px;display:block">x</button>',
+			).join(''),
+		),
+	);
+	const listed = async (options: Parameters<typeof checkScreen>[3]) =>
+		(
+			(
+				(await checkScreen(page, testInfo, 'taps', {
+					a11y: false,
+					...options,
+				}).catch((e: Error) => e)) as Error
+			).message.split('\n') as string[]
+		).filter((l) => l.startsWith('  - ')).length;
+	expect(await listed({ tapTargets: true, max: 1 })).toBe(1);
+	expect(await listed({ tapTargets: { max: 2 }, max: 1 })).toBe(2);
+	expect(await listed({ tapTargets: () => ({}), max: 1 })).toBe(1);
+});
+
+test('tapTargets runs after the other checks', async ({ page }, testInfo) => {
+	await page.setContent(
+		doc(
+			'<button style="width:30px;height:30px">x</button><p style="width:100px;overflow:hidden;white-space:nowrap;font:16px monospace">WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW</p>',
+		),
+	);
+	const error = await checkScreen(page, testInfo, 'order', {
+		a11y: false,
+		textOverflow: true,
+		tapTargets: true,
+	}).catch((e: Error) => e);
+	expect((error as Error).message).toContain('Text overflows');
 });
 
 test('scroller, as a selector or a function of the test, is checked', async ({
