@@ -20,6 +20,8 @@ export async function measure(args: {
 	await document.fonts.ready;
 	const SKIP =
 		'script,style,noscript,template,svg,input,textarea,select,option,[contenteditable]:not([contenteditable=false])';
+	// Duplicated on purpose with tap-targets/measure.ts (Playwright serialises
+	// each measure alone): a change to collapse, brief or describe is made in both.
 	const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 	const brief = (s: string) => (s.length > 40 ? `${s.slice(0, 40)}…` : s);
 	const clipsOn = (v: string) => v === 'hidden' || v === 'clip';

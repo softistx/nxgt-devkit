@@ -325,6 +325,10 @@ Text overflows its box in 2 elements (412x839 viewport):
 Let the text wrap, give a clipped one its full text in a title or aria-label, or exclude it.
 ```
 
+`SmallTapTarget` is one offender: `selector` (`tag#id.class`), `name` (its
+label), `width` and `height` in rounded CSS pixels, and with `spacing` `near`,
+the selector of the target that crowds it.
+
 The message counts every offender and lists at most `max`. A box clipped
 vertically reports its heights, `96px of text in a 48px-tall box`.
 
@@ -340,6 +344,93 @@ the attribute as well, or `exclude` the box. Text you let wrap needs nothing.
 
 `checkScreen` runs it with `textOverflow` ([screens.md](screens.md#one-call-per-screen-checkscreen)).
 It checks once, as the page is now: wait for the content first.
+
+## `expectTapTargets`
+
+Fails when a link, a button or a form control is smaller than a thumb:
+**44x44 CSS pixels** by default, the size of a comfortable touch target, in
+the page's own pixels whatever the device pixel ratio. The icon button that
+fits a mouse and gets missed on a phone is the usual find.
+
+> **24px is axe's, not this check's.** WCAG 2.5.8 (Target Size, Minimum) asks
+> for 24x24px, or enough spacing around a smaller target. That is axe's
+> `target-size` rule, which `expectAccessible` and so `checkScreen`'s default
+> scan already run, on phones too. `expectTapTargets` is the stricter,
+> comfortable-touch size (44px is WCAG 2.5.5, level AAA, and the size platform
+> guidelines recommend), so it is off by default in `checkScreen`. Pass
+> `size: 24` for the WCAG minimum without its spacing exception.
+
+```ts
+type TapTargetOptions = {
+	size?: number; // default 44
+	spacing?: boolean; // default false
+	targets?: string | readonly string[]; // default DEFAULT_TAP_TARGETS
+	include?: string | readonly string[]; // default: the whole document
+	exclude?: string | readonly string[];
+	max?: number; // default 5
+};
+
+function expectTapTargets(page: Page, options?: TapTargetOptions): Promise<void>;
+function formatTapTargets(found: SmallTapTarget[], viewport: { width: number; height: number }, options?: { size?: number; max?: number }): string;
+const DEFAULT_TAP_TARGETS: readonly string[];
+```
+
+```ts
+import { test } from '@playwright/test';
+import { expectTapTargets } from '@nxgt/playwright/helpers';
+
+test.use({ viewport: { width: 412, height: 839 } });
+
+test('tap targets fit a thumb', async ({ page }) => {
+	await page.goto('/projects');
+	await expectTapTargets(page, { exclude: '.legal a' });
+});
+```
+
+What counts as a tap target (`DEFAULT_TAP_TARGETS`): `a[href]`, `button`,
+`input` (not `hidden`), `select`, `textarea`, `summary`, the roles `button`,
+`link`, `checkbox`, `radio`, `switch`, `tab`, `menuitem` and `option`, anything
+with a `tabindex` other than `-1`, and anything with an `onclick` attribute.
+`targets` replaces the list (spread `DEFAULT_TAP_TARGETS` to add to it).
+A checkbox or radio is measured together with its labels (a tap on the label
+toggles it), so a small box inside a 44px row passes. The input and its
+labels count as one bounding box, so a `for` label far from its input
+includes the gap between them.
+
+Not measured: elements that are hidden (`display: none`, `visibility:
+hidden`), zero-sized, visually hidden (`sr-only`: a 1px box, or `clip` /
+`clip-path` on an absolute box, such as a skip link), `disabled`, `aria-disabled="true"`, `inert` or under
+`pointer-events: none`; and a link inside a sentence: an `inline` link with
+text of its own beside it in its block container, looking through inline
+wrappers (`<p><strong><a>x</a></strong> text</p>`; WCAG 2.5.8's inline
+exception). Only inline links are exempt: an `inline-block` link is measured,
+and so is the same link alone in its paragraph or list item. A target passes when its box
+is at least `size` by `size`, within half a pixel of rounding.
+
+`spacing: true` adds the spacing exception at this `size`: a smaller target
+passes when a circle of `size` diameter centred on it touches no other target
+and no other undersized target's circle. A target that contains it, or sits
+inside it, is the same control, not a neighbour. The failure names the
+neighbour.
+
+```
+3 tap targets are smaller than 44x44px (412x839 viewport):
+  - button#close.icon "Close"  32x32px
+  - a.nav-link "Home"  60x24px
+  - input "Remember me"  16x16px, too close to a.forgot
+Make each at least 44x44px (padding or a ::after grows the tap area without moving the layout), or exclude it.
+```
+
+The message counts every offender and lists at most `max`. Run it on a phone
+viewport: a desktop layout has small targets on purpose, which is why
+`checkScreen` takes `tapTargets` as a function of the test
+([screens.md](screens.md#one-call-per-screen-checkscreen)).
+
+**A page without the viewport meta tag measures a zoomed-out page.** A phone
+lays a page without `<meta name="viewport" content="width=device-width,
+initial-scale=1">` out 980px wide and shrinks it to fit, so the targets are
+measured at their layout size, 44px of CSS, but the person sees them at
+roughly 40% of that. Add the tag to the app's document first.
 
 ## `screenshotName`
 
