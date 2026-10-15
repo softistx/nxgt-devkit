@@ -986,8 +986,13 @@ checkbox or radio, its labels. A probe that lands elsewhere fails it:
 - an ancestor's `overflow` clips it (a control at the edge of a scroll box);
 - the rule is under `@media (pointer: coarse)` and the project is a desktop
   one: only the mobile project emulates a coarse pointer;
-- the control is in the viewport's corner: the probe stays inside the viewport,
-  and a viewport smaller than `size` falls back to the box.
+- the control is fixed at the viewport's edge: a full `size` square of hit area
+  must fit on screen (the square is moved inside the viewport, not cut), so the
+  whole hit area has to be on screen, and a viewport smaller than `size` falls
+  back to the box;
+- a sticky header or a toast covers part of the square: a target is probed at
+  the current scroll position when its square is on screen, and scrolled to the
+  middle only when it is not.
 
 **Fix:** make the pseudo-element hit-testable and as large as `size`, or run
 the check in the project the rule is for

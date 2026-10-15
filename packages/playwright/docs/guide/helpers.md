@@ -415,7 +415,9 @@ text of its own beside it in its block container, looking through inline
 wrappers (`<p><strong><a>x</a></strong> text</p>`; WCAG 2.5.8's inline
 exception). Only inline links are exempt: an `inline-block` link is measured,
 and so is the same link alone in its paragraph or list item. A target passes when its box
-is at least `size` by `size`, within half a pixel of rounding.
+is at least `size` by `size`, within half a pixel of rounding, or when its
+invisible hit area fills that square (see [the real hit
+area](#the-real-hit-area-hitarea-on-by-default)).
 
 `spacing: true` adds the spacing exception at this `size`: a smaller target
 passes when a circle of `size` diameter centred on it touches no other target
@@ -448,9 +450,9 @@ square centred on the box with `document.elementFromPoint`, on a 5x5 grid
 (points 1px inside the square's edges). The target passes when every probe hits
 the target itself, one of its descendants (a pseudo-element hit-tests as its
 element), or, for a checkbox or radio, one of its labels or their descendants.
-With `spacing`, such a target is not counted as undersized; its neighbours
-still judge it by its visible box. A target inside a shadow tree passes when
-the probe hits the shadow host that holds it; nothing deeper is tried.
+The square is centred on the target's box, joined with its labels' for a
+checkbox or radio. With `spacing`, such a target is not counted as undersized;
+its neighbours still judge it by its visible box.
 
 So the pseudo-element has to be hit-testable: not `pointer-events: none`, not
 covered by another element (a neighbour, a sticky bar), not clipped by an
@@ -462,10 +464,15 @@ the point of running the check on phones.
 A target that is off screen, or whose square sticks out of the viewport, is
 scrolled to the middle (`scrollIntoView({ block: 'center', inline: 'center' })`,
 without smooth scrolling) for the probe, and the window and every scrolled
-ancestor are put back where they were, so the page the next check sees is the
-one you had. Scroll listeners on the page fire for the two moves. A square that still sticks out
-(a control at the page's edge) is probed at the viewport's edge, and a viewport
-smaller than `size` falls back to the box. `hitArea: false` restores the 0.8
+ancestor (through slots and shadow roots) are put back where they were, so the
+page the next check sees is the one you had. Scroll listeners on the page fire
+for the two moves. A square that still sticks out (a control fixed at the
+page's edge) is moved inside the viewport, not cut: a full `size` square of hit
+area must be on screen (the viewport without a classic scrollbar), so a fixed
+control at the edge needs its whole hit area on screen. A target is probed at
+the current scroll position once its square is on screen, so a sticky header or
+a toast covering part of it makes it fail. A viewport smaller than `size` falls
+back to the box. `hitArea: false` restores the 0.8
 behaviour: the visible box only, and no scrolling.
 
 The message counts every offender and lists at most `max`. Run it on a phone
