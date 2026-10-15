@@ -63,9 +63,14 @@ const option = (name: string) => {
 const playwright = option('--playwright');
 const vitest = option('--vitest');
 const storybook = option('--storybook');
-const vite = option('--vite') ?? '7.3.7';
+const viteOption = option('--vite');
+const vite = viteOption ?? '7.3.7';
 if (Boolean(vitest) !== Boolean(storybook)) {
 	throw new Error('--vitest and --storybook go together');
+}
+if (viteOption && !vitest) throw new Error('--vite goes with --vitest');
+if (vitest && playwright) {
+	throw new Error('--vitest and --playwright are separate legs: run one');
 }
 // With `--playwright`, runs only the e2e tests whose title matches (to bisect
 // a floor); the unit and mock-server steps are skipped.
@@ -225,11 +230,10 @@ try {
 	await leg.rewrite();
 	await Bun.write(path, `${JSON.stringify(manifest, null, '\t')}\n`);
 
-	const label = leg.label;
 	// A failed step throws: `process.exit` here would skip the `finally` and
 	// leave the scratch copy behind.
 	const run = async (step: string, cwd: string, ...command: string[]) => {
-		console.log(`\n[${label}] ${step}`);
+		console.log(`\n[${leg.label}] ${step}`);
 		const result = await $`${command}`.cwd(cwd).nothrow();
 		if (result.exitCode !== 0) {
 			process.exitCode = result.exitCode;
