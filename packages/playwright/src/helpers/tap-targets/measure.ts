@@ -17,6 +17,11 @@ export async function measure(args: {
 	include: string[];
 	exclude: string[];
 }): Promise<Measured> {
+	// Web fonts change box sizes.
+	await document.fonts.ready;
+	// Duplicated on purpose with text-overflow/measure.ts (Playwright
+	// serialises each measure alone): a change to collapse, brief or
+	// describe is made in both.
 	const collapse = (s: string) => s.replace(/\s+/g, ' ').trim();
 	const say = {
 		brief: (s: string) => (s.length > 40 ? `${s.slice(0, 40)}…` : s),
@@ -50,6 +55,21 @@ export async function measure(args: {
 
 	const is = {
 		excluded: (el: Element) => args.exclude.some((s) => el.closest(s) !== null),
+		// Shown only to a screen reader (`sr-only`: a 1px box, or `clip`).
+		srOnly: (el: Element) => {
+			const r = el.getBoundingClientRect();
+			if (r.width <= 1 || r.height <= 1) return true;
+			for (let p: Element | null = el; p; p = p.parentElement) {
+				const s = getComputedStyle(p);
+				if (
+					(s.position === 'absolute' || s.position === 'fixed') &&
+					(s.clip !== 'auto' || s.clipPath !== 'none')
+				) {
+					return true;
+				}
+			}
+			return false;
+		},
 		// Not shown, not available, or not reachable by a pointer.
 		unavailable: (el: Element) =>
 			!el.checkVisibility({ visibilityProperty: true }) ||
@@ -57,12 +77,23 @@ export async function measure(args: {
 			el.closest('[aria-disabled=true],[inert]') !== null ||
 			getComputedStyle(el).pointerEvents === 'none',
 		// A link in a sentence is WCAG 2.5.8's inline exception: its box is
-		// the line's, and the text around it is the reader's.
-		inline: (el: Element) =>
-			getComputedStyle(el).display === 'inline' &&
-			[...(el.parentElement?.childNodes ?? [])].some(
+		// the line's, and the text around it is the reader's. Only an inline
+		// link: the text is looked for beside the outermost inline ancestor
+		// (`<p><strong><a>`), in the block container.
+		inline: (el: Element) => {
+			if (getComputedStyle(el).display !== 'inline') return false;
+			let top: Element = el;
+			for (
+				let p = el.parentElement;
+				p && /^(inline|contents)$/.test(getComputedStyle(p).display);
+				p = p.parentElement
+			) {
+				top = p;
+			}
+			return [...(top.parentElement?.childNodes ?? [])].some(
 				(n) => n.nodeType === Node.TEXT_NODE && collapse(n.textContent ?? ''),
-			),
+			);
+		},
 	};
 
 	// Its box, joined with its labels' for a checkbox or a radio: a tap on the
@@ -99,7 +130,13 @@ export async function measure(args: {
 		for (const el of root.querySelectorAll(args.targets.join(','))) {
 			if (seen.has(el)) continue;
 			seen.add(el);
-			if (is.excluded(el) || is.unavailable(el) || is.inline(el)) continue;
+			if (
+				is.excluded(el) ||
+				is.unavailable(el) ||
+				is.srOnly(el) ||
+				is.inline(el)
+			)
+				continue;
 			const box = boxOf(el);
 			if (box) boxes.push(box);
 		}

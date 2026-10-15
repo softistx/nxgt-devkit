@@ -325,6 +325,10 @@ Text overflows its box in 2 elements (412x839 viewport):
 Let the text wrap, give a clipped one its full text in a title or aria-label, or exclude it.
 ```
 
+`SmallTapTarget` is one offender: `selector` (`tag#id.class`), `name` (its
+label), `width` and `height` in rounded CSS pixels, and with `spacing` `near`,
+the selector of the target that crowds it.
+
 The message counts every offender and lists at most `max`. A box clipped
 vertically reports its heights, `96px of text in a 48px-tall box`.
 
@@ -389,13 +393,18 @@ What counts as a tap target (`DEFAULT_TAP_TARGETS`): `a[href]`, `button`,
 with a `tabindex` other than `-1`, and anything with an `onclick` attribute.
 `targets` replaces the list (spread `DEFAULT_TAP_TARGETS` to add to it).
 A checkbox or radio is measured together with its labels (a tap on the label
-toggles it), so a small box inside a 44px row passes.
+toggles it), so a small box inside a 44px row passes. The input and its
+labels count as one bounding box, so a `for` label far from its input
+includes the gap between them.
 
 Not measured: elements that are hidden (`display: none`, `visibility:
-hidden`), zero-sized, `disabled`, `aria-disabled="true"`, `inert` or under
-`pointer-events: none`; and a link inside a sentence, an `inline` element whose
-parent has text of its own (WCAG 2.5.8's inline exception). The same link
-alone in its paragraph or list item is measured. A target passes when its box
+hidden`), zero-sized, visually hidden (`sr-only`: a 1px box, or `clip` /
+`clip-path` on an absolute box, such as a skip link), `disabled`, `aria-disabled="true"`, `inert` or under
+`pointer-events: none`; and a link inside a sentence: an `inline` link with
+text of its own beside it in its block container, looking through inline
+wrappers (`<p><strong><a>x</a></strong> text</p>`; WCAG 2.5.8's inline
+exception). Only inline links are exempt: an `inline-block` link is measured,
+and so is the same link alone in its paragraph or list item. A target passes when its box
 is at least `size` by `size`, within half a pixel of rounding.
 
 `spacing: true` adds the spacing exception at this `size`: a smaller target

@@ -84,6 +84,32 @@ test('a link inside a sentence is exempt; the same link alone is not', async ({
 	expect(await failure(expectTapTargets(page))).toContain('  - a "terms"  ');
 });
 
+test('a link nested in inline elements is exempt when text sits beside them', async ({
+	page,
+}) => {
+	await page.setContent(
+		html('<p><strong><a href="#t">terms</a></strong> and more text</p>'),
+	);
+	await expectTapTargets(page);
+	await page.setContent(html('<p><strong><a href="#t">terms</a></strong></p>'));
+	expect(await failure(expectTapTargets(page))).toContain('  - a "terms"  ');
+	await page.setContent(
+		html(
+			'<p>Read <a href="#t" style="display:inline-block;width:30px;height:20px">terms</a> now</p>',
+		),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('30x20px');
+});
+
+test('a visually hidden skip link is not measured', async ({ page }) => {
+	await page.setContent(
+		html(
+			'<a href="#main" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Skip</a><a href="#x" style="position:absolute;clip-path:inset(50%)">Skip 2</a>',
+		),
+	);
+	await expectTapTargets(page);
+});
+
 test('a small checkbox counts together with its label, wrapped or `for`', async ({
 	page,
 }) => {
