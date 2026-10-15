@@ -18,6 +18,13 @@ import type { TapTargetOptions } from './types';
  * an `inline` link inside a sentence (WCAG 2.5.8's inline exception; an
  * `inline-block` link is measured).
  *
+ * A target whose box is smaller than `size` still passes when its hit area
+ * fills the `size` square centred on it (`hitArea`, on by default): an
+ * invisible `::before` of 44px on a 20px checkbox. The square is probed with
+ * `elementFromPoint` on a 5x5 grid, scrolling the target into view when it
+ * is off screen and restoring every scroll position afterwards.
+ * `hitArea: false` judges the visible box only.
+ *
  * This is the comfortable-touch size, not WCAG 2.5.8's minimum: that is 24px
  * with a spacing exception, it is axe's `target-size` rule, and
  * `expectAccessible` already runs it. Run this one on a phone viewport.
@@ -32,6 +39,7 @@ export async function expectTapTargets(
 	{
 		size = 44,
 		spacing = false,
+		hitArea = true,
 		targets = DEFAULT_TAP_TARGETS,
 		include,
 		exclude,
@@ -45,6 +53,8 @@ export async function expectTapTargets(
 		);
 	}
 	const { viewport, boxes, matched } = await page.evaluate(measure, {
+		size,
+		hitArea,
 		targets: selectors,
 		include: toList(include),
 		exclude: toList(exclude),

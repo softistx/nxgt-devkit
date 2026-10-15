@@ -226,3 +226,144 @@ test('sizes are CSS pixels, whatever the device pixel ratio', async ({
 	await expectTapTargets(page);
 	await context.close();
 });
+
+// A 20px control drawn with an invisible 44px ::before, as a design system's
+// checkbox, switch or toast close is.
+const enlarged = (
+	pseudo: number,
+	{ media = false, attrs = '', after = '' } = {},
+) => {
+	const rule = `.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:${pseudo}px;height:${pseudo}px;transform:translate(-50%,-50%)}`;
+	return `<style>${media ? `@media (pointer: coarse){${rule}}` : rule}</style><button class="box hit" ${attrs} aria-label="Toggle" style="width:20px;height:20px"></button>${after}`;
+};
+
+test('an invisible 44px ::before makes a 20px control pass; hitArea: false does not', async ({
+	page,
+}) => {
+	await page.setContent(html(enlarged(44)));
+	await expectTapTargets(page);
+	await expectTapTargets(page, { spacing: true });
+	const message = await failure(expectTapTargets(page, { hitArea: false }));
+	expect(message).toContain('button.box.hit "Toggle"  20x20px');
+});
+
+test('a ::before under pointer: coarse counts on a phone, not on a mouse', async ({
+	page,
+}, testInfo) => {
+	// The mobile project (a Pixel 7, hasTouch) emulates `pointer: coarse`;
+	// the desktop one does not, so one rule gives both outcomes.
+	const coarse = testInfo.project.name === 'mobile-chromium';
+	await page.setContent(html(enlarged(44, { media: true })));
+	expect(
+		await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
+	).toBe(coarse);
+	if (coarse) {
+		await expectTapTargets(page);
+	} else {
+		expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	}
+});
+
+test('a neighbour covering part of the 44px square fails and names the target', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style>
+			<div style="position:relative;height:100px"><button class="box hit" id="t" aria-label="Toggle" style="position:absolute;left:100px;top:40px;width:20px;height:20px"></button>
+			<div style="position:absolute;left:128px;top:30px;width:60px;height:40px;background:#ccc;z-index:2"></div></div>`,
+		),
+	);
+	const message = await failure(expectTapTargets(page));
+	expect(message).toContain('button#t.box.hit "Toggle"  20x20px');
+});
+
+test('a 30px ::before is not enough for 44', async ({ page }) => {
+	await page.setContent(html(enlarged(30)));
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	await expectTapTargets(page, { size: 30 });
+});
+
+test('a pointer-events: none ::before is no hit area', async ({ page }) => {
+	await page.setContent(
+		html(
+			enlarged(44).replace(
+				'<style>',
+				'<style>.hit::before{pointer-events:none}',
+			),
+		),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+});
+
+test('a control far below the fold is probed and the scroll is put back', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<div style="height:3000px"></div>${enlarged(44, { after: '' })}<div style="height:600px"></div>`,
+		),
+	);
+	await page.evaluate(() => window.scrollTo(0, 120));
+	await expectTapTargets(page);
+	expect(await page.evaluate(() => window.scrollY)).toBe(120);
+	// The same, but it fails: nothing enlarges it, and the scroll is still put back.
+	await page.setContent(
+		html(
+			`<div style="height:3000px"></div>${sized('button', 20)}<div style="height:600px"></div>`,
+		),
+	);
+	await page.evaluate(() => window.scrollTo(0, 50));
+	await failure(expectTapTargets(page));
+	expect(await page.evaluate(() => window.scrollY)).toBe(50);
+});
+
+test('a control inside a scrolled container: its scrollTop and the window are restored', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			`<div style="height:200px"></div><div id="pane" style="height:300px;overflow:auto;padding:0 24px"><div style="height:1500px"></div>${enlarged(44)}<div style="height:800px"></div></div><div style="height:2000px"></div>`,
+		),
+	);
+	await page.evaluate(() => {
+		(document.getElementById('pane') as HTMLElement).scrollTop = 40;
+	});
+	await page.evaluate(() => window.scrollTo(0, 30));
+	const before = await page.evaluate(() => [
+		window.scrollY,
+		(document.getElementById('pane') as HTMLElement).scrollTop,
+	]);
+	await expectTapTargets(page);
+	expect(
+		await page.evaluate(() => [
+			window.scrollY,
+			(document.getElementById('pane') as HTMLElement).scrollTop,
+		]),
+	).toEqual(before);
+});
+
+test('a checkbox whose label covers the square passes as before, with or without hitArea', async ({
+	page,
+}) => {
+	await page.setContent(
+		html(
+			'<label style="display:flex;align-items:center;min-height:44px;width:200px"><input type="checkbox"> Remember me</label>',
+		),
+	);
+	await expectTapTargets(page);
+	await expectTapTargets(page, { hitArea: false });
+});
+
+test('a checkbox whose label covers the square passes through the hit probe', async ({
+	page,
+}) => {
+	// The union box is 12px high only, so the label's own padding is what
+	// the probe reaches: 44px of label around a 20px input.
+	await page.setContent(
+		html(
+			'<label style="display:inline-block;padding:12px;margin:0 0 60px"><input type="checkbox" style="margin:0;display:block;width:20px;height:20px"></label>',
+		),
+	);
+	await expectTapTargets(page);
+});

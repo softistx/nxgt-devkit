@@ -15,6 +15,8 @@ export type Measured = {
  * geometry (`boxOf`).
  */
 export async function measure(args: {
+	size: number;
+	hitArea: boolean;
 	targets: string[];
 	include: string[];
 	exclude: string[];
@@ -123,6 +125,89 @@ export async function measure(args: {
 		};
 	};
 
+	// Whether the `size` square centred on `box` is hit by the target (or a
+	// descendant, a label of a checkbox or radio, or the shadow host that holds
+	// it) at every point of a 5x5 grid inset 1px. A `::before` / `::after`
+	// hit-tests as its element. Shadow DOM: `elementFromPoint` answers the
+	// outermost host, so a hit on a host that contains the target in its shadow
+	// tree counts; nothing deeper is tried.
+	const covers = (el: Element, box: TapTargetBox): boolean => {
+		const size = args.size;
+		if (window.innerWidth < size || window.innerHeight < size) return false;
+		const labels =
+			el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type)
+				? [...(el.labels ?? [])]
+				: [];
+		const owns = (hit: Element | null) => {
+			if (!hit) return false;
+			if (el.contains(hit) || labels.some((l) => l.contains(hit))) return true;
+			for (
+				let r = el.getRootNode();
+				r instanceof ShadowRoot;
+				r = r.host.getRootNode()
+			) {
+				if (r.host === hit) return true;
+			}
+			return false;
+		};
+		const probe = (b: TapTargetBox) => {
+			const x0 = b.left + b.width / 2 - size / 2;
+			const y0 = b.top + b.height / 2 - size / 2;
+			const clamp = (v: number, max: number) =>
+				Math.min(Math.max(v, 1), max - 1);
+			for (let i = 0; i < 5; i++) {
+				for (let j = 0; j < 5; j++) {
+					const x = clamp(x0 + 1 + (i * (size - 2)) / 4, window.innerWidth);
+					const y = clamp(y0 + 1 + (j * (size - 2)) / 4, window.innerHeight);
+					if (!owns(document.elementFromPoint(x, y))) return false;
+				}
+			}
+			return true;
+		};
+		const inside = (b: TapTargetBox) =>
+			b.left + b.width / 2 - size / 2 >= 0 &&
+			b.top + b.height / 2 - size / 2 >= 0 &&
+			b.left + b.width / 2 + size / 2 <= window.innerWidth &&
+			b.top + b.height / 2 + size / 2 <= window.innerHeight;
+		if (inside(box)) return probe(box);
+		// Off screen, or the square sticks out: scroll the target to the middle,
+		// probe, and put back the window and every scrolled ancestor (an
+		// unrestored scroll changes what the next check sees). A square that
+		// still sticks out (the page's edge) is probed at the viewport's edge.
+		const saved: [Element, number, number][] = [];
+		for (
+			let p: Element | null = el.parentElement ?? null;
+			p;
+			p =
+				p.parentElement ??
+				((p.getRootNode() as ShadowRoot).host as Element | undefined) ??
+				null
+		) {
+			saved.push([p, p.scrollLeft, p.scrollTop]);
+		}
+		const { scrollX, scrollY } = window;
+		try {
+			el.scrollIntoView({
+				block: 'center',
+				inline: 'center',
+				behavior: 'instant' as ScrollBehavior,
+			});
+			const moved = boxOf(el);
+			return moved ? probe(moved) : false;
+		} finally {
+			for (const [p, left, top] of saved) {
+				if (p.scrollLeft !== left || p.scrollTop !== top) {
+					p.scrollTo({ left, top, behavior: 'instant' as ScrollBehavior });
+				}
+			}
+			window.scrollTo({
+				left: scrollX,
+				top: scrollY,
+				behavior: 'instant' as ScrollBehavior,
+			});
+		}
+	};
+
 	const roots = args.include.length
 		? args.include.flatMap((s) => [...document.querySelectorAll(s)])
 		: [document.documentElement];
@@ -140,7 +225,15 @@ export async function measure(args: {
 			)
 				continue;
 			const box = boxOf(el);
-			if (box) boxes.push(box);
+			if (!box) continue;
+			if (
+				args.hitArea &&
+				(box.width < args.size || box.height < args.size) &&
+				covers(el, box)
+			) {
+				box.hitArea = true;
+			}
+			boxes.push(box);
 		}
 	}
 	return {

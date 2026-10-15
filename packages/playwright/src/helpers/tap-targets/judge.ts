@@ -51,7 +51,9 @@ function crowdedBy(
 
 /**
  * Judges the measured targets: the ones smaller than `size` by `size`, and,
- * with `spacing`, among them only those a neighbour crowds.
+ * with `spacing`, among them only those a neighbour crowds. A box with a
+ * `hitArea` (measured: its invisible hit area fills the square) is large
+ * enough, but stays a neighbour for the others, by its visible box.
  */
 export function judgeTapTargets(
 	boxes: readonly TapTargetBox[],
@@ -59,7 +61,9 @@ export function judgeTapTargets(
 ): SmallTapTarget[] {
 	const small = new Set(
 		boxes.filter(
-			(b) => b.width < size - TOLERANCE || b.height < size - TOLERANCE,
+			(b) =>
+				!b.hitArea &&
+				(b.width < size - TOLERANCE || b.height < size - TOLERANCE),
 		),
 	);
 	const found: SmallTapTarget[] = [];
