@@ -27,8 +27,9 @@ import type { Measured } from './measure';
  * @returns `enlarged`: the indices whose `size` square is hit, at every
  * point of a 5x5 grid inset 1px, by the target, its descendants (a
  * `::before` / `::after` hit-tests as its element) or, for a checkbox or
- * radio, its labels. `covered`: the indices whose own centre another element
- * still covers once scrolled to the middle (a toast, a modal layer, the
+ * radio, its labels. `covered`: the indices another element still covers
+ * once scrolled to the middle, at the centre of each of their boxes (each
+ * line of a wrapped link) and their labels' (a toast, a modal layer, the
  * front toast of a stack): no pointer reaches them in this state.
  */
 export function probeHitAreas(
@@ -132,15 +133,24 @@ export function probeHitAreas(
 		}
 		return true;
 	};
-	// Whether a pointer at the target's own centre (moved inside the
-	// viewport) reaches it. Nothing there is no proof of a cover.
+	// Whether a pointer reaches the target: at the centre (moved inside the
+	// viewport) of one of its boxes or its labels' (an inline link that wraps
+	// has one per line; a checkbox is tapped through its label). Nothing
+	// under any of them is no proof of a cover.
 	const reached = (el: Element) => {
-		const r = el.getBoundingClientRect();
 		const { cw, ch } = viewport();
-		const x = Math.min(Math.max(r.left + r.width / 2, 0), cw - 1);
-		const y = Math.min(Math.max(r.top + r.height / 2, 0), ch - 1);
-		const hit = document.elementFromPoint(x, y);
-		return !hit || owns(el, labelsOf(el), hit);
+		const labels = labelsOf(el);
+		let probed = false;
+		for (const r of [el, ...labels].flatMap((e) => [...e.getClientRects()])) {
+			if (r.width <= 0 || r.height <= 0) continue;
+			const x = Math.min(Math.max(r.left + r.width / 2, 0), cw - 1);
+			const y = Math.min(Math.max(r.top + r.height / 2, 0), ch - 1);
+			const hit = document.elementFromPoint(x, y);
+			if (!hit) continue;
+			if (owns(el, labels, hit)) return true;
+			probed = true;
+		}
+		return !probed;
 	};
 
 	type Verdict = 'enlarged' | 'covered' | 'small';
@@ -157,9 +167,9 @@ export function probeHitAreas(
 		// Off screen, the square sticks out, a scrolling ancestor hides it, or
 		// something is on top where it sits (a sticky actions bar): scroll the
 		// target to the middle, probe again, and put everything back (an
-		// unrestored scroll changes what the next check sees). A target whose
-		// centre is still covered there is out of reach in this state: it is
-		// not judged. A square the page's edge still keeps out is moved inside
+		// unrestored scroll changes what the next check sees). A target still
+		// covered there (`reached`) is out of reach in this state: it is not
+		// judged. A square the page's edge still keeps out is moved inside
 		// the viewport, so a full `size` square of hit area is on screen.
 		const saved: [Element, number, number][] = [];
 		for (let p = flatParent(el); p; p = flatParent(p)) {

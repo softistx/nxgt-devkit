@@ -15,8 +15,8 @@ import type { TapTargetBox, TapTargetOptions } from './types';
  * checkbox or radio counts together with its labels, as one bounding box (a
  * `for` label far from the input includes the gap). Not measured: what is
  * hidden, disabled (`disabled`, `aria-disabled`), `inert`, `pointer-events:
- * none`, zero-sized or visually hidden (`sr-only`: a 1px box or `clip`), and
- * an `inline` link inside a sentence (WCAG 2.5.8's inline exception; an
+ * none`, zero-sized or visually hidden (`sr-only`: a 1px box or `clip`), an
+ * undersized target a layer covers (below), and an `inline` link inside a sentence (WCAG 2.5.8's inline exception; an
  * `inline-block` link is measured).
  *
  * A target whose box is smaller than `size` still passes when its hit area
@@ -25,9 +25,10 @@ import type { TapTargetBox, TapTargetOptions } from './types';
  * invisible `::before` of 44px on a 20px checkbox. The square is probed with
  * `elementFromPoint` on a 5x5 grid, scrolling the target into view when it
  * is off screen or covered where it sits, and restoring every scroll
- * position afterwards. An undersized target whose centre another element
- * still covers once scrolled to the middle (a toast, a modal layer, the
- * front toast of a stack) is out of reach in that state and not judged.
+ * position afterwards. An undersized target that another element still
+ * covers once scrolled to the middle, at the centre of each of its boxes
+ * and its labels' (a toast, a modal layer, the front toast of a stack), is
+ * out of reach in that state and not judged.
  * `hitArea: false` judges the visible box only.
  *
  * This is the comfortable-touch size, not WCAG 2.5.8's minimum: that is 24px

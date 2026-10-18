@@ -1000,8 +1000,8 @@ the check in the project the rule is for
 **When:** a small control you expect in the report is missing while a toast,
 an open modal menu or a sheet is on screen, or it is the button of a toast
 stacked behind the front one.
-**Why:** since 0.9.2 an undersized control whose own centre another element
-still covers once scrolled to the middle is out of reach in that state, so it
+**Why:** since 0.9.2 an undersized control that another element still covers
+once scrolled to the middle (at the centre of each of its boxes and labels) is out of reach in that state, so it
 is not judged (nor counted as a neighbour for `spacing`). The layer's own
 controls are judged as usual.
 **Fix:** check the control in the state where it is shown: close the toast or

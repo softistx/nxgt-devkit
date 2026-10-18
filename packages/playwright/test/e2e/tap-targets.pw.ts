@@ -395,6 +395,28 @@ test('a row checkbox and a small button under a toast are out of reach and not j
 	);
 });
 
+test('a checkbox in reach through its label and a wrapped link are still judged', async ({
+	page,
+}) => {
+	// A decoration covers the input's own centre, but its `for` label is in
+	// plain view: a tap there toggles it.
+	await page.setContent(
+		html(
+			'<div style="position:relative;width:20px;height:20px"><input id="c" type="checkbox" style="opacity:0;position:absolute;inset:0;margin:0"><span style="position:absolute;inset:0;background:#08f"></span></div><label for="c">Accept</label>',
+		),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('input#c "Accept"');
+	// An inline link on two lines: its joined box's centre falls between them.
+	await page.setContent(
+		html(
+			'<ul style="width:140px;line-height:1.5"><li><a href="#">Read the whole article</a></li></ul>',
+		),
+	);
+	expect(await failure(expectTapTargets(page))).toContain(
+		'a "Read the whole article"',
+	);
+});
+
 test('behind a modal layer only the controls of the layer are judged', async ({
 	page,
 }) => {

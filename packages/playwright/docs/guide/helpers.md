@@ -488,11 +488,14 @@ and probed again. A neighbour over part of its square still fails it. A
 viewport smaller than `size` falls back to the box.
 
 A control out of reach in the state you check is not judged at all: any
-undersized target (with or without a hit area of its own) whose own centre
-another element still covers once scrolled to the middle. That is a row
+undersized target (with or without a hit area of its own) that another
+element still covers once scrolled to the middle, at the centre of each of its
+boxes (each line of a wrapped link) and of its labels (a checkbox tapped
+through its `for` label is in reach). That is a row
 checkbox under a toast or behind an open modal menu's layer, the buttons of a
 toast stacked behind the front one, anything under a sheet over the whole
-page. It is neither reported nor counted as a neighbour for `spacing`; check
+page, a closed off-canvas drawer. A control a stretched link (an `::after`
+over a whole card) sits on is covered too, so it is not judged either. It is neither reported nor counted as a neighbour for `spacing`; check
 it in the state where it is shown. A layer's own controls (the menu's items,
 the front toast's buttons) are judged as usual.
 
