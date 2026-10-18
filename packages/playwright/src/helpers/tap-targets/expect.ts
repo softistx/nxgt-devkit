@@ -24,7 +24,10 @@ import type { TapTargetBox, TapTargetOptions } from './types';
  * checkbox or radio; `hitArea`, on by default): an
  * invisible `::before` of 44px on a 20px checkbox. The square is probed with
  * `elementFromPoint` on a 5x5 grid, scrolling the target into view when it
- * is off screen and restoring every scroll position afterwards.
+ * is off screen or covered where it sits, and restoring every scroll
+ * position afterwards. An undersized target whose centre another element
+ * still covers once scrolled to the middle (a toast, a modal layer, the
+ * front toast of a stack) is out of reach in that state and not judged.
  * `hitArea: false` judges the visible box only.
  *
  * This is the comfortable-touch size, not WCAG 2.5.8's minimum: that is 24px
@@ -77,13 +80,18 @@ export async function expectTapTargets(
 			);
 		}
 		({ boxes, viewport } = data);
-		if (data.probe.length > 0) {
+		if (data.undersized.length > 0) {
 			// A second pass, because it scrolls: the first one only reads.
-			const covered = await handle.evaluate(probeHitAreas, { size });
-			for (const i of covered) {
+			const { enlarged, covered } = await handle.evaluate(probeHitAreas, {
+				size,
+			});
+			for (const i of enlarged) {
 				const box = boxes[i];
 				if (box) box.hitArea = true;
 			}
+			// Out of reach in this state: neither judged nor a neighbour.
+			const out = new Set(covered);
+			boxes = boxes.filter((_, i) => !out.has(i));
 		}
 	} finally {
 		await handle.dispose();

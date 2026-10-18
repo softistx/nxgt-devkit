@@ -6,8 +6,14 @@ export type MeasuredData = {
 	/** How many roots `include` matched (the document without `include`). */
 	matched: number;
 	/**
-	 * Indices into `boxes` of the undersized targets that could have an
-	 * enlarged hit area: the ones `probeHitAreas` (hit-area.ts) should probe.
+	 * Indices into `boxes` of the targets smaller than `size` (with
+	 * `hitArea`): the ones `probeHitAreas` (hit-area.ts) checks a pointer
+	 * reaches.
+	 */
+	undersized: number[];
+	/**
+	 * The subset of `undersized` that could have an enlarged hit area: the
+	 * ones `probeHitAreas` also probes on the `size` square.
 	 */
 	probe: number[];
 };
@@ -27,10 +33,10 @@ export type Measured = {
  * Measures every tap target under `include`, in CSS pixels. Self-contained:
  * Playwright serialises it, so it imports nothing at run time and every
  * helper lives inside it. It judges nothing about size; the caller does. It
- * only reads: it never scrolls. For the undersized targets that could have
- * an invisible hit area it also lists their index in `boxes`, and the caller
- * probes those with `probeHitAreas`, handed the same `elements` (select
- * once: no second selection to drift from this one).
+ * only reads: it never scrolls. It also lists the index in `boxes` of the
+ * undersized targets, and of those that could have an invisible hit area,
+ * and the caller probes them with `probeHitAreas`, handed the same
+ * `elements` (select once: no second selection to drift from this one).
  * Four parts: the text helpers (`say`), the predicates (`is`), the geometry
  * (`boxOf`) and the hit-area candidates (`mayEnlarge`).
  *
@@ -200,6 +206,7 @@ export async function measure(args: {
 	const seen = new Set<Element>();
 	const boxes: TapTargetBox[] = [];
 	const elements: Element[] = [];
+	const undersized: number[] = [];
 	const probe: number[] = [];
 	for (const root of roots) {
 		for (const el of root.querySelectorAll(args.targets.join(','))) {
@@ -217,10 +224,10 @@ export async function measure(args: {
 			if (
 				args.hitArea &&
 				(box.width < args.size - args.tolerance ||
-					box.height < args.size - args.tolerance) &&
-				mayEnlarge(el, box)
+					box.height < args.size - args.tolerance)
 			) {
-				probe.push(boxes.length);
+				undersized.push(boxes.length);
+				if (mayEnlarge(el, box)) probe.push(boxes.length);
 			}
 			boxes.push(box);
 			elements.push(el);
@@ -231,6 +238,7 @@ export async function measure(args: {
 			viewport: { width: window.innerWidth, height: window.innerHeight },
 			boxes,
 			matched: roots.length,
+			undersized,
 			probe,
 		},
 		elements,

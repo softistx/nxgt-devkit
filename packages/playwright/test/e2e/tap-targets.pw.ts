@@ -354,16 +354,78 @@ test('a control under a sticky actions bar is scrolled clear of it and probed ag
 	expect(await page.evaluate(() => window.scrollY)).toBe(10);
 });
 
-test('a control a fixed overlay still covers once scrolled fails', async ({
+test('a control a fixed overlay still covers once scrolled is out of reach and not judged', async ({
 	page,
 }) => {
 	// A fixed sheet over the whole viewport: no scroll clears it.
-	await page.setContent(
-		stickyForm('position:fixed;inset:0;height:auto!important;z-index:5'),
+	const sheet = stickyForm(
+		'position:fixed;inset:0;height:auto!important;z-index:5',
 	);
+	await page.setContent(sheet);
 	await page.evaluate(() => window.scrollTo(0, 10));
-	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	await expectTapTargets(page);
 	expect(await page.evaluate(() => window.scrollY)).toBe(10);
+	// The same controls without the sheet's cover are judged, by their hit area.
+	await page.setContent(stickyForm('display:none'));
+	await expectTapTargets(page);
+	expect(await failure(expectTapTargets(page, { hitArea: false }))).toContain(
+		'20x20px',
+	);
+});
+
+// A short page (nothing to scroll) whose last row sits under `layer`.
+const coveredRow = (layer: string) =>
+	html(
+		`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style><table><tr><td><label style="display:inline-flex;width:44px;height:44px;align-items:center;justify-content:center"><button type="button" role="checkbox" class="hit" aria-label="Select row" style="width:20px;height:20px;border:0;padding:0"></button></label></td><td><button type="button" class="plain" style="width:30px;height:30px;border:0;padding:0">x</button></td></tr></table>${layer}`,
+	);
+
+test('a row checkbox and a small button under a toast are out of reach and not judged', async ({
+	page,
+}) => {
+	await page.setContent(
+		coveredRow(
+			'<div role="status" style="position:fixed;left:0;right:0;top:0;height:120px;background:#333;z-index:10">Saved</div>',
+		),
+	);
+	await expectTapTargets(page);
+	// Without the toast the 30px button is in reach and too small.
+	await page.setContent(coveredRow(''));
+	expect(await failure(expectTapTargets(page))).toContain(
+		'button.plain "x"  30x30px',
+	);
+});
+
+test('behind a modal layer only the controls of the layer are judged', async ({
+	page,
+}) => {
+	await page.setContent(
+		coveredRow(
+			'<div style="position:fixed;inset:0;z-index:10"></div><div role="menu" style="position:fixed;left:16px;top:200px;z-index:11;background:#fff"><button role="menuitem" class="item" style="width:120px;height:30px;border:0;padding:0">Rename</button></div>',
+		),
+	);
+	const message = await failure(expectTapTargets(page));
+	expect(message).toContain('button.item "Rename"  120x30px');
+	expect(message).not.toMatch(/Select row|plain/);
+});
+
+test('the back toast of a stack is out of reach; the front one is judged', async ({
+	page,
+}) => {
+	// Two stacked toasts, the back one scaled down behind the front one: its
+	// 44px Close button draws about 42px.
+	const toast = (id: string, style: string, close: number) =>
+		`<li id="${id}" style="position:fixed;left:16px;right:16px;bottom:16px;height:64px;background:#fff;border:1px solid #ccc;display:flex;align-items:center;justify-content:space-between;${style}">Saved<button class="close" style="width:75px;height:${close}px;border:0;padding:0;margin-right:8px">Close</button></li>`;
+	const stack = (front: number) =>
+		html(
+			`<ol>${toast('back', 'transform:translateY(-8px) scale(0.95);z-index:1', 44)}${toast('front', 'z-index:2', front)}</ol>`,
+		);
+	await page.setContent(stack(44));
+	await expectTapTargets(page);
+	// The front toast's own button is still judged.
+	await page.setContent(stack(36));
+	const message = await failure(expectTapTargets(page));
+	expect(message).toContain('75x36px');
+	expect(message).not.toContain('75x42');
 });
 
 test('a control inside a scrolled container: its scrollTop and the window are restored', async ({
@@ -495,6 +557,7 @@ test('the probe tests the measured elements, whatever the page does in between',
 		exclude: [],
 	});
 	const data = await handle.evaluate((r) => r.data);
+	expect(data.undersized).toEqual([0, 1, 2]);
 	expect(data.probe).toEqual([0, 1, 2]);
 	// A removed target (index 0) and a class dropped from the last one: the
 	// probe must not shift to other elements.
@@ -502,7 +565,10 @@ test('the probe tests the measured elements, whatever the page does in between',
 		document.getElementById('a')?.remove();
 		document.getElementById('c')?.classList.remove('hit');
 	});
-	expect(await handle.evaluate(probeHitAreas, { size: 44 })).toEqual([1]);
+	expect(await handle.evaluate(probeHitAreas, { size: 44 })).toEqual({
+		enlarged: [1],
+		covered: [],
+	});
 	await handle.dispose();
 });
 

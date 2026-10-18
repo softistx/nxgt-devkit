@@ -59,8 +59,11 @@ export type TapTargetOptions = {
 	 * checkbox with an invisible 44px `::before`. The square is probed with
 	 * `document.elementFromPoint` on a 5x5 grid, so the pseudo-element must be
 	 * hit-testable (not `pointer-events: none`, not covered). A target off
-	 * screen is scrolled into view for the probe and the scroll positions are
-	 * restored. Default `true`; `false` judges the visible box only, as 0.8 did.
+	 * screen or covered where it sits is scrolled into view for the probe and
+	 * the scroll positions are restored. Any undersized target whose centre
+	 * another element still covers there (a toast, a modal layer, the front
+	 * toast of a stack) is out of reach in that state and not judged.
+	 * Default `true`; `false` judges the visible box only, as 0.8 did.
 	 */
 	hitArea?: boolean;
 	/**

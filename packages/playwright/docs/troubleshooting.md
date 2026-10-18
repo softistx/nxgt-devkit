@@ -980,11 +980,11 @@ default) and fails when a probe of the `size` square lands on another element.
 The usual causes:
 
 - the pseudo-element is `pointer-events: none`, or smaller than `size`;
-- another element still covers part of the square once the control is
-  scrolled to the middle of the viewport (a neighbour, a fixed sheet or toast
-  over it), or an ancestor's `overflow` clips it. Since 0.9.1 a sticky bar
-  the control merely sits under no longer fails it: the check scrolls it clear
-  and probes again;
+- a neighbour covers part of the square, or an ancestor's `overflow` clips
+  it. Since 0.9.1 a sticky bar the control merely sits under no longer fails
+  it: the check scrolls it clear and probes again. Since 0.9.2 a control whose
+  centre a layer still covers there (a toast, a modal menu's layer, the front
+  toast of a stack) is not judged at all;
 - the rule is under `@media (pointer: coarse)` and the project is a desktop
   one: only the mobile project emulates a coarse pointer;
 - the control is fixed at the viewport's edge, so its whole hit area is not on

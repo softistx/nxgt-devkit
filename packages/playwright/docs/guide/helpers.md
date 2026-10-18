@@ -466,8 +466,8 @@ is also its hit area. With `spacing`, such a target is not counted as undersized
 its neighbours still judge it by its visible box.
 
 So the pseudo-element has to be hit-testable: not `pointer-events: none`, not
-still covered by another element once scrolled to the middle (a neighbour, a
-fixed sheet), not clipped by an ancestor's `overflow`, and as large as `size`.
+covered by a neighbour, not clipped by an ancestor's `overflow`, and as large
+as `size`.
 Under `@media (pointer: coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
 7 with touch, emulates `pointer: coarse`) and not in a desktop one, which is
 the point of running the check on phones.
@@ -483,9 +483,17 @@ for the two moves. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position first; only when that probe misses is it scrolled
-and probed again, so it fails only when it is still covered in the middle of
-the viewport (a neighbour on top of it, a fixed sheet over the whole page). A
-viewport smaller than `size` falls back to the box.
+and probed again. A neighbour over part of its square still fails it.
+
+A control out of reach in the state you check is not judged at all: any
+undersized target (with or without a hit area of its own) whose own centre
+another element still covers once scrolled to the middle. That is a row
+checkbox under a toast or behind an open modal menu's layer, the buttons of a
+toast stacked behind the front one, anything under a sheet over the whole
+page. It is neither reported nor counted as a neighbour for `spacing`; check
+it in the state where it is shown. A layer's own controls (the menu's items,
+the front toast's buttons) are judged as usual. A viewport smaller than `size`
+falls back to the box.
 
 `hitArea: false` restores the 0.8 behaviour: the visible box only, and no
 scrolling.
