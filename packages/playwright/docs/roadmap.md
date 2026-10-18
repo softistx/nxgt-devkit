@@ -39,7 +39,8 @@ Nothing is planned yet.
   `checkScreen`'s `tapTargets`) no longer flags a small checkbox, switch or
   close button whose invisible 44px `::before` / `::after` fills the square: it
   probes the hit area, scrolling an off-screen control into view and putting the
-  scroll back. `hitArea: false` keeps the visible-box check. 0.9.0.
+  scroll back. `hitArea: false` keeps the visible-box check. 0.9.0. A control
+  under a sticky actions bar is scrolled clear and probed again. 0.9.1.
 - **WebKit capture refused up front** — `storybookProject({ capture })` with
   `webkit` in `browsers` throws at config time, and the capture throws if a
   browser answers with a non-WebP image, instead of writing PNG data under a
