@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.9.2
+
+### Patch Changes
+
+- [#71](https://github.com/softistx/nxgt-devkit/pull/71) [`85deca3`](https://github.com/softistx/nxgt-devkit/commit/85deca35384105a74b8d4d7a4b909bec11bb2f94) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `expectTapTargets`: an undersized control that another element still covers once scrolled to the middle, at the centre of each of its boxes and labels (a row checkbox under a toast or behind a modal menu's layer, the buttons of a toast stacked behind the front one, anything under a full-page sheet) is out of reach in that state and no longer judged, instead of being reported at its drawn size. A neighbour over part of a hit area still fails it; `hitArea: false` keeps the visible-box check.
+
 ## 0.9.1
 
 ### Patch Changes
