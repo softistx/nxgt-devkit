@@ -67,6 +67,7 @@ throws itself are quoted exactly.
   - [A clipped label fails although it shows a tooltip](#a-clipped-label-fails-although-it-shows-a-tooltip)
   - [`<n> tap targets are smaller than 44x44px`](#n-tap-targets-are-smaller-than-44x44px)
   - [A control with an enlarged hit area still fails `expectTapTargets`](#a-control-with-an-enlarged-hit-area-still-fails-expecttaptargets)
+  - [A covered control is not reported by `expectTapTargets`](#a-covered-control-is-not-reported-by-expecttaptargets)
   - [`` expectTapTargets: `targets` is empty. ``](#expecttaptargets-targets-is-empty)
   - [`` expectTapTargets: `include` matched no element (<selectors>) ``](#expecttaptargets-include-matched-no-element-selectors)
   - [`` expectNoTextOverflow: `include` matched no element (<selectors>) ``](#expectnotextoverflow-include-matched-no-element-selectors)
@@ -980,11 +981,9 @@ default) and fails when a probe of the `size` square lands on another element.
 The usual causes:
 
 - the pseudo-element is `pointer-events: none`, or smaller than `size`;
-- another element still covers part of the square once the control is
-  scrolled to the middle of the viewport (a neighbour, a fixed sheet or toast
-  over it), or an ancestor's `overflow` clips it. Since 0.9.1 a sticky bar
-  the control merely sits under no longer fails it: the check scrolls it clear
-  and probes again;
+- a neighbour covers part of the square, or an ancestor's `overflow` clips
+  it. Since 0.9.1 a sticky bar the control merely sits under no longer fails
+  it: the check scrolls it clear and probes again;
 - the rule is under `@media (pointer: coarse)` and the project is a desktop
   one: only the mobile project emulates a coarse pointer;
 - the control is fixed at the viewport's edge, so its whole hit area is not on
@@ -995,6 +994,19 @@ the check in the project the rule is for
 (`tapTargets: (info) => isMobileProject(info)`). The full rules are in
 [the real hit area](guide/helpers.md#the-real-hit-area-hitarea-on-by-default);
 `hitArea: false` judges the visible box only.
+
+### A covered control is not reported by `expectTapTargets`
+
+**When:** a small control you expect in the report is missing while a toast,
+an open modal menu or a sheet is on screen, or it is the button of a toast
+stacked behind the front one.
+**Why:** since 0.9.2 an undersized control that another element still covers
+once scrolled to the middle (at the centre of each of its boxes and labels) is out of reach in that state, so it
+is not judged (nor counted as a neighbour for `spacing`). The layer's own
+controls are judged as usual.
+**Fix:** check the control in the state where it is shown: close the toast or
+the menu (`toastsGone`, `Escape`) before the call. `hitArea: false` judges
+every visible box, covered or not.
 
 ### `` expectTapTargets: `targets` is empty. ``
 

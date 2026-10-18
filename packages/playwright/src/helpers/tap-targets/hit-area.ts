@@ -1,13 +1,16 @@
 import type { Measured } from './measure';
 
 /**
- * Probes the real hit area of the undersized tap targets `measure` listed.
+ * Probes the undersized tap targets `measure` listed: whether a pointer
+ * reaches them at all, and, for those that could have an invisible hit area,
+ * whether it fills the `size` square.
  * Meant for `handle.evaluate(probeHitAreas, { size })` on the handle
  * `page.evaluateHandle(measure, …)` returned: it receives the elements
- * `measure` selected (`result.elements`, `result.data.probe` the positions to
- * probe) and never selects again, so the page changing between the two calls
- * (a hydration, a class removed) cannot make it test another element. One
- * that is no longer connected is skipped, and gets no hit area.
+ * `measure` selected (`result.elements`; `result.data.undersized` and
+ * `result.data.probe` the positions to probe) and never selects again, so
+ * the page changing between the two calls (a hydration, a class removed)
+ * cannot make it test another element. One that is no longer connected is
+ * skipped, and gets neither verdict.
  *
  * Self-contained: Playwright serialises it, so it imports nothing at run
  * time (the `Measured` import is a type) and every helper lives inside it.
@@ -18,17 +21,21 @@ import type { Measured } from './measure';
  * Unlike `measure` it scrolls: a target whose `size` square is not on screen
  * (or not inside the visible area of its scrolling ancestors), or is covered
  * where it sits (a sticky or fixed bar on top), is scrolled to the middle,
- * probed again, and every scrolled ancestor (along the flat tree, so
- * shadow roots and slots count) and the window are put back.
+ * probed again, and every scrolled ancestor (along the flat tree, so shadow
+ * roots and slots count) and the window are put back.
  *
- * @returns the indices whose `size` square is hit, at every point of a 5x5
- * grid inset 1px, by the target, its descendants (a `::before` / `::after`
- * hit-tests as its element) or, for a checkbox or radio, its labels.
+ * @returns `enlarged`: the indices whose `size` square is hit, at every
+ * point of a 5x5 grid inset 1px, by the target, its descendants (a
+ * `::before` / `::after` hit-tests as its element) or, for a checkbox or
+ * radio, its labels. `covered`: the indices another element still covers
+ * once scrolled to the middle, at the centre of each of their boxes (each
+ * line of a wrapped link) and their labels' (a toast, a modal layer, the
+ * front toast of a stack): no pointer reaches them in this state.
  */
 export function probeHitAreas(
 	result: Measured,
 	args: { size: number },
-): number[] {
+): { enlarged: number[]; covered: number[] } {
 	const { size } = args;
 
 	const labelsOf = (el: Element): HTMLLabelElement[] =>
@@ -110,6 +117,9 @@ export function probeHitAreas(
 			inside: x >= 0 && y >= 0 && x <= cw - size && y <= ch - size,
 		};
 	};
+	// Whether `hit` is the target, inside it, or inside one of its labels.
+	const owns = (el: Element, labels: HTMLLabelElement[], hit: Element) =>
+		el.contains(hit) || labels.some((l) => l.contains(hit));
 	const hits = (el: Element, x0: number, y0: number) => {
 		const labels = labelsOf(el);
 		for (let i = 0; i < 5; i++) {
@@ -118,37 +128,49 @@ export function probeHitAreas(
 					x0 + 1 + (i * (size - 2)) / 4,
 					y0 + 1 + (j * (size - 2)) / 4,
 				);
-				if (
-					!hit ||
-					!(el.contains(hit) || labels.some((l) => l.contains(hit)))
-				) {
-					return false;
-				}
+				if (!hit || !owns(el, labels, hit)) return false;
 			}
 		}
 		return true;
 	};
-
-	const covers = (el: Element): boolean => {
+	// Whether a pointer reaches the target: at the centre (moved inside the
+	// viewport) of one of its boxes or its labels' (an inline link that wraps
+	// has one per line; a checkbox is tapped through its label). Nothing
+	// under any of them is no proof of a cover.
+	const reached = (el: Element) => {
 		const { cw, ch } = viewport();
-		if (cw < size || ch < size) return false;
+		const labels = labelsOf(el);
+		let probed = false;
+		for (const r of [el, ...labels].flatMap((e) => [...e.getClientRects()])) {
+			if (r.width <= 0 || r.height <= 0) continue;
+			const x = Math.min(Math.max(r.left + r.width / 2, 0), cw - 1);
+			const y = Math.min(Math.max(r.top + r.height / 2, 0), ch - 1);
+			const hit = document.elementFromPoint(x, y);
+			if (!hit) continue;
+			if (owns(el, labels, hit)) return true;
+			probed = true;
+		}
+		return !probed;
+	};
+
+	type Verdict = 'enlarged' | 'covered' | 'small';
+	const judge = (el: Element, candidate: boolean): Verdict => {
+		const { cw, ch } = viewport();
+		if (cw < size || ch < size) return 'small';
 		const before = rectOf(el);
-		if (!before) return false;
+		if (!before) return 'small';
 		const at = square(before);
-		if (
-			at.inside &&
-			visibleInAncestors(el, at.x, at.y) &&
-			hits(el, at.x, at.y)
-		) {
-			return true;
+		if (at.inside && visibleInAncestors(el, at.x, at.y)) {
+			if (candidate && hits(el, at.x, at.y)) return 'enlarged';
+			if (!candidate && reached(el)) return 'small';
 		}
 		// Off screen, the square sticks out, a scrolling ancestor hides it, or
 		// something is on top where it sits (a sticky actions bar): scroll the
 		// target to the middle, probe again, and put everything back (an
-		// unrestored scroll changes what the next check sees). Only a target
-		// still covered there fails. A square the page's edge still keeps out
-		// is moved inside the viewport, so a full `size` square of hit area is
-		// on screen.
+		// unrestored scroll changes what the next check sees). A target still
+		// covered there (`reached`) is out of reach in this state: it is not
+		// judged. A square the page's edge still keeps out is moved inside
+		// the viewport, so a full `size` square of hit area is on screen.
 		const saved: [Element, number, number][] = [];
 		for (let p = flatParent(el); p; p = flatParent(p)) {
 			saved.push([p, p.scrollLeft, p.scrollTop]);
@@ -161,9 +183,10 @@ export function probeHitAreas(
 				behavior: 'instant',
 			});
 			const moved = rectOf(el);
-			if (!moved) return false;
+			if (!moved) return 'small';
 			const to = square(moved);
-			return hits(el, to.x, to.y);
+			if (candidate && hits(el, to.x, to.y)) return 'enlarged';
+			return reached(el) ? 'small' : 'covered';
 		} finally {
 			for (const [p, left, top] of saved) {
 				if (p.scrollLeft !== left || p.scrollTop !== top) {
@@ -174,9 +197,15 @@ export function probeHitAreas(
 		}
 	};
 
-	return result.data.probe.filter((i) => {
+	const candidates = new Set(result.data.probe);
+	const enlarged: number[] = [];
+	const covered: number[] = [];
+	for (const i of result.data.undersized) {
 		const el = result.elements[i];
-		if (!el?.isConnected) return false;
-		return covers(el);
-	});
+		if (!el?.isConnected) continue;
+		const verdict = judge(el, candidates.has(i));
+		if (verdict === 'enlarged') enlarged.push(i);
+		if (verdict === 'covered') covered.push(i);
+	}
+	return { enlarged, covered };
 }

@@ -410,7 +410,8 @@ includes the gap between them.
 Not measured: elements that are hidden (`display: none`, `visibility:
 hidden`), zero-sized, visually hidden (`sr-only`: a 1px box, or `clip` /
 `clip-path` on an absolute box, such as a skip link), `disabled`, `aria-disabled="true"`, `inert` or under
-`pointer-events: none`; and a link inside a sentence: an `inline` link with
+`pointer-events: none`; an undersized target a layer covers (see
+[the real hit area](#the-real-hit-area-hitarea-on-by-default)); and a link inside a sentence: an `inline` link with
 text of its own beside it in its block container, looking through inline
 wrappers (`<p><strong><a>x</a></strong> text</p>`; WCAG 2.5.8's inline
 exception). Only inline links are exempt: an `inline-block` link is measured,
@@ -466,8 +467,8 @@ is also its hit area. With `spacing`, such a target is not counted as undersized
 its neighbours still judge it by its visible box.
 
 So the pseudo-element has to be hit-testable: not `pointer-events: none`, not
-still covered by another element once scrolled to the middle (a neighbour, a
-fixed sheet), not clipped by an ancestor's `overflow`, and as large as `size`.
+covered by a neighbour, not clipped by an ancestor's `overflow`, and as large
+as `size`.
 Under `@media (pointer: coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
 7 with touch, emulates `pointer: coarse`) and not in a desktop one, which is
 the point of running the check on phones.
@@ -483,9 +484,20 @@ for the two moves. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position first; only when that probe misses is it scrolled
-and probed again, so it fails only when it is still covered in the middle of
-the viewport (a neighbour on top of it, a fixed sheet over the whole page). A
+and probed again. A neighbour over part of its square still fails it. A
 viewport smaller than `size` falls back to the box.
+
+A control out of reach in the state you check is not judged at all: any
+undersized target (with or without a hit area of its own) that another
+element still covers once scrolled to the middle, at the centre of each of its
+boxes (each line of a wrapped link) and of its labels (a checkbox tapped
+through its `for` label is in reach). That is a row
+checkbox under a toast or behind an open modal menu's layer, the buttons of a
+toast stacked behind the front one, anything under a sheet over the whole
+page, a closed off-canvas drawer. A control a stretched link (an `::after`
+over a whole card) sits on is covered too, so it is not judged either. It is neither reported nor counted as a neighbour for `spacing`; check
+it in the state where it is shown. A layer's own controls (the menu's items,
+the front toast's buttons) are judged as usual.
 
 `hitArea: false` restores the 0.8 behaviour: the visible box only, and no
 scrolling.
