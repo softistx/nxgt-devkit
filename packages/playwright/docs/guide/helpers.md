@@ -466,9 +466,9 @@ is also its hit area. With `spacing`, such a target is not counted as undersized
 its neighbours still judge it by its visible box.
 
 So the pseudo-element has to be hit-testable: not `pointer-events: none`, not
-covered by another element (a neighbour, a sticky bar), not clipped by an
-ancestor's `overflow`, and as large as `size`. Under `@media (pointer:
-coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
+still covered by another element once scrolled to the middle (a neighbour, a
+fixed sheet), not clipped by an ancestor's `overflow`, and as large as `size`.
+Under `@media (pointer: coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
 7 with touch, emulates `pointer: coarse`) and not in a desktop one, which is
 the point of running the check on phones.
 
