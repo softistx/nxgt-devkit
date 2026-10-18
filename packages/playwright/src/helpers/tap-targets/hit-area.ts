@@ -16,8 +16,9 @@ import type { Measured } from './measure';
  * rects are re-read after scrolling: a change to one is made in both.
  *
  * Unlike `measure` it scrolls: a target whose `size` square is not on screen
- * (or not inside the visible area of its scrolling ancestors) is scrolled to
- * the middle, probed, and every scrolled ancestor (along the flat tree, so
+ * (or not inside the visible area of its scrolling ancestors), or is covered
+ * where it sits (a sticky or fixed bar on top), is scrolled to the middle,
+ * probed again, and every scrolled ancestor (along the flat tree, so
  * shadow roots and slots count) and the window are put back.
  *
  * @returns the indices whose `size` square is hit, at every point of a 5x5
@@ -134,14 +135,20 @@ export function probeHitAreas(
 		const before = rectOf(el);
 		if (!before) return false;
 		const at = square(before);
-		if (at.inside && visibleInAncestors(el, at.x, at.y)) {
-			return hits(el, at.x, at.y);
+		if (
+			at.inside &&
+			visibleInAncestors(el, at.x, at.y) &&
+			hits(el, at.x, at.y)
+		) {
+			return true;
 		}
-		// Off screen, the square sticks out, or a scrolling ancestor hides it:
-		// scroll the target to the middle, probe, and put everything back (an
-		// unrestored scroll changes what the next check sees). A square the
-		// page's edge still keeps out is moved inside the viewport, so a full
-		// `size` square of hit area is on screen.
+		// Off screen, the square sticks out, a scrolling ancestor hides it, or
+		// something is on top where it sits (a sticky actions bar): scroll the
+		// target to the middle, probe again, and put everything back (an
+		// unrestored scroll changes what the next check sees). Only a target
+		// still covered there fails. A square the page's edge still keeps out
+		// is moved inside the viewport, so a full `size` square of hit area is
+		// on screen.
 		const saved: [Element, number, number][] = [];
 		for (let p = flatParent(el); p; p = flatParent(p)) {
 			saved.push([p, p.scrollLeft, p.scrollTop]);

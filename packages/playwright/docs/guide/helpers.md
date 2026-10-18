@@ -472,8 +472,9 @@ coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
 7 with touch, emulates `pointer: coarse`) and not in a desktop one, which is
 the point of running the check on phones.
 
-A target that is off screen, whose square sticks out of the viewport, or that
-is scrolled out of the visible area of a scrolling ancestor, is
+A target that is off screen, whose square sticks out of the viewport, that
+is scrolled out of the visible area of a scrolling ancestor, or that something
+covers where it sits (a form's sticky actions bar, a sticky header), is
 scrolled to the middle (`scrollIntoView({ block: 'center', inline: 'center' })`,
 without smooth scrolling) for the probe, and the window and every scrolled
 ancestor (through slots and shadow roots) are put back where they were, so the
@@ -481,9 +482,10 @@ page the next check sees is the one you had. Scroll listeners on the page fire
 for the two moves. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
-the current scroll position once its square is on screen, so a sticky header or
-a toast covering part of it makes it fail. A viewport smaller than `size` falls
-back to the box.
+the current scroll position first; only when that probe misses is it scrolled
+and probed again, so it fails only when it is still covered in the middle of
+the viewport (a neighbour on top of it, a fixed sheet over the whole page). A
+viewport smaller than `size` falls back to the box.
 
 `hitArea: false` restores the 0.8 behaviour: the visible box only, and no
 scrolling.

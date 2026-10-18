@@ -320,6 +320,52 @@ test('a control far below the fold is probed and the scroll is put back', async 
 	expect(await page.evaluate(() => window.scrollY)).toBe(50);
 });
 
+// Rows of 20px controls with an invisible 44px ::before, and a 96px bar
+// stuck to the bottom of the viewport (a form's sticky actions): row
+// `under` sits beneath the bar on an 800px viewport.
+const stickyRows = Array.from(
+	{ length: 20 },
+	(_, i) =>
+		`<div class="row"><button type="button" class="hit" id="o${i}" aria-label="Option ${i}" style="width:20px;height:20px;border:0;padding:0;margin:12px"></button>Option ${i}</div>`,
+).join('');
+const stickyForm = (bar: string) =>
+	html(
+		`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.row{display:flex;align-items:center;gap:12px;min-height:44px;margin-bottom:20px}</style><form>${stickyRows}<div style="${bar};height:96px;background:white">Save</div></form>`,
+	);
+
+test('a control under a sticky actions bar is scrolled clear of it and probed again', async ({
+	page,
+}) => {
+	await page.setContent(stickyForm('position:sticky;bottom:0'));
+	// One of the rows really is under the bar where it sits.
+	const covered = await page.evaluate(() =>
+		[...document.querySelectorAll('.hit')].some((el) => {
+			const r = el.getBoundingClientRect();
+			const hit = document.elementFromPoint(
+				r.left + r.width / 2,
+				r.top + r.height / 2,
+			);
+			return r.bottom <= innerHeight && hit !== null && !el.contains(hit);
+		}),
+	);
+	expect(covered).toBe(true);
+	await page.evaluate(() => window.scrollTo(0, 10));
+	await expectTapTargets(page);
+	expect(await page.evaluate(() => window.scrollY)).toBe(10);
+});
+
+test('a control a fixed overlay still covers once scrolled fails', async ({
+	page,
+}) => {
+	// A fixed sheet over the whole viewport: no scroll clears it.
+	await page.setContent(
+		stickyForm('position:fixed;inset:0;height:auto!important;z-index:5'),
+	);
+	await page.evaluate(() => window.scrollTo(0, 10));
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	expect(await page.evaluate(() => window.scrollY)).toBe(10);
+});
+
 test('a control inside a scrolled container: its scrollTop and the window are restored', async ({
 	page,
 }) => {
