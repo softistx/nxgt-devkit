@@ -60,9 +60,10 @@ export type TapTargetOptions = {
 	 * `document.elementFromPoint` on a 5x5 grid, so the pseudo-element must be
 	 * hit-testable (not `pointer-events: none`, not covered). A target off
 	 * screen or covered where it sits is scrolled into view for the probe and
-	 * the scroll positions are restored. Any undersized target whose centre
-	 * another element still covers there (a toast, a modal layer, the front
-	 * toast of a stack) is out of reach in that state and not judged.
+	 * the scroll positions are restored. Any undersized target that another
+	 * element still covers there, at the centre of each of its boxes and its
+	 * labels' (a toast, a modal layer, the front toast of a stack), is out of
+	 * reach in that state and not judged.
 	 * Default `true`; `false` judges the visible box only, as 0.8 did.
 	 */
 	hitArea?: boolean;
