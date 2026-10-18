@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.9.1
+
+### Patch Changes
+
+- [#68](https://github.com/softistx/nxgt-devkit/pull/68) [`790e2f5`](https://github.com/softistx/nxgt-devkit/commit/790e2f50c66ebcd375452a7064658231b7405743) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `expectTapTargets`: a control covered where it sits (under a form's sticky actions bar) is scrolled to the middle and probed again instead of failing at its own size; only a control still covered there fails.
+
 ## 0.9.0
 
 ### Minor Changes
