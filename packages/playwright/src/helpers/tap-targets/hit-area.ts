@@ -143,10 +143,6 @@ export async function probeHitAreas(
 		}
 		return out;
 	};
-	// Whether a pointer reaches the target: at the centre (moved inside the
-	// viewport) of one of its boxes or its labels' (an inline link that wraps
-	// has one per line; a checkbox is tapped through its label). Nothing
-	// under any of them is no proof of a cover.
 	// What is on top at the centre (moved inside the viewport) of each of
 	// the target's boxes and its labels'.
 	const atCentres = (el: Element) => {
@@ -161,14 +157,28 @@ export async function probeHitAreas(
 				),
 			);
 	};
+	// Whether a pointer reaches the target: at the centre of one of its boxes
+	// or its labels' (an inline link that wraps has one per line; a checkbox
+	// is tapped through its label). Nothing under any of them is no proof of
+	// a cover.
 	const reached = (el: Element) => {
 		const labels = labelsOf(el);
 		const hit = atCentres(el).filter((h) => h !== null);
 		return hit.length === 0 || hit.some((h) => owns(el, labels, h));
 	};
-	// The positioned layers (`fixed`, `absolute` or `sticky`, outermost below
-	// the target's ancestors) under the points that miss it: only those can a
-	// scroll listener move.
+	// The positioned layers (outermost below the target's ancestors) under the
+	// points that miss it: only those can a scroll listener move. `fixed` or
+	// `sticky`, or `absolute` against the document (a portalled popper; one
+	// inside a row scrolls with it and cannot go stale).
+	const movable = (p: Element) => {
+		const { position } = getComputedStyle(p);
+		if (position === 'fixed' || position === 'sticky') return true;
+		if (position !== 'absolute') return false;
+		const parent = (p as HTMLElement).offsetParent;
+		return (
+			!parent || parent === document.body || parent === document.documentElement
+		);
+	};
 	const layersAt = (
 		el: Element,
 		candidate: boolean,
@@ -186,15 +196,16 @@ export async function probeHitAreas(
 				p && !p.contains(el);
 				p = p.parentElement
 			) {
-				if (/^(fixed|absolute|sticky)$/.test(getComputedStyle(p).position))
-					root = p;
+				if (movable(p)) root = p;
 			}
 			if (root) roots.add(root);
 		}
 		return roots;
 	};
-	// Layers seen not to move during a wait: never waited for again.
+	// Layers seen not to move during a wait: never waited for again. After
+	// five waits in which nothing moved, no wait for the rest of the call.
 	const still = new Set<Element>();
+	let idle = 0;
 
 	// A floating layer (a menu, a listbox, a dialog, a tooltip, a toast, an
 	// open popover or dialog) that does not hold the target: one that opens
@@ -247,8 +258,6 @@ export async function probeHitAreas(
 	};
 	// Two frames, for the page's own scroll listeners (a popper that follows
 	// its anchor) to move their layers; a timer only when frames do not run.
-	// Bounded per call: after three retries in a row that changed no verdict,
-	// nothing on the page moves, and misses are not retried any more.
 	const settle = () =>
 		new Promise<void>((done) => {
 			const timer = setTimeout(done, 500);
@@ -309,10 +318,11 @@ export async function probeHitAreas(
 				? [...layersAt(el, candidate, to.x, to.y)].filter((l) => !still.has(l))
 				: [];
 			// Nothing positioned that could still move: the miss stands.
-			if (layers.length === 0) return first;
+			if (layers.length === 0 || idle >= 5) return first;
 			const before = layers.map((l) => l.getBoundingClientRect());
 			waited = true;
 			await settle();
+			let anyMoved = false;
 			layers.forEach((l, i) => {
 				const a = before[i];
 				const b = l.getBoundingClientRect();
@@ -324,8 +334,11 @@ export async function probeHitAreas(
 					a.height === b.height
 				) {
 					still.add(l);
+				} else {
+					anyMoved = true;
 				}
 			});
+			idle = anyMoved ? 0 : idle + 1;
 			const second = probe();
 			// A retry may clear a miss, never hide one: reached, it stays judged.
 			return first === 'small' && second === 'covered' ? first : second;

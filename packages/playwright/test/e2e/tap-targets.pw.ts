@@ -716,6 +716,27 @@ test('real misses before the rows do not turn the wait off for them', async ({
 	expect(message).not.toContain('Select row');
 });
 
+test('a badge positioned inside each row is no layer to wait for', async ({
+	page,
+}) => {
+	// 100 rows below the fold, each with its own `absolute` badge over part of
+	// the checkbox's square: it scrolls with the row, so nothing goes stale,
+	// and every row fails at once.
+	const rows = Array.from(
+		{ length: 100 },
+		(_, i) =>
+			`<div style="position:relative;height:60px"><button class="hit" aria-label="r${i}" style="position:absolute;left:20px;top:20px;width:20px;height:20px;border:0;padding:0"></button><span style="position:absolute;left:48px;top:10px;width:30px;height:40px;background:#eee"></span></div>`,
+	).join('');
+	await page.setContent(
+		html(
+			`<style>.hit::before{content:"";position:absolute;inset:-12px}</style><div style="height:1200px"></div>${rows}`,
+		),
+	);
+	const started = Date.now();
+	expect(await failure(expectTapTargets(page))).toContain('100 tap targets');
+	expect(Date.now() - started).toBeLessThan(3000);
+});
+
 test('misses that waiting does not change stop being retried', async ({
 	page,
 }) => {
