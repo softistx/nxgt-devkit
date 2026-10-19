@@ -483,14 +483,17 @@ scrolled to the middle (`scrollIntoView({ block: 'center', inline: 'center' })`,
 without smooth scrolling) for the probe, and the window and every scrolled
 ancestor (through slots and shadow roots) are put back where they were, so the
 page the next check sees is the one you had. Scroll listeners on the page fire
-for the two moves. A probe that misses right after the scroll is made once more
-two frames later, once those listeners have moved their layers (a menu in a
-`fixed` popper that follows its anchor), and the page is given the same two
-frames after the scroll is put back; a target that passes at once costs no wait. A square that still sticks out (a control fixed at the
+for the two moves. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position first; only when that probe misses is it scrolled
-and probed again. A neighbour over part of its square still fails it; a
+and probed again. A miss right after the scroll is probed once more two frames
+later, once the page's scroll listeners have moved their layers (a menu in a
+`fixed` popper that follows its anchor), and the page gets the same two frames
+after the scroll is put back. A target that passes at once costs no wait; a
+miss costs about four frames, and three retries in a row that change nothing
+end the retries for the call. A retry never turns a reached target into a
+covered one. A neighbour over part of its square still fails it; a
 floating layer does not. That is an element with a `role` attribute of `menu`,
 `listbox`, `dialog`, `alertdialog`, `tooltip`, `status` or `alert`, an open
 popover or an open `<dialog>`, that does not hold the target and floats (in the

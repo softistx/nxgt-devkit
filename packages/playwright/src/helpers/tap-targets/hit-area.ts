@@ -25,7 +25,8 @@ import type { Measured } from './measure';
  * roots and slots count) and the window are put back. A miss right after
  * the scroll is probed once more two frames later, when the page's scroll
  * listeners (a popper following its anchor) have moved their layers: hence
- * async.
+ * async. Three retries in a row that change nothing end the retries for the
+ * call, and a retry never turns a reached target into a covered one.
  *
  * @returns `enlarged`: the indices whose `size` square is hit, at every
  * point of a 5x5 grid inset 1px, by the target, its descendants (a
@@ -211,10 +212,13 @@ export async function probeHitAreas(
 		}
 	};
 	// Two frames, for the page's own scroll listeners (a popper that follows
-	// its anchor) to move their layers; a timer when frames do not run.
+	// its anchor) to move their layers; a timer only when frames do not run.
+	// Bounded per call: after three retries in a row that changed no verdict,
+	// nothing on the page moves, and misses are not retried any more.
+	let fruitless = 0;
 	const settle = () =>
 		new Promise<void>((done) => {
-			const timer = setTimeout(done, 100);
+			const timer = setTimeout(done, 500);
 			requestAnimationFrame(() =>
 				requestAnimationFrame(() => {
 					clearTimeout(timer);
@@ -263,12 +267,19 @@ export async function probeHitAreas(
 				behavior: 'instant',
 			});
 			const first = probe();
-			if (first === 'enlarged' || (first === 'small' && !candidate)) {
+			if (
+				first === 'enlarged' ||
+				(first === 'small' && !candidate) ||
+				fruitless >= 3
+			) {
 				return first;
 			}
 			waited = true;
 			await settle();
-			return probe();
+			const second = probe();
+			fruitless = second === first ? fruitless + 1 : 0;
+			// A retry may clear a miss, never hide one: reached, it stays judged.
+			return first === 'small' && second === 'covered' ? first : second;
 		} finally {
 			for (const [p, left, top] of saved) {
 				if (p.scrollLeft !== left || p.scrollTop !== top) {
