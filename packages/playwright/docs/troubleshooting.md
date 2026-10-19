@@ -792,24 +792,29 @@ await expectAccessible(page, {
 1. target-size [serious] All touch targets must be 24px large, or leave sufficient space
 ```
 
-The node is a control near the bottom of a form, and the failure comes and goes
-with where the page stopped scrolling.
+The node is a control under a sticky header or near a bottom bar, and the
+failure comes and goes with where the page stopped scrolling (a form that
+scrolls its first invalid field to the top, a spec that scrolled a little). In
+the raw `accessibilityScan` result, the node's message reads "Target has
+insufficient size because it is partially obscured".
 
-**When:** a form's actions bar is `position: sticky` or `fixed` at the bottom
-(`@nxgt/material` 2.20 does it on `[data-slot="form-actions"]`) and covers
-part of a control.
+**When:** a bar is `position: sticky` or `fixed` (a form's actions bar at the
+bottom, as `@nxgt/material` 2.20 does on `[data-slot="form-actions"]`, or an
+app header at the top) and covers part of a control at scan time.
 **Why:** axe measures what is left of the control around the bar, under 24x24
 CSS pixels. The control's own size is fine (WCAG 2.5.8); that it can hide
 under a bar is Focus Not Obscured (2.4.11), which axe does not check.
 **Fix:** none needed for form actions: since 0.6.0 the scan puts
 `DEFAULT_UNSTICK` back in the flow while axe runs and restores it. List your
-own bars beside it; check 2.4.11 in your own spec.
+own bars, a sticky header included, beside it (`unstick` takes any selector);
+check 2.4.11 in your own spec. There is no need to exclude the covered
+controls and scan them apart.
 
 ```ts
 import { DEFAULT_UNSTICK, expectAccessible } from '@nxgt/playwright/a11y';
 
 await expectAccessible(page, {
-	unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar'],
+	unstick: [...DEFAULT_UNSTICK, '.app-header', '.app-bottom-bar'],
 });
 ```
 
