@@ -203,7 +203,8 @@ export async function probeHitAreas(
 		return roots;
 	};
 	// Layers seen not to move during a wait: never waited for again. After
-	// five waits in which nothing moved, no wait for the rest of the call.
+	// five waits in a row in which nothing moved, no wait for the rest of the
+	// call.
 	const still = new Set<Element>();
 	let idle = 0;
 
