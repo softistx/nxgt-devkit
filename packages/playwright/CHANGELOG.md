@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.9.5
+
+### Patch Changes
+
+- [#82](https://github.com/softistx/nxgt-devkit/pull/82) [`918f7a0`](https://github.com/softistx/nxgt-devkit/commit/918f7a0c238f9f7982625b16acfd663ded30f4a7) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `expectTapTargets`: a target scrolled into view for the hit-area probe whose probe misses is probed once more two frames later, once the page's scroll listeners have moved their layers (a menu in a `fixed` popper that follows its anchor), and the page settles again after the scroll is put back. The last rows of a long page no longer fail against where an open menu was before the scroll. Only a miss under a layer a scroll listener can move (`fixed`, `sticky`, or `absolute` against the document) waits, a layer seen not to move is not waited for again, five waits in a row with nothing moving end the waits, and a retry never turns a reached target into a covered one.
+
 ## 0.9.4
 
 ### Patch Changes
