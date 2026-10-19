@@ -22,7 +22,10 @@ import type { Measured } from './measure';
  * (or not inside the visible area of its scrolling ancestors), or is covered
  * where it sits (a sticky or fixed bar on top), is scrolled to the middle,
  * probed again, and every scrolled ancestor (along the flat tree, so shadow
- * roots and slots count) and the window are put back.
+ * roots and slots count) and the window are put back. A miss right after
+ * the scroll is probed once more two frames later, when the page's scroll
+ * listeners (a popper following its anchor) have moved their layers: hence
+ * async.
  *
  * @returns `enlarged`: the indices whose `size` square is hit, at every
  * point of a 5x5 grid inset 1px, by the target, its descendants (a
@@ -34,10 +37,10 @@ import type { Measured } from './measure';
  * line of a wrapped link) and their labels' (a toast, a modal layer, the
  * front toast of a stack): no pointer reaches them in this state.
  */
-export function probeHitAreas(
+export async function probeHitAreas(
 	result: Measured,
 	args: { size: number },
-): { enlarged: number[]; covered: number[] } {
+): Promise<{ enlarged: number[]; covered: number[] }> {
 	const { size } = args;
 
 	const labelsOf = (el: Element): HTMLLabelElement[] =>
@@ -207,8 +210,20 @@ export function probeHitAreas(
 			}
 		}
 	};
+	// Two frames, for the page's own scroll listeners (a popper that follows
+	// its anchor) to move their layers; a timer when frames do not run.
+	const settle = () =>
+		new Promise<void>((done) => {
+			const timer = setTimeout(done, 100);
+			requestAnimationFrame(() =>
+				requestAnimationFrame(() => {
+					clearTimeout(timer);
+					done();
+				}),
+			);
+		});
 	type Verdict = 'enlarged' | 'covered' | 'small';
-	const judge = (el: Element, candidate: boolean): Verdict => {
+	const judge = async (el: Element, candidate: boolean): Promise<Verdict> => {
 		const { cw, ch } = viewport();
 		if (cw < size || ch < size) return 'small';
 		const before = rectOf(el);
@@ -230,17 +245,30 @@ export function probeHitAreas(
 			saved.push([p, p.scrollLeft, p.scrollTop]);
 		}
 		const { scrollX, scrollY } = window;
+		const probe = (): Verdict => {
+			const moved = rectOf(el);
+			if (!moved) return 'small';
+			const to = square(moved);
+			if (candidate && hits(el, to.x, to.y)) return 'enlarged';
+			return reached(el) ? 'small' : 'covered';
+		};
+		// A miss right after the scroll may be a layer the page has not moved
+		// yet: it is probed once more when the page has settled, and the page
+		// settles again once the scroll is put back.
+		let waited = false;
 		try {
 			el.scrollIntoView({
 				block: 'center',
 				inline: 'center',
 				behavior: 'instant',
 			});
-			const moved = rectOf(el);
-			if (!moved) return 'small';
-			const to = square(moved);
-			if (candidate && hits(el, to.x, to.y)) return 'enlarged';
-			return reached(el) ? 'small' : 'covered';
+			const first = probe();
+			if (first === 'enlarged' || (first === 'small' && !candidate)) {
+				return first;
+			}
+			waited = true;
+			await settle();
+			return probe();
 		} finally {
 			for (const [p, left, top] of saved) {
 				if (p.scrollLeft !== left || p.scrollTop !== top) {
@@ -248,6 +276,7 @@ export function probeHitAreas(
 				}
 			}
 			window.scrollTo({ left: scrollX, top: scrollY, behavior: 'instant' });
+			if (waited) await settle();
 		}
 	};
 
@@ -257,7 +286,7 @@ export function probeHitAreas(
 	for (const i of result.data.undersized) {
 		const el = result.elements[i];
 		if (!el?.isConnected) continue;
-		const verdict = judge(el, candidates.has(i));
+		const verdict = await judge(el, candidates.has(i));
 		if (verdict === 'enlarged') enlarged.push(i);
 		if (verdict === 'covered') covered.push(i);
 	}

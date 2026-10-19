@@ -639,6 +639,40 @@ test('a layer measured through gets its exact style attribute back', async ({
 	).toEqual(before);
 });
 
+test('a fixed menu that follows its anchor is probed where the page moves it after the scroll', async ({
+	page,
+}) => {
+	// A header button opens a fixed menu that a scroll listener keeps under
+	// it (as a popper does, a frame later); its padded surface carries no
+	// role. It clips no row where the page stands; scrolled into view, every
+	// row below the fold would sit under where it was before the page moved
+	// it.
+	const rows = Array.from(
+		{ length: 20 },
+		(_, i) =>
+			`<div class="row"><button type="button" role="checkbox" class="hit" aria-label="Select row ${i}" style="width:20px;height:20px;border:0;padding:0;margin:12px"></button>Row ${i}</div>`,
+	).join('');
+	await page.setContent(
+		html(
+			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.row{display:flex;align-items:center;min-height:44px;margin-bottom:40px}</style><header style="height:60px"><button id="sort" class="box" style="width:120px;height:44px">Sort</button></header><div style="height:500px"></div>${rows}<footer style="height:460px"></footer><div id="wrap" style="position:fixed;left:50px;top:0;width:220px;padding:8px;background:#fff;box-shadow:0 2px 8px #0003"><div role="menu" style="height:420px"><button role="menuitem" style="display:block;width:200px;height:48px">Name</button></div></div>`,
+		),
+	);
+	await page.evaluate(() => {
+		const wrap = document.getElementById('wrap') as HTMLElement;
+		const place = () => {
+			const r = (
+				document.getElementById('sort') as HTMLElement
+			).getBoundingClientRect();
+			wrap.style.transform = `translateY(${r.bottom}px)`;
+		};
+		place();
+		window.addEventListener('scroll', () => requestAnimationFrame(place));
+	});
+	await page.evaluate(() => window.scrollTo(0, 0));
+	await expectTapTargets(page);
+	expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test('the back toast of a stack is out of reach; the front one is judged', async ({
 	page,
 }) => {

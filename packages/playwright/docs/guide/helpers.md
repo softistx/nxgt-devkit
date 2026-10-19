@@ -483,7 +483,10 @@ scrolled to the middle (`scrollIntoView({ block: 'center', inline: 'center' })`,
 without smooth scrolling) for the probe, and the window and every scrolled
 ancestor (through slots and shadow roots) are put back where they were, so the
 page the next check sees is the one you had. Scroll listeners on the page fire
-for the two moves. A square that still sticks out (a control fixed at the
+for the two moves. A probe that misses right after the scroll is made once more
+two frames later, once those listeners have moved their layers (a menu in a
+`fixed` popper that follows its anchor), and the page is given the same two
+frames after the scroll is put back; a target that passes at once costs no wait. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position first; only when that probe misses is it scrolled
