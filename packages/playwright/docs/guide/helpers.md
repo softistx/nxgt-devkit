@@ -487,7 +487,18 @@ for the two moves. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position first; only when that probe misses is it scrolled
-and probed again. A neighbour over part of its square still fails it; a
+and probed again. A miss right after the scroll is probed once more two frames
+later, once the page's scroll listeners have moved their layers (a menu in a
+`fixed` popper that follows its anchor), and the page gets the same two frames
+after the scroll is put back. Only a miss under a layer a scroll listener can
+move waits, about four frames: `fixed`, `sticky`, or `absolute` against the
+document (a portalled popper; a badge positioned inside a row scrolls with it).
+A layer seen not to move during a wait is not waited for again, so a still scrim
+costs one wait and a plain miss none, and after five waits in a row in which
+nothing moved the check stops waiting. Not covered: an `absolute` popper
+portalled into a positioned container other than `body`, and a scroll listener
+debounced longer than two frames; such a layer is probed where it was. A retry never turns a reached
+target into a covered one. A neighbour over part of its square still fails it; a
 floating layer does not. That is an element with a `role` attribute of `menu`,
 `listbox`, `dialog`, `alertdialog`, `tooltip`, `status` or `alert`, an open
 popover or an open `<dialog>`, that does not hold the target and floats (in the

@@ -22,7 +22,12 @@ import type { Measured } from './measure';
  * (or not inside the visible area of its scrolling ancestors), or is covered
  * where it sits (a sticky or fixed bar on top), is scrolled to the middle,
  * probed again, and every scrolled ancestor (along the flat tree, so shadow
- * roots and slots count) and the window are put back.
+ * roots and slots count) and the window are put back. A miss right after
+ * the scroll is probed once more two frames later, when the page's scroll
+ * listeners (a popper following its anchor) have moved their layers: hence
+ * async. Only a miss under a positioned layer (fixed, absolute, sticky) is
+ * retried, a layer seen not to move during a wait is not waited for again,
+ * and a retry never turns a reached target into a covered one.
  *
  * @returns `enlarged`: the indices whose `size` square is hit, at every
  * point of a 5x5 grid inset 1px, by the target, its descendants (a
@@ -34,10 +39,10 @@ import type { Measured } from './measure';
  * line of a wrapped link) and their labels' (a toast, a modal layer, the
  * front toast of a stack): no pointer reaches them in this state.
  */
-export function probeHitAreas(
+export async function probeHitAreas(
 	result: Measured,
 	args: { size: number },
-): { enlarged: number[]; covered: number[] } {
+): Promise<{ enlarged: number[]; covered: number[] }> {
 	const { size } = args;
 
 	const labelsOf = (el: Element): HTMLLabelElement[] =>
@@ -138,25 +143,70 @@ export function probeHitAreas(
 		}
 		return out;
 	};
-	// Whether a pointer reaches the target: at the centre (moved inside the
-	// viewport) of one of its boxes or its labels' (an inline link that wraps
-	// has one per line; a checkbox is tapped through its label). Nothing
-	// under any of them is no proof of a cover.
-	const reached = (el: Element) => {
+	// What is on top at the centre (moved inside the viewport) of each of
+	// the target's boxes and its labels'.
+	const atCentres = (el: Element) => {
 		const { cw, ch } = viewport();
-		const labels = labelsOf(el);
-		let probed = false;
-		for (const r of [el, ...labels].flatMap((e) => [...e.getClientRects()])) {
-			if (r.width <= 0 || r.height <= 0) continue;
-			const x = Math.min(Math.max(r.left + r.width / 2, 0), cw - 1);
-			const y = Math.min(Math.max(r.top + r.height / 2, 0), ch - 1);
-			const hit = document.elementFromPoint(x, y);
-			if (!hit) continue;
-			if (owns(el, labels, hit)) return true;
-			probed = true;
-		}
-		return !probed;
+		return [el, ...labelsOf(el)]
+			.flatMap((e) => [...e.getClientRects()])
+			.filter((r) => r.width > 0 && r.height > 0)
+			.map((r) =>
+				document.elementFromPoint(
+					Math.min(Math.max(r.left + r.width / 2, 0), cw - 1),
+					Math.min(Math.max(r.top + r.height / 2, 0), ch - 1),
+				),
+			);
 	};
+	// Whether a pointer reaches the target: at the centre of one of its boxes
+	// or its labels' (an inline link that wraps has one per line; a checkbox
+	// is tapped through its label). Nothing under any of them is no proof of
+	// a cover.
+	const reached = (el: Element) => {
+		const labels = labelsOf(el);
+		const hit = atCentres(el).filter((h) => h !== null);
+		return hit.length === 0 || hit.some((h) => owns(el, labels, h));
+	};
+	// The positioned layers (outermost below the target's ancestors) under the
+	// points that miss it: only those can a scroll listener move. `fixed` or
+	// `sticky`, or `absolute` against the document (a portalled popper; one
+	// inside a row scrolls with it and cannot go stale).
+	const movable = (p: Element) => {
+		const { position } = getComputedStyle(p);
+		if (position === 'fixed' || position === 'sticky') return true;
+		if (position !== 'absolute') return false;
+		const parent = (p as HTMLElement).offsetParent;
+		return (
+			!parent || parent === document.body || parent === document.documentElement
+		);
+	};
+	const layersAt = (
+		el: Element,
+		candidate: boolean,
+		x0: number,
+		y0: number,
+	) => {
+		const labels = labelsOf(el);
+		const roots = new Set<Element>();
+		const over = [...(candidate ? misses(el, x0, y0) : []), ...atCentres(el)];
+		for (const hit of over) {
+			if (!hit || owns(el, labels, hit)) continue;
+			let root: Element | null = null;
+			for (
+				let p: Element | null = hit;
+				p && !p.contains(el);
+				p = p.parentElement
+			) {
+				if (movable(p)) root = p;
+			}
+			if (root) roots.add(root);
+		}
+		return roots;
+	};
+	// Layers seen not to move during a wait: never waited for again. After
+	// five waits in a row in which nothing moved, no wait for the rest of the
+	// call.
+	const still = new Set<Element>();
+	let idle = 0;
 
 	// A floating layer (a menu, a listbox, a dialog, a tooltip, a toast, an
 	// open popover or dialog) that does not hold the target: one that opens
@@ -207,8 +257,20 @@ export function probeHitAreas(
 			}
 		}
 	};
+	// Two frames, for the page's own scroll listeners (a popper that follows
+	// its anchor) to move their layers; a timer only when frames do not run.
+	const settle = () =>
+		new Promise<void>((done) => {
+			const timer = setTimeout(done, 500);
+			requestAnimationFrame(() =>
+				requestAnimationFrame(() => {
+					clearTimeout(timer);
+					done();
+				}),
+			);
+		});
 	type Verdict = 'enlarged' | 'covered' | 'small';
-	const judge = (el: Element, candidate: boolean): Verdict => {
+	const judge = async (el: Element, candidate: boolean): Promise<Verdict> => {
 		const { cw, ch } = viewport();
 		if (cw < size || ch < size) return 'small';
 		const before = rectOf(el);
@@ -230,17 +292,57 @@ export function probeHitAreas(
 			saved.push([p, p.scrollLeft, p.scrollTop]);
 		}
 		const { scrollX, scrollY } = window;
+		const probe = (): Verdict => {
+			const moved = rectOf(el);
+			if (!moved) return 'small';
+			const to = square(moved);
+			if (candidate && hits(el, to.x, to.y)) return 'enlarged';
+			return reached(el) ? 'small' : 'covered';
+		};
+		// A miss right after the scroll may be a layer the page has not moved
+		// yet: it is probed once more when the page has settled, and the page
+		// settles again once the scroll is put back.
+		let waited = false;
 		try {
 			el.scrollIntoView({
 				block: 'center',
 				inline: 'center',
 				behavior: 'instant',
 			});
+			const first = probe();
+			if (first === 'enlarged' || (first === 'small' && !candidate)) {
+				return first;
+			}
 			const moved = rectOf(el);
-			if (!moved) return 'small';
-			const to = square(moved);
-			if (candidate && hits(el, to.x, to.y)) return 'enlarged';
-			return reached(el) ? 'small' : 'covered';
+			const to = moved && square(moved);
+			const layers = to
+				? [...layersAt(el, candidate, to.x, to.y)].filter((l) => !still.has(l))
+				: [];
+			// Nothing positioned that could still move: the miss stands.
+			if (layers.length === 0 || idle >= 5) return first;
+			const before = layers.map((l) => l.getBoundingClientRect());
+			waited = true;
+			await settle();
+			let anyMoved = false;
+			layers.forEach((l, i) => {
+				const a = before[i];
+				const b = l.getBoundingClientRect();
+				if (
+					a &&
+					a.x === b.x &&
+					a.y === b.y &&
+					a.width === b.width &&
+					a.height === b.height
+				) {
+					still.add(l);
+				} else {
+					anyMoved = true;
+				}
+			});
+			idle = anyMoved ? 0 : idle + 1;
+			const second = probe();
+			// A retry may clear a miss, never hide one: reached, it stays judged.
+			return first === 'small' && second === 'covered' ? first : second;
 		} finally {
 			for (const [p, left, top] of saved) {
 				if (p.scrollLeft !== left || p.scrollTop !== top) {
@@ -248,6 +350,7 @@ export function probeHitAreas(
 				}
 			}
 			window.scrollTo({ left: scrollX, top: scrollY, behavior: 'instant' });
+			if (waited) await settle();
 		}
 	};
 
@@ -257,7 +360,7 @@ export function probeHitAreas(
 	for (const i of result.data.undersized) {
 		const el = result.elements[i];
 		if (!el?.isConnected) continue;
-		const verdict = judge(el, candidates.has(i));
+		const verdict = await judge(el, candidates.has(i));
 		if (verdict === 'enlarged') enlarged.push(i);
 		if (verdict === 'covered') covered.push(i);
 	}
