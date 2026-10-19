@@ -503,7 +503,10 @@ floating layer does not. That is an element with a `role` attribute of `menu`,
 `listbox`, `dialog`, `alertdialog`, `tooltip`, `status` or `alert`, an open
 popover or an open `<dialog>`, that does not hold the target and floats (in the
 top layer, or `fixed` / `absolute`, itself or an ancestor; an inline
-`role="alert"` error in the flow is a neighbour). The probe measures through it,
+`role="alert"` error in the flow is a neighbour). A `fixed` / `absolute` wrapper
+that holds only such a layer, down a chain of single children (the content
+wrapper a popper portals a menu in), counts as part of it; one that holds other
+content beside the layer is a neighbour. The probe measures through it,
 making what it hit transparent to the pointer (`pointer-events: none`) for the
 probe and putting its `style` attribute back, so a checkbox beside an open menu
 is judged on its real hit area. A target a layer hides whole is still covered

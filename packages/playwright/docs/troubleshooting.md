@@ -992,7 +992,9 @@ The usual causes:
   over part of it (role `menu`, `listbox`, `dialog`, `alertdialog`,
   `tooltip`, `status` or `alert`, an open popover or `<dialog>`, positioned
   `fixed` / `absolute` or in the top layer) is measured through and put back
-  afterwards; a neighbour without such a role, or in the flow, is not;
+  afterwards; a neighbour without such a role, or in the flow, is not. Since
+  0.9.6 so is a positioned wrapper that holds only such a layer (a popper's
+  content wrapper);
 - the rule is under `@media (pointer: coarse)` and the project is a desktop
   one: only the mobile project emulates a coarse pointer;
 - the control is fixed at the viewport's edge, so its whole hit area is not on

@@ -60,8 +60,9 @@ export type TapTargetOptions = {
 	 * `document.elementFromPoint` on a 5x5 grid, so the pseudo-element must be
 	 * hit-testable (not `pointer-events: none`, not covered by a neighbour; a
 	 * floating layer, by its role or an open popover or dialog, positioned or
-	 * in the top layer, is measured through: made transparent to the pointer
-	 * for the probe; an in-flow neighbour still fails). A target off
+	 * in the top layer, or a positioned wrapper that holds only such a layer,
+	 * is measured through: made transparent to the pointer for the probe; an
+	 * in-flow neighbour still fails). A target off
 	 * screen or covered where it sits is scrolled into view for the probe and
 	 * the scroll positions are restored. Any undersized target that another
 	 * element still covers there, at the centre of each of its boxes and its

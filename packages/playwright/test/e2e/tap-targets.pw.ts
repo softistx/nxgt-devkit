@@ -504,6 +504,36 @@ test('outside an open modal <dialog> only the dialog is judged', async ({
 // A 20px checkbox with a 44px ::before, and `layer` floating over the right
 // part of that square but not over the checkbox itself (`position` sets how
 // it floats, `inner` what it holds).
+// A link whose 44px square starts at y 203.5, and a fixed wrapper (as a
+// popper portals its content in) whose surface ends 3px into it: `wrapper`
+// holds what the wrapper holds.
+const wrapped = (wrapper: string) =>
+	html(
+		`<style>.hit{position:relative;display:inline-block;width:98px;height:19px}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style><div style="height:200px"></div><a href="/item" class="hit">Item name</a><div style="position:fixed;left:16px;top:100px;width:200px;padding:8px;background:#fff;box-shadow:0 2px 8px #0003">${wrapper}</div>`,
+	);
+
+test('the wrapper of a floating layer is seen through like the layer', async ({
+	page,
+}) => {
+	await page.setContent(
+		wrapped(
+			'<div role="menu" style="height:90px"><button role="menuitem" style="display:block;width:180px;height:44px">Rename</button></div>',
+		),
+	);
+	await expectTapTargets(page);
+});
+
+test('a fixed bar that holds a layer beside other content is not seen through', async ({
+	page,
+}) => {
+	await page.setContent(
+		wrapped(
+			'<div role="status" style="height:20px">Saved</div><nav style="height:70px">Toolbar</nav>',
+		),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('"Item name"');
+});
+
 const clippedBy = (
 	layer: string,
 	{
@@ -640,7 +670,8 @@ test('a layer measured through gets its exact style attribute back', async ({
 });
 
 // A header button opens a fixed menu that a scroll listener keeps under it
-// (as a popper does, a frame later); its padded surface carries no role. It
+// (as a popper does, a frame later); its padded surface, with a heading
+// beside the menu, carries no role and is no layer's wrapper. It
 // clips no row where the page stands; scrolled into view, every row below the
 // fold would sit under where it was before the page moved it. `before` and
 // `after` go before and after the rows, so they are probed in that order.
@@ -652,7 +683,7 @@ const anchoredMenu = async (page: Page, after = '', before = '') => {
 	).join('');
 	await page.setContent(
 		html(
-			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.row{display:flex;align-items:center;min-height:44px;margin-bottom:40px}</style><header style="height:60px"><button id="sort" class="box" style="width:120px;height:44px">Sort</button></header><div style="height:500px"></div>${before}${rows}<footer style="height:460px"></footer>${after}<div id="wrap" style="position:fixed;left:50px;top:0;width:220px;padding:8px;background:#fff;box-shadow:0 2px 8px #0003"><div role="menu" style="height:420px"><button role="menuitem" style="display:block;width:200px;height:48px">Name</button></div></div>`,
+			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.row{display:flex;align-items:center;min-height:44px;margin-bottom:40px}</style><header style="height:60px"><button id="sort" class="box" style="width:120px;height:44px">Sort</button></header><div style="height:500px"></div>${before}${rows}<footer style="height:460px"></footer>${after}<div id="wrap" style="position:fixed;left:50px;top:0;width:220px;padding:8px;background:#fff;box-shadow:0 2px 8px #0003"><p style="margin:0">Sort by</p><div role="menu" style="height:400px"><button role="menuitem" style="display:block;width:200px;height:48px">Name</button></div></div>`,
 		),
 	);
 	await page.evaluate(() => {

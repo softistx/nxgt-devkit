@@ -46,7 +46,9 @@ Nothing is planned yet.
   open, the page it hides (`aria-hidden`) is not measured either; the layer's
   own controls still are. 0.9.3. A floating layer (a menu, a popover) over part
   of a hit area is measured through. 0.9.4. A target scrolled into view is
-  probed again once the page has moved its anchored layers. 0.9.5.
+  probed again once the page has moved its anchored layers. 0.9.5. The
+  wrapper a popper portals a layer in is measured through like the layer.
+  0.9.6.
 - **WebKit capture refused up front** — `storybookProject({ capture })` with
   `webkit` in `browsers` throws at config time, and the capture throws if a
   browser answers with a non-WebP image, instead of writing PNG data under a
