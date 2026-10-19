@@ -1010,7 +1010,8 @@ Radix menu leaves it), a control under `aria-hidden="true"` is not measured
 either, even where the layer does not cover it.
 **Fix:** check the control in the state where it is shown: close the toast or
 the menu (`toastsGone`, `Escape`) before the call. `hitArea: false` judges
-every visible box, covered or not.
+every visible box, covered or not; it does not bring back a control under
+`aria-hidden` while a modal layer is open: close the layer first.
 
 ### `` expectTapTargets: `targets` is empty. ``
 

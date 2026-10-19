@@ -96,7 +96,9 @@ export async function measure(args: {
 	const modalOpen =
 		getComputedStyle(document.body ?? document.documentElement)
 			.pointerEvents === 'none' ||
-		[...document.querySelectorAll(modal)].some((m) => m.checkVisibility());
+		[...document.querySelectorAll(modal)].some((m) =>
+			m.checkVisibility({ visibilityProperty: true }),
+		);
 	const is = {
 		excluded: (el: Element) => args.exclude.some((s) => el.closest(s) !== null),
 		// Shown only to a screen reader (`sr-only`: a 1px box, or `clip`).

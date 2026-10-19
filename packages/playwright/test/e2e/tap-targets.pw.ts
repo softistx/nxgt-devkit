@@ -461,6 +461,22 @@ test('outside an open modal menu (page aria-hidden, body pointer-events none) on
 	expect(await failure(expectTapTargets(page))).toContain('Select row 0');
 });
 
+test('a shown aria-modal panel hides the aria-hidden page; a closed one does not', async ({
+	page,
+}) => {
+	// The panel does not cover the rows, and the body keeps its pointer events.
+	const panel = (style: string) =>
+		`<div role="dialog" aria-modal="true" style="position:fixed;top:0;right:16px;${style}"><button class="item" style="width:120px;height:30px;border:0;padding:0">Done</button></div>`;
+	await page.setContent(tableAnd('aria-hidden="true"', panel('')));
+	const message = await failure(expectTapTargets(page));
+	expect(message).toContain('button.item "Done"  120x30px');
+	expect(message).not.toContain('Select row');
+	for (const closed of ['display:none', 'visibility:hidden']) {
+		await page.setContent(tableAnd('aria-hidden="true"', panel(closed)));
+		expect(await failure(expectTapTargets(page))).toContain('Select row 0');
+	}
+});
+
 test('outside an open modal <dialog> only the dialog is judged', async ({
 	page,
 }) => {
