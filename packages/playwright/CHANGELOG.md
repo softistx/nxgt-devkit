@@ -1,5 +1,13 @@
 # @nxgt/playwright
 
+## 0.9.3
+
+### Patch Changes
+
+- [#75](https://github.com/softistx/nxgt-devkit/pull/75) [`31aa17a`](https://github.com/softistx/nxgt-devkit/commit/31aa17a6d1eb6f03f9df2aba37283c38d4ee8eae) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `expectTapTargets`: while a modal layer is open (a modal `<dialog>`, a shown `aria-modal="true"` element, or a body with `pointer-events: none`, as a modal Radix DropdownMenu leaves it), a control under `aria-hidden="true"` is out of reach and not measured, even where the layer does not cover it. The layer's own controls are still judged; `aria-hidden` with no modal layer open hides nothing from the check.
+
+- [#77](https://github.com/softistx/nxgt-devkit/pull/77) [`83fff78`](https://github.com/softistx/nxgt-devkit/commit/83fff78121f86724de1a31d8e96413c1e8c81a63) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Docs: `expectAccessible`'s `unstick` covers a sticky header too. The README, the a11y guide and the `target-size` troubleshooting entry name the header beside the bottom bar, and the entry gives axe's node message ("partially obscured") as the raw `accessibilityScan` result shows it.
+
 ## 0.9.2
 
 ### Patch Changes
