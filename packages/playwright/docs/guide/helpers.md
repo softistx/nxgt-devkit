@@ -470,7 +470,7 @@ is also its hit area. With `spacing`, such a target is not counted as undersized
 its neighbours still judge it by its visible box.
 
 So the pseudo-element has to be hit-testable: not `pointer-events: none`, not
-covered by a neighbour, not clipped by an ancestor's `overflow`, and as large
+covered by a neighbour (a floating layer excepted, below), not clipped by an ancestor's `overflow`, and as large
 as `size`.
 Under `@media (pointer: coarse)` it counts in a mobile project (`defineAppConfig`'s `mobile`, a Pixel
 7 with touch, emulates `pointer: coarse`) and not in a desktop one, which is
@@ -487,7 +487,16 @@ for the two moves. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position first; only when that probe misses is it scrolled
-and probed again. A neighbour over part of its square still fails it. A
+and probed again. A neighbour over part of its square still fails it; a
+floating layer does not. That is an element with a `role` attribute of `menu`,
+`listbox`, `dialog`, `alertdialog`, `tooltip`, `status` or `alert`, an open
+popover or an open `<dialog>`, that does not hold the target and floats (in the
+top layer, or `fixed` / `absolute`, itself or an ancestor; an inline
+`role="alert"` error in the flow is a neighbour). The probe measures through it,
+making what it hit transparent to the pointer (`pointer-events: none`) for the
+probe and putting its `style` attribute back, so a checkbox beside an open menu
+is judged on its real hit area. A target a layer hides whole is still covered
+(below), not measured through. A
 viewport smaller than `size` falls back to the box.
 
 A control out of reach in the state you check is not judged at all: any

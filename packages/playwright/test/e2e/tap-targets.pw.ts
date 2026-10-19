@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { expectTapTargets } from '../../src/helpers';
 import { probeHitAreas } from '../../src/helpers/tap-targets/hit-area';
 import { measure } from '../../src/helpers/tap-targets/measure';
@@ -499,6 +499,144 @@ test('outside an open modal <dialog> only the dialog is judged', async ({
 		d.show();
 	});
 	expect(await failure(expectTapTargets(page))).toContain('Select row');
+});
+
+// A 20px checkbox with a 44px ::before, and `layer` floating over the right
+// part of that square but not over the checkbox itself (`position` sets how
+// it floats, `inner` what it holds).
+const clippedBy = (
+	layer: string,
+	{
+		position = 'position:absolute;left:64px;top:20px',
+		inner = '<button class="item" style="width:150px;height:48px;border:0;padding:0">Sort</button>',
+	} = {},
+) =>
+	html(
+		`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style><div style="position:relative;height:120px"><button type="button" role="checkbox" class="box hit" aria-label="Select row" style="position:absolute;left:40px;top:40px;width:20px;height:20px"></button><div ${layer} style="${position};width:160px;height:80px;background:#fff;border:1px solid #ccc;z-index:5;margin:0;padding:0">${inner}</div></div>`,
+	);
+const layerHit = (page: Page) =>
+	page.evaluate(
+		() =>
+			document.elementFromPoint(150, 70)?.closest('[role],[popover],dialog') !==
+			null,
+	);
+
+test('a floating layer over part of a hit area is measured through; a plain neighbour is not', async ({
+	page,
+}) => {
+	for (const layer of ['role="menu"', 'role="listbox"', 'popover']) {
+		await page.setContent(clippedBy(layer));
+		if (layer === 'popover') {
+			await page.evaluate(() => {
+				const p = document.querySelector('[popover]') as HTMLElement;
+				p.showPopover();
+				Object.assign(p.style, { inset: 'auto', left: '80px', top: '36px' });
+			});
+		}
+		await expectTapTargets(page);
+		// The layer is put back: it still takes the pointer.
+		expect(await layerHit(page)).toBe(true);
+	}
+	// The same box without a layer role is a neighbour: it still fails.
+	await page.setContent(clippedBy('class="panel"'));
+	expect(await failure(expectTapTargets(page))).toContain(
+		'button.box.hit "Select row"  20x20px',
+	);
+});
+
+test('through a layer: icon items, a non-modal dialog; not an inline alert, nor a layer holding the target', async ({
+	page,
+}) => {
+	// A menu item with an icon: the probe lands on the svg.
+	await page.setContent(
+		clippedBy('role="menu"', {
+			inner:
+				'<svg width="150" height="78" style="display:block"><rect width="150" height="78" fill="#eee"/></svg>',
+		}),
+	);
+	await expectTapTargets(page);
+	// A native dialog opened with show() (its role is implicit).
+	await page.setContent(
+		clippedBy('id="d"', {
+			position: 'position:absolute;left:64px;top:20px',
+		}).replace(
+			/<div id="d"([^>]*)>(.*?)<\/div><\/div>/,
+			'<dialog id="d"$1>$2</dialog></div>',
+		),
+	);
+	await page.evaluate(() =>
+		(document.getElementById('d') as HTMLDialogElement).show(),
+	);
+	await expectTapTargets(page);
+	// An alert in the flow (not fixed nor absolute) is a neighbour.
+	await page.setContent(
+		clippedBy('role="alert"', {
+			position: 'position:relative;left:64px;top:20px',
+			inner: 'Required',
+		}),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	// The same inside a fixed app shell: the shell holds both, it is no layer.
+	await page.setContent(
+		clippedBy('role="alert"', {
+			position: 'position:relative;left:64px;top:20px',
+			inner: 'Required',
+		})
+			.replace(
+				'<div style="position:relative;height:120px">',
+				'<div style="position:fixed;inset:0"><div style="position:relative;height:120px">',
+			)
+			.concat('</div>'),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	// The target inside the menu, a sibling item over its square: it fails.
+	await page.setContent(
+		html(
+			'<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style><div role="menu" style="position:absolute;left:16px;top:16px;width:200px;height:100px"><button type="button" role="menuitemcheckbox" class="box hit" aria-label="Bold" style="position:absolute;left:40px;top:40px;width:20px;height:20px"></button><span style="position:absolute;left:64px;top:20px;width:100px;height:60px;background:#eee;z-index:2"></span></div>',
+		),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('"Bold"  20x20px');
+});
+
+test('a candidate a toast hides whole stays covered: no spacing neighbour', async ({
+	page,
+}) => {
+	// The toast hides the checkbox's whole square; a visible 16x30 button
+	// sits just beside it. Measured through, the checkbox would crowd it.
+	const page_ = (role: string) =>
+		html(
+			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style><button type="button" role="checkbox" class="hit" aria-label="Select row" style="position:absolute;left:40px;top:40px;width:20px;height:20px;border:0;padding:0"></button><div ${role} style="position:fixed;left:0;top:0;width:72.5px;height:73px;background:#333;z-index:9"></div><button class="vis" style="position:absolute;left:72px;top:30px;width:16px;height:30px;border:0;padding:0">x</button>`,
+		);
+	for (const role of ['role="status"', '']) {
+		await page.setContent(page_(role));
+		await expectTapTargets(page, { spacing: true });
+	}
+});
+
+test('a layer measured through gets its exact style attribute back', async ({
+	page,
+}) => {
+	await page.setContent(clippedBy('role="menu"'));
+	await page.evaluate(() => {
+		const menu = document.querySelector('[role=menu]') as HTMLElement;
+		menu.style.setProperty('pointer-events', 'auto', 'important');
+		menu.firstElementChild?.removeAttribute('style');
+		(menu.firstElementChild as HTMLElement).style.cssText =
+			'display:block;width:150px;height:78px;pointer-events:auto';
+	});
+	const before = await page.evaluate(() =>
+		[...document.querySelectorAll('[role=menu],[role=menu] *')].map((e) =>
+			e.getAttribute('style'),
+		),
+	);
+	await expectTapTargets(page);
+	expect(
+		await page.evaluate(() =>
+			[...document.querySelectorAll('[role=menu],[role=menu] *')].map((e) =>
+				e.getAttribute('style'),
+			),
+		),
+	).toEqual(before);
 });
 
 test('the back toast of a stack is out of reach; the front one is judged', async ({

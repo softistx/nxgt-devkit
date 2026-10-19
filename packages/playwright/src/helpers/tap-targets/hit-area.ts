@@ -27,7 +27,9 @@ import type { Measured } from './measure';
  * @returns `enlarged`: the indices whose `size` square is hit, at every
  * point of a 5x5 grid inset 1px, by the target, its descendants (a
  * `::before` / `::after` hit-tests as its element) or, for a checkbox or
- * radio, its labels. `covered`: the indices another element still covers
+ * radio, its labels, a floating layer (a menu, an open popover…) that
+ * does not hold the target made transparent to the pointer for the probe
+ * and put back. `covered`: the indices another element still covers
  * once scrolled to the middle, at the centre of each of their boxes (each
  * line of a wrapped link) and their labels' (a toast, a modal layer, the
  * front toast of a stack): no pointer reaches them in this state.
@@ -120,18 +122,21 @@ export function probeHitAreas(
 	// Whether `hit` is the target, inside it, or inside one of its labels.
 	const owns = (el: Element, labels: HTMLLabelElement[], hit: Element) =>
 		el.contains(hit) || labels.some((l) => l.contains(hit));
-	const hits = (el: Element, x0: number, y0: number) => {
+	// The elements on top at the points of the 5x5 grid inset 1px that miss
+	// the target (`null`: nothing there).
+	const misses = (el: Element, x0: number, y0: number) => {
 		const labels = labelsOf(el);
+		const out: (Element | null)[] = [];
 		for (let i = 0; i < 5; i++) {
 			for (let j = 0; j < 5; j++) {
 				const hit = document.elementFromPoint(
 					x0 + 1 + (i * (size - 2)) / 4,
 					y0 + 1 + (j * (size - 2)) / 4,
 				);
-				if (!hit || !owns(el, labels, hit)) return false;
+				if (!hit || !owns(el, labels, hit)) out.push(hit);
 			}
 		}
-		return true;
+		return out;
 	};
 	// Whether a pointer reaches the target: at the centre (moved inside the
 	// viewport) of one of its boxes or its labels' (an inline link that wraps
@@ -153,6 +158,55 @@ export function probeHitAreas(
 		return !probed;
 	};
 
+	// A floating layer (a menu, a listbox, a dialog, a tooltip, a toast, an
+	// open popover or dialog) that does not hold the target: one that opens
+	// over part of a hit area is measured through, a plain neighbour is not.
+	// It floats: in the top layer, or `fixed` / `absolute`, itself or an
+	// ancestor below the target's (an inline `role=alert` error in the flow is
+	// a neighbour).
+	const layer =
+		'[role=menu],[role=listbox],[role=dialog],[role=alertdialog],[role=tooltip],[role=status],[role=alert],:popover-open,dialog[open]';
+	const floats = (l: Element, el: Element) => {
+		if (l.matches(':popover-open,dialog:modal')) return true;
+		// Up to the first ancestor that also holds the target: a fixed app
+		// shell around both does not make an inline alert float.
+		for (let p: Element | null = l; p && !p.contains(el); p = p.parentElement) {
+			if (/^(fixed|absolute)$/.test(getComputedStyle(p).position)) return true;
+		}
+		return false;
+	};
+	const inLayer = (el: Element, hit: Element) => {
+		const l = hit.closest(layer);
+		return !!l && !l.contains(el) && floats(l, el);
+	};
+	// Whether the square is all hit. Misses that land only on floating layers
+	// are probed again with those elements transparent to the pointer
+	// (`pointer-events: none`; their `style` attribute put back after), once
+	// the target is reached at all: one a layer hides whole stays covered.
+	// Any other miss fails.
+	const hits = (el: Element, x0: number, y0: number) => {
+		const saved = new Map<Element, string | null>();
+		try {
+			for (let round = 0; round < 25; round++) {
+				const missed = misses(el, x0, y0);
+				if (missed.length === 0) return true;
+				if (!missed.every((m) => m && 'style' in m && inLayer(el, m))) {
+					return false;
+				}
+				if (round === 0 && !reached(el)) return false;
+				for (const m of missed as (Element & ElementCSSInlineStyle)[]) {
+					if (!saved.has(m)) saved.set(m, m.getAttribute('style'));
+					m.style.setProperty('pointer-events', 'none', 'important');
+				}
+			}
+			return false;
+		} finally {
+			for (const [m, style] of saved) {
+				if (style === null) m.removeAttribute('style');
+				else m.setAttribute('style', style);
+			}
+		}
+	};
 	type Verdict = 'enlarged' | 'covered' | 'small';
 	const judge = (el: Element, candidate: boolean): Verdict => {
 		const { cw, ch } = viewport();

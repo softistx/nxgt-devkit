@@ -44,7 +44,8 @@ Nothing is planned yet.
   control a toast, a modal layer or the front toast of a stack still covers is
   out of reach in that state and not judged. 0.9.2. While a modal layer is
   open, the page it hides (`aria-hidden`) is not measured either; the layer's
-  own controls still are. 0.9.3.
+  own controls still are. 0.9.3. A floating layer (a menu, a popover) over part
+  of a hit area is measured through. 0.9.4.
 - **WebKit capture refused up front** — `storybookProject({ capture })` with
   `webkit` in `browsers` throws at config time, and the capture throws if a
   browser answers with a non-WebP image, instead of writing PNG data under a
