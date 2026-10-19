@@ -27,7 +27,9 @@ import type { Measured } from './measure';
  * @returns `enlarged`: the indices whose `size` square is hit, at every
  * point of a 5x5 grid inset 1px, by the target, its descendants (a
  * `::before` / `::after` hit-tests as its element) or, for a checkbox or
- * radio, its labels. `covered`: the indices another element still covers
+ * radio, its labels, a floating layer (a menu, an open popover…) that
+ * does not hold the target made transparent to the pointer for the probe
+ * and put back. `covered`: the indices another element still covers
  * once scrolled to the middle, at the centre of each of their boxes (each
  * line of a wrapped link) and their labels' (a toast, a modal layer, the
  * front toast of a stack): no pointer reaches them in this state.
@@ -120,18 +122,59 @@ export function probeHitAreas(
 	// Whether `hit` is the target, inside it, or inside one of its labels.
 	const owns = (el: Element, labels: HTMLLabelElement[], hit: Element) =>
 		el.contains(hit) || labels.some((l) => l.contains(hit));
-	const hits = (el: Element, x0: number, y0: number) => {
+	// The elements on top at the points of the 5x5 grid inset 1px that miss
+	// the target (`null`: nothing there).
+	const misses = (el: Element, x0: number, y0: number) => {
 		const labels = labelsOf(el);
+		const out: (Element | null)[] = [];
 		for (let i = 0; i < 5; i++) {
 			for (let j = 0; j < 5; j++) {
 				const hit = document.elementFromPoint(
 					x0 + 1 + (i * (size - 2)) / 4,
 					y0 + 1 + (j * (size - 2)) / 4,
 				);
-				if (!hit || !owns(el, labels, hit)) return false;
+				if (!hit || !owns(el, labels, hit)) out.push(hit);
 			}
 		}
-		return true;
+		return out;
+	};
+	// A floating layer (a menu, a listbox, a dialog, a tooltip, a toast, an
+	// open popover) that does not hold the target: one that opens over part
+	// of a hit area is measured through, a plain neighbour is not.
+	const layer =
+		'[role=menu],[role=listbox],[role=dialog],[role=alertdialog],[role=tooltip],[role=status],[role=alert],:popover-open';
+	const inLayer = (el: Element, hit: Element) => {
+		const l = hit.closest(layer);
+		return !!l && !l.contains(el);
+	};
+	// Whether the square is all hit. Misses that land only on floating layers
+	// are probed again with those elements transparent to the pointer
+	// (`pointer-events: none`, put back after); any other miss fails.
+	const hits = (el: Element, x0: number, y0: number) => {
+		const saved: [HTMLElement, string, string][] = [];
+		try {
+			for (let round = 0; round < 25; round++) {
+				const missed = misses(el, x0, y0);
+				if (missed.length === 0) return true;
+				for (const m of missed) {
+					if (!(m instanceof HTMLElement) || !inLayer(el, m)) return false;
+				}
+				for (const m of new Set(missed as HTMLElement[])) {
+					const { style } = m;
+					saved.push([
+						m,
+						style.getPropertyValue('pointer-events'),
+						style.getPropertyPriority('pointer-events'),
+					]);
+					style.setProperty('pointer-events', 'none', 'important');
+				}
+			}
+			return false;
+		} finally {
+			for (const [m, value, priority] of saved.reverse()) {
+				m.style.setProperty('pointer-events', value, priority);
+			}
+		}
 	};
 	// Whether a pointer reaches the target: at the centre (moved inside the
 	// viewport) of one of its boxes or its labels' (an inline link that wraps

@@ -487,7 +487,12 @@ for the two moves. A square that still sticks out (a control fixed at the
 page's edge) is moved inside the viewport, without a classic scrollbar, not
 cut: a full `size` square of hit area must be on screen. A target is probed at
 the current scroll position first; only when that probe misses is it scrolled
-and probed again. A neighbour over part of its square still fails it. A
+and probed again. A neighbour over part of its square still fails it; a
+floating layer does not (an element with the role `menu`, `listbox`, `dialog`,
+`alertdialog`, `tooltip`, `status` or `alert`, or an open popover, that does not
+hold the target): the probe measures through it, making what it hit transparent
+to the pointer (`pointer-events: none`) for the probe and putting it back, so a
+checkbox beside an open menu is judged on its real hit area. A
 viewport smaller than `size` falls back to the box.
 
 A control out of reach in the state you check is not judged at all: any

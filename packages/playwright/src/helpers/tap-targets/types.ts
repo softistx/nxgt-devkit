@@ -58,7 +58,9 @@ export type TapTargetOptions = {
 	 * checkbox or radio, its labels: the design system that draws a 20px
 	 * checkbox with an invisible 44px `::before`. The square is probed with
 	 * `document.elementFromPoint` on a 5x5 grid, so the pseudo-element must be
-	 * hit-testable (not `pointer-events: none`, not covered). A target off
+	 * hit-testable (not `pointer-events: none`, not covered by a neighbour; a
+	 * floating layer, by its role or an open popover, is measured through:
+	 * made transparent to the pointer for the probe). A target off
 	 * screen or covered where it sits is scrolled into view for the probe and
 	 * the scroll positions are restored. Any undersized target that another
 	 * element still covers there, at the centre of each of its boxes and its

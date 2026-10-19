@@ -988,7 +988,10 @@ The usual causes:
 - the pseudo-element is `pointer-events: none`, or smaller than `size`;
 - a neighbour covers part of the square, or an ancestor's `overflow` clips
   it. Since 0.9.1 a sticky bar the control merely sits under no longer fails
-  it: the check scrolls it clear and probes again;
+  it: the check scrolls it clear and probes again. Since 0.9.4 a floating layer
+  over part of it (a menu, a listbox, a dialog, a tooltip, a toast, an open
+  popover, by its role) is measured through; a neighbour without such a role
+  is not;
 - the rule is under `@media (pointer: coarse)` and the project is a desktop
   one: only the mobile project emulates a coarse pointer;
 - the control is fixed at the viewport's edge, so its whole hit area is not on

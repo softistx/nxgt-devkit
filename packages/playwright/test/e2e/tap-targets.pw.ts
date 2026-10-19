@@ -501,6 +501,46 @@ test('outside an open modal <dialog> only the dialog is judged', async ({
 	expect(await failure(expectTapTargets(page))).toContain('Select row');
 });
 
+// A 20px checkbox with a 44px ::before, and `layer` floating over the right
+// part of that square but not over the checkbox itself.
+const clippedBy = (layer: string) =>
+	html(
+		`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}</style><div style="position:relative;height:120px"><button type="button" role="checkbox" class="box hit" aria-label="Select row" style="position:absolute;left:40px;top:40px;width:20px;height:20px"></button><div ${layer} style="position:absolute;left:64px;top:20px;width:160px;height:80px;background:#fff;border:1px solid #ccc;z-index:5"><button class="item" style="width:150px;height:48px;border:0;padding:0">Sort</button></div></div>`,
+	);
+
+test('a floating layer over part of a hit area is measured through; a plain neighbour is not', async ({
+	page,
+}) => {
+	for (const layer of ['role="menu"', 'role="listbox"', 'popover']) {
+		await page.setContent(clippedBy(layer));
+		if (layer === 'popover') {
+			await page.evaluate(() => {
+				const p = document.querySelector('[popover]') as HTMLElement;
+				p.showPopover();
+				Object.assign(p.style, {
+					margin: '0',
+					inset: 'auto',
+					left: '80px',
+					top: '36px',
+				});
+			});
+		}
+		await expectTapTargets(page);
+		// The layer is put back: it still takes the pointer.
+		expect(
+			await page.evaluate(() => {
+				const hit = document.elementFromPoint(150, 70);
+				return hit?.closest('[role=menu],[role=listbox],[popover]') !== null;
+			}),
+		).toBe(true);
+	}
+	// The same box without a layer role is a neighbour: it still fails.
+	await page.setContent(clippedBy('class="panel"'));
+	expect(await failure(expectTapTargets(page))).toContain(
+		'button.box.hit "Select row"  20x20px',
+	);
+});
+
 test('the back toast of a stack is out of reach; the front one is judged', async ({
 	page,
 }) => {
