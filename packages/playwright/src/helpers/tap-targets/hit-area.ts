@@ -138,44 +138,6 @@ export function probeHitAreas(
 		}
 		return out;
 	};
-	// A floating layer (a menu, a listbox, a dialog, a tooltip, a toast, an
-	// open popover) that does not hold the target: one that opens over part
-	// of a hit area is measured through, a plain neighbour is not.
-	const layer =
-		'[role=menu],[role=listbox],[role=dialog],[role=alertdialog],[role=tooltip],[role=status],[role=alert],:popover-open';
-	const inLayer = (el: Element, hit: Element) => {
-		const l = hit.closest(layer);
-		return !!l && !l.contains(el);
-	};
-	// Whether the square is all hit. Misses that land only on floating layers
-	// are probed again with those elements transparent to the pointer
-	// (`pointer-events: none`, put back after); any other miss fails.
-	const hits = (el: Element, x0: number, y0: number) => {
-		const saved: [HTMLElement, string, string][] = [];
-		try {
-			for (let round = 0; round < 25; round++) {
-				const missed = misses(el, x0, y0);
-				if (missed.length === 0) return true;
-				for (const m of missed) {
-					if (!(m instanceof HTMLElement) || !inLayer(el, m)) return false;
-				}
-				for (const m of new Set(missed as HTMLElement[])) {
-					const { style } = m;
-					saved.push([
-						m,
-						style.getPropertyValue('pointer-events'),
-						style.getPropertyPriority('pointer-events'),
-					]);
-					style.setProperty('pointer-events', 'none', 'important');
-				}
-			}
-			return false;
-		} finally {
-			for (const [m, value, priority] of saved.reverse()) {
-				m.style.setProperty('pointer-events', value, priority);
-			}
-		}
-	};
 	// Whether a pointer reaches the target: at the centre (moved inside the
 	// viewport) of one of its boxes or its labels' (an inline link that wraps
 	// has one per line; a checkbox is tapped through its label). Nothing
@@ -196,6 +158,52 @@ export function probeHitAreas(
 		return !probed;
 	};
 
+	// A floating layer (a menu, a listbox, a dialog, a tooltip, a toast, an
+	// open popover or dialog) that does not hold the target: one that opens
+	// over part of a hit area is measured through, a plain neighbour is not.
+	// It floats: in the top layer, or `fixed` / `absolute`, itself or an
+	// ancestor (an inline `role=alert` error in the flow is a neighbour).
+	const layer =
+		'[role=menu],[role=listbox],[role=dialog],[role=alertdialog],[role=tooltip],[role=status],[role=alert],:popover-open,dialog[open]';
+	const floats = (l: Element) => {
+		if (l.matches(':popover-open,dialog:modal')) return true;
+		for (let p: Element | null = l; p; p = p.parentElement) {
+			if (/^(fixed|absolute)$/.test(getComputedStyle(p).position)) return true;
+		}
+		return false;
+	};
+	const inLayer = (el: Element, hit: Element) => {
+		const l = hit.closest(layer);
+		return !!l && !l.contains(el) && floats(l);
+	};
+	// Whether the square is all hit. Misses that land only on floating layers
+	// are probed again with those elements transparent to the pointer
+	// (`pointer-events: none`; their `style` attribute put back after), once
+	// the target is reached at all: one a layer hides whole stays covered.
+	// Any other miss fails.
+	const hits = (el: Element, x0: number, y0: number) => {
+		const saved = new Map<Element, string | null>();
+		try {
+			for (let round = 0; round < 25; round++) {
+				const missed = misses(el, x0, y0);
+				if (missed.length === 0) return true;
+				if (!missed.every((m) => m && 'style' in m && inLayer(el, m))) {
+					return false;
+				}
+				if (round === 0 && !reached(el)) return false;
+				for (const m of missed as (Element & ElementCSSInlineStyle)[]) {
+					if (!saved.has(m)) saved.set(m, m.getAttribute('style'));
+					m.style.setProperty('pointer-events', 'none', 'important');
+				}
+			}
+			return false;
+		} finally {
+			for (const [m, style] of saved) {
+				if (style === null) m.removeAttribute('style');
+				else m.setAttribute('style', style);
+			}
+		}
+	};
 	type Verdict = 'enlarged' | 'covered' | 'small';
 	const judge = (el: Element, candidate: boolean): Verdict => {
 		const { cw, ch } = viewport();
