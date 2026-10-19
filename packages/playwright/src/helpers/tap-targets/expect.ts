@@ -25,8 +25,9 @@ import type { TapTargetBox, TapTargetOptions } from './types';
  * fills the `size` square centred on its box (with its labels, for a
  * checkbox or radio; `hitArea`, on by default): an
  * invisible `::before` of 44px on a 20px checkbox. The square is probed with
- * `elementFromPoint` on a 5x5 grid (through a floating layer, by its role
- * or an open popover, over part of it), scrolling the target into view when it
+ * `elementFromPoint` on a 5x5 grid (through a floating layer over part of
+ * it: by its role or an open popover or dialog, positioned or in the top
+ * layer), scrolling the target into view when it
  * is off screen or covered where it sits, and restoring every scroll
  * position afterwards. An undersized target that another element still
  * covers once scrolled to the middle, at the centre of each of its boxes
