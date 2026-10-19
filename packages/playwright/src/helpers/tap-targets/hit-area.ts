@@ -227,13 +227,21 @@ export async function probeHitAreas(
 		return false;
 	};
 	// The layer a positioned wrapper holds and nothing else (a popper's
-	// wrapper portals one content element in): down its only children.
+	// wrapper portals one content element in): down its only children, with
+	// no text beside them, to a layer that is shown (a role matches a closed
+	// menu or an empty live region too).
 	const wrapped = (p: Element) => {
 		let c: Element | null = p;
 		while (c && !c.matches(layer)) {
+			for (const n of c.childNodes) {
+				if (n.nodeType === Node.TEXT_NODE && n.textContent?.trim()) return null;
+			}
 			c = c.children.length === 1 ? c.firstElementChild : null;
 		}
-		return c;
+		if (!c) return null;
+		const r = c.getBoundingClientRect();
+		const shown = c.checkVisibility({ visibilityProperty: true });
+		return r.width > 0 && r.height > 0 && shown ? c : null;
 	};
 	const inLayer = (el: Element, hit: Element) => {
 		const l = hit.closest(layer);

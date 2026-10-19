@@ -501,9 +501,6 @@ test('outside an open modal <dialog> only the dialog is judged', async ({
 	expect(await failure(expectTapTargets(page))).toContain('Select row');
 });
 
-// A 20px checkbox with a 44px ::before, and `layer` floating over the right
-// part of that square but not over the checkbox itself (`position` sets how
-// it floats, `inner` what it holds).
 // A link whose 44px square starts at y 203.5, and a fixed wrapper (as a
 // popper portals its content in) whose surface ends 3px into it: `wrapper`
 // holds what the wrapper holds.
@@ -523,17 +520,26 @@ test('the wrapper of a floating layer is seen through like the layer', async ({
 	await expectTapTargets(page);
 });
 
-test('a fixed bar that holds a layer beside other content is not seen through', async ({
+test('a fixed bar that holds a layer beside other content, or one not shown, is not seen through', async ({
 	page,
 }) => {
-	await page.setContent(
-		wrapped(
-			'<div role="status" style="height:20px">Saved</div><nav style="height:70px">Toolbar</nav>',
-		),
-	);
-	expect(await failure(expectTapTargets(page))).toContain('"Item name"');
+	for (const bar of [
+		'<div role="status" style="height:20px">Saved</div><nav style="height:70px">Toolbar</nav>',
+		'Draft saved<div role="status"></div>',
+		'<div role="alert"></div>',
+		'<div role="menu" hidden><button role="menuitem">Rename</button></div>',
+		'<div role="menu" style="visibility:hidden;height:90px"><button role="menuitem">Rename</button></div>',
+	]) {
+		await page.setContent(
+			wrapped(`<div style="height:90px;position:relative">${bar}</div>`),
+		);
+		expect(await failure(expectTapTargets(page)), bar).toContain('"Item name"');
+	}
 });
 
+// A 20px checkbox with a 44px ::before, and `layer` floating over the right
+// part of that square but not over the checkbox itself (`position` sets how
+// it floats, `inner` what it holds).
 const clippedBy = (
 	layer: string,
 	{
