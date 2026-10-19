@@ -213,7 +213,8 @@ export async function probeHitAreas(
 	// over part of a hit area is measured through, a plain neighbour is not.
 	// It floats: in the top layer, or `fixed` / `absolute`, itself or an
 	// ancestor below the target's (an inline `role=alert` error in the flow is
-	// a neighbour).
+	// a neighbour). A positioned wrapper that holds only such a layer is part
+	// of it; one that holds other content too is a neighbour.
 	const layer =
 		'[role=menu],[role=listbox],[role=dialog],[role=alertdialog],[role=tooltip],[role=status],[role=alert],:popover-open,dialog[open]';
 	const floats = (l: Element, el: Element) => {
@@ -225,9 +226,36 @@ export async function probeHitAreas(
 		}
 		return false;
 	};
+	// The layer a positioned wrapper holds and nothing else (a popper's
+	// wrapper portals one content element in): down its only children, with
+	// no text beside them, to a layer that is shown (a role matches a closed
+	// menu or an empty live region too).
+	const wrapped = (p: Element) => {
+		let c: Element | null = p;
+		while (c && !c.matches(layer)) {
+			for (const n of c.childNodes) {
+				if (n.nodeType === Node.TEXT_NODE && n.textContent?.trim()) return null;
+			}
+			c = c.children.length === 1 ? c.firstElementChild : null;
+		}
+		if (!c) return null;
+		const r = c.getBoundingClientRect();
+		const shown = c.checkVisibility({ visibilityProperty: true });
+		return r.width > 0 && r.height > 0 && shown ? c : null;
+	};
 	const inLayer = (el: Element, hit: Element) => {
 		const l = hit.closest(layer);
-		return !!l && !l.contains(el) && floats(l, el);
+		if (l) return !l.contains(el) && floats(l, el);
+		// Up to the first ancestor that also holds the target, as `floats`.
+		for (
+			let p: Element | null = hit;
+			p && !p.contains(el);
+			p = p.parentElement
+		) {
+			if (!/^(fixed|absolute)$/.test(getComputedStyle(p).position)) continue;
+			if (wrapped(p)) return true;
+		}
+		return false;
 	};
 	// Whether the square is all hit. Misses that land only on floating layers
 	// are probed again with those elements transparent to the pointer
