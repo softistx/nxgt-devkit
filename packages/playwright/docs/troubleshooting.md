@@ -1004,6 +1004,10 @@ stacked behind the front one.
 once scrolled to the middle (at the centre of each of its boxes and labels) is out of reach in that state, so it
 is not judged (nor counted as a neighbour for `spacing`). The layer's own
 controls are judged as usual.
+Since 0.9.3, while a modal layer is open (a modal `<dialog>`, a shown
+`aria-modal="true"` element, or a body with `pointer-events: none`, as a modal
+Radix menu leaves it), a control under `aria-hidden="true"` is not measured
+either, even where the layer does not cover it.
 **Fix:** check the control in the state where it is shown: close the toast or
 the menu (`toastsGone`, `Escape`) before the call. `hitArea: false` judges
 every visible box, covered or not.

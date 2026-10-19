@@ -430,6 +430,61 @@ test('behind a modal layer only the controls of the layer are judged', async ({
 	expect(message).not.toMatch(/Select row|plain/);
 });
 
+// A table of small row checkboxes that re-enable pointer events, and
+// `menu` after it in its own portal.
+const tableAnd = (wrapper: string, menu: string) =>
+	html(
+		`<div id="page" ${wrapper}><table>${Array.from(
+			{ length: 3 },
+			(_, i) =>
+				`<tr><td><button type="button" role="checkbox" class="box row" aria-label="Select row ${i}" style="width:20px;height:20px;pointer-events:auto"></button></td></tr>`,
+		).join('')}</table></div>${menu}`,
+	);
+const radixMenu =
+	'<div id="portal" style="position:fixed;top:0;right:16px;pointer-events:auto"><div role="menu"><button role="menuitem" class="item" style="width:120px;height:30px;border:0;padding:0">Sort</button></div></div>';
+
+test('outside an open modal menu (page aria-hidden, body pointer-events none) only the menu is judged', async ({
+	page,
+}) => {
+	// What a modal Radix DropdownMenu leaves: the page hidden from assistive
+	// technology and the body's pointer events off; the menu does not cover
+	// the rows.
+	await page.setContent(tableAnd('aria-hidden="true"', radixMenu));
+	await page.evaluate(() => {
+		document.body.style.pointerEvents = 'none';
+	});
+	const message = await failure(expectTapTargets(page));
+	expect(message).toContain('button.item "Sort"  120x30px');
+	expect(message).not.toContain('Select row');
+	// aria-hidden alone, with no modal layer open, hides nothing from the check.
+	await page.setContent(tableAnd('aria-hidden="true"', ''));
+	expect(await failure(expectTapTargets(page))).toContain('Select row 0');
+});
+
+test('outside an open modal <dialog> only the dialog is judged', async ({
+	page,
+}) => {
+	await page.setContent(
+		tableAnd(
+			'',
+			'<dialog id="d" style="margin:0;top:auto;bottom:16px;left:16px"><button class="item" style="width:120px;height:30px;border:0;padding:0">Close</button></dialog>',
+		),
+	);
+	await page.evaluate(() =>
+		(document.getElementById('d') as HTMLDialogElement).showModal(),
+	);
+	const message = await failure(expectTapTargets(page));
+	expect(message).toContain('button.item "Close"  120x30px');
+	expect(message).not.toContain('Select row');
+	// The same dialog opened without being modal leaves the page in reach.
+	await page.evaluate(() => {
+		const d = document.getElementById('d') as HTMLDialogElement;
+		d.close();
+		d.show();
+	});
+	expect(await failure(expectTapTargets(page))).toContain('Select row');
+});
+
 test('the back toast of a stack is out of reach; the front one is judged', async ({
 	page,
 }) => {

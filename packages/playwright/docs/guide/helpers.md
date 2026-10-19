@@ -410,7 +410,10 @@ includes the gap between them.
 Not measured: elements that are hidden (`display: none`, `visibility:
 hidden`), zero-sized, visually hidden (`sr-only`: a 1px box, or `clip` /
 `clip-path` on an absolute box, such as a skip link), `disabled`, `aria-disabled="true"`, `inert` or under
-`pointer-events: none`; an undersized target a layer covers (see
+`pointer-events: none`; while a modal layer is open (a modal `<dialog>`, a
+shown `aria-modal="true"` element, or a body with `pointer-events: none`, as
+a modal Radix menu leaves it), anything under `aria-hidden="true"`, the page
+the layer hides; an undersized target a layer covers (see
 [the real hit area](#the-real-hit-area-hitarea-on-by-default)); and a link inside a sentence: an `inline` link with
 text of its own beside it in its block container, looking through inline
 wrappers (`<p><strong><a>x</a></strong> text</p>`; WCAG 2.5.8's inline

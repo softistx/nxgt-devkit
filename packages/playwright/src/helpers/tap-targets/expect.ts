@@ -15,7 +15,9 @@ import type { TapTargetBox, TapTargetOptions } from './types';
  * checkbox or radio counts together with its labels, as one bounding box (a
  * `for` label far from the input includes the gap). Not measured: what is
  * hidden, disabled (`disabled`, `aria-disabled`), `inert`, `pointer-events:
- * none`, zero-sized or visually hidden (`sr-only`: a 1px box or `clip`), an
+ * none`, zero-sized or visually hidden (`sr-only`: a 1px box or `clip`),
+ * what an open modal layer hides (`aria-hidden`, while a modal `<dialog>`, a
+ * shown `aria-modal` element or a body without pointer events is there), an
  * undersized target a layer covers (below), and an `inline` link inside a sentence (WCAG 2.5.8's inline exception; an
  * `inline-block` link is measured).
  *

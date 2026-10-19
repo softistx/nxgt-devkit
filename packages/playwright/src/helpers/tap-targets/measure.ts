@@ -89,6 +89,14 @@ export async function measure(args: {
 		},
 	};
 
+	// While a modal layer is open (a modal dialog, an aria-modal element, a
+	// body without pointer events: a modal Radix menu), what it hides
+	// (`aria-hidden`) is out of reach, even where the layer does not cover it.
+	const modal = 'dialog:modal,[aria-modal=true]';
+	const modalOpen =
+		getComputedStyle(document.body ?? document.documentElement)
+			.pointerEvents === 'none' ||
+		[...document.querySelectorAll(modal)].some((m) => m.checkVisibility());
 	const is = {
 		excluded: (el: Element) => args.exclude.some((s) => el.closest(s) !== null),
 		// Shown only to a screen reader (`sr-only`: a 1px box, or `clip`).
@@ -111,6 +119,7 @@ export async function measure(args: {
 			!el.checkVisibility({ visibilityProperty: true }) ||
 			el.matches(':disabled') ||
 			el.closest('[aria-disabled=true],[inert]') !== null ||
+			(modalOpen && el.closest('[aria-hidden=true]') !== null) ||
 			getComputedStyle(el).pointerEvents === 'none',
 		// A link in a sentence is WCAG 2.5.8's inline exception: its box is
 		// the line's, and the text around it is the reader's. Only an inline
