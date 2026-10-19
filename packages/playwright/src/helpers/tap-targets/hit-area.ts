@@ -162,19 +162,22 @@ export function probeHitAreas(
 	// open popover or dialog) that does not hold the target: one that opens
 	// over part of a hit area is measured through, a plain neighbour is not.
 	// It floats: in the top layer, or `fixed` / `absolute`, itself or an
-	// ancestor (an inline `role=alert` error in the flow is a neighbour).
+	// ancestor below the target's (an inline `role=alert` error in the flow is
+	// a neighbour).
 	const layer =
 		'[role=menu],[role=listbox],[role=dialog],[role=alertdialog],[role=tooltip],[role=status],[role=alert],:popover-open,dialog[open]';
-	const floats = (l: Element) => {
+	const floats = (l: Element, el: Element) => {
 		if (l.matches(':popover-open,dialog:modal')) return true;
-		for (let p: Element | null = l; p; p = p.parentElement) {
+		// Up to the first ancestor that also holds the target: a fixed app
+		// shell around both does not make an inline alert float.
+		for (let p: Element | null = l; p && !p.contains(el); p = p.parentElement) {
 			if (/^(fixed|absolute)$/.test(getComputedStyle(p).position)) return true;
 		}
 		return false;
 	};
 	const inLayer = (el: Element, hit: Element) => {
 		const l = hit.closest(layer);
-		return !!l && !l.contains(el) && floats(l);
+		return !!l && !l.contains(el) && floats(l, el);
 	};
 	// Whether the square is all hit. Misses that land only on floating layers
 	// are probed again with those elements transparent to the pointer

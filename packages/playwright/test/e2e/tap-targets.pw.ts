@@ -576,6 +576,19 @@ test('through a layer: icon items, a non-modal dialog; not an inline alert, nor 
 		}),
 	);
 	expect(await failure(expectTapTargets(page))).toContain('20x20px');
+	// The same inside a fixed app shell: the shell holds both, it is no layer.
+	await page.setContent(
+		clippedBy('role="alert"', {
+			position: 'position:relative;left:64px;top:20px',
+			inner: 'Required',
+		})
+			.replace(
+				'<div style="position:relative;height:120px">',
+				'<div style="position:fixed;inset:0"><div style="position:relative;height:120px">',
+			)
+			.concat('</div>'),
+	);
+	expect(await failure(expectTapTargets(page))).toContain('20x20px');
 	// The target inside the menu, a sibling item over its square: it fails.
 	await page.setContent(
 		html(
