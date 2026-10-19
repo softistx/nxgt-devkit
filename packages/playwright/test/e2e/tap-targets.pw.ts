@@ -642,9 +642,9 @@ test('a layer measured through gets its exact style attribute back', async ({
 // A header button opens a fixed menu that a scroll listener keeps under it
 // (as a popper does, a frame later); its padded surface carries no role. It
 // clips no row where the page stands; scrolled into view, every row below the
-// fold would sit under where it was before the page moved it. `after` comes
-// after the rows, so it is probed after them.
-const anchoredMenu = async (page: Page, after = '') => {
+// fold would sit under where it was before the page moved it. `before` and
+// `after` go before and after the rows, so they are probed in that order.
+const anchoredMenu = async (page: Page, after = '', before = '') => {
 	const rows = Array.from(
 		{ length: 20 },
 		(_, i) =>
@@ -652,7 +652,7 @@ const anchoredMenu = async (page: Page, after = '') => {
 	).join('');
 	await page.setContent(
 		html(
-			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.row{display:flex;align-items:center;min-height:44px;margin-bottom:40px}</style><header style="height:60px"><button id="sort" class="box" style="width:120px;height:44px">Sort</button></header><div style="height:500px"></div>${rows}<footer style="height:460px"></footer>${after}<div id="wrap" style="position:fixed;left:50px;top:0;width:220px;padding:8px;background:#fff;box-shadow:0 2px 8px #0003"><div role="menu" style="height:420px"><button role="menuitem" style="display:block;width:200px;height:48px">Name</button></div></div>`,
+			`<style>.hit{position:relative}.hit::before{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}.row{display:flex;align-items:center;min-height:44px;margin-bottom:40px}</style><header style="height:60px"><button id="sort" class="box" style="width:120px;height:44px">Sort</button></header><div style="height:500px"></div>${before}${rows}<footer style="height:460px"></footer>${after}<div id="wrap" style="position:fixed;left:50px;top:0;width:220px;padding:8px;background:#fff;box-shadow:0 2px 8px #0003"><div role="menu" style="height:420px"><button role="menuitem" style="display:block;width:200px;height:48px">Name</button></div></div>`,
 		),
 	);
 	await page.evaluate(() => {
@@ -692,12 +692,37 @@ test('after a scrolled target, the next one is probed where the page moved the m
 	expect(message).not.toContain('Select row');
 });
 
+test('real misses before the rows do not turn the wait off for them', async ({
+	page,
+}) => {
+	// Three controls below the fold whose 24px hit area is too small
+	// (nothing positioned over their misses, so no wait), then the rows under
+	// the menu.
+	await anchoredMenu(
+		page,
+		'',
+		Array.from(
+			{ length: 3 },
+			(_, i) =>
+				`<div class="row"><button type="button" class="small" aria-label="Small ${i}" style="position:relative;width:20px;height:20px;border:0;padding:0;margin:12px"></button></div>`,
+		)
+			.join('')
+			.concat(
+				'<style>.small::before{content:"";position:absolute;inset:-2px}</style>',
+			),
+	);
+	const message = await failure(expectTapTargets(page));
+	expect(message.split('\n')[0]).toContain('3 tap targets');
+	expect(message).not.toContain('Select row');
+});
+
 test('misses that waiting does not change stop being retried', async ({
 	page,
 }) => {
-	// 100 small controls below the fold, all under a fixed scrim: each is
-	// covered before and after the wait. Unbounded, each would wait ~4
-	// frames (about 7s here); bounded, three retries end it.
+	// 100 small controls below the fold, all under one fixed scrim: each is
+	// covered before and after the wait. Waiting for each would take ~4
+	// frames apiece (about 7s here); the scrim is seen not to move once, and
+	// not waited for again.
 	const buttons = Array.from(
 		{ length: 100 },
 		(_, i) =>

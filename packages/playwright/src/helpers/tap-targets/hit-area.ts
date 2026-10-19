@@ -25,8 +25,9 @@ import type { Measured } from './measure';
  * roots and slots count) and the window are put back. A miss right after
  * the scroll is probed once more two frames later, when the page's scroll
  * listeners (a popper following its anchor) have moved their layers: hence
- * async. Three retries in a row that change nothing end the retries for the
- * call, and a retry never turns a reached target into a covered one.
+ * async. Only a miss under a positioned layer (fixed, absolute, sticky) is
+ * retried, a layer seen not to move during a wait is not waited for again,
+ * and a retry never turns a reached target into a covered one.
  *
  * @returns `enlarged`: the indices whose `size` square is hit, at every
  * point of a 5x5 grid inset 1px, by the target, its descendants (a
@@ -146,21 +147,54 @@ export async function probeHitAreas(
 	// viewport) of one of its boxes or its labels' (an inline link that wraps
 	// has one per line; a checkbox is tapped through its label). Nothing
 	// under any of them is no proof of a cover.
-	const reached = (el: Element) => {
+	// What is on top at the centre (moved inside the viewport) of each of
+	// the target's boxes and its labels'.
+	const atCentres = (el: Element) => {
 		const { cw, ch } = viewport();
-		const labels = labelsOf(el);
-		let probed = false;
-		for (const r of [el, ...labels].flatMap((e) => [...e.getClientRects()])) {
-			if (r.width <= 0 || r.height <= 0) continue;
-			const x = Math.min(Math.max(r.left + r.width / 2, 0), cw - 1);
-			const y = Math.min(Math.max(r.top + r.height / 2, 0), ch - 1);
-			const hit = document.elementFromPoint(x, y);
-			if (!hit) continue;
-			if (owns(el, labels, hit)) return true;
-			probed = true;
-		}
-		return !probed;
+		return [el, ...labelsOf(el)]
+			.flatMap((e) => [...e.getClientRects()])
+			.filter((r) => r.width > 0 && r.height > 0)
+			.map((r) =>
+				document.elementFromPoint(
+					Math.min(Math.max(r.left + r.width / 2, 0), cw - 1),
+					Math.min(Math.max(r.top + r.height / 2, 0), ch - 1),
+				),
+			);
 	};
+	const reached = (el: Element) => {
+		const labels = labelsOf(el);
+		const hit = atCentres(el).filter((h) => h !== null);
+		return hit.length === 0 || hit.some((h) => owns(el, labels, h));
+	};
+	// The positioned layers (`fixed`, `absolute` or `sticky`, outermost below
+	// the target's ancestors) under the points that miss it: only those can a
+	// scroll listener move.
+	const layersAt = (
+		el: Element,
+		candidate: boolean,
+		x0: number,
+		y0: number,
+	) => {
+		const labels = labelsOf(el);
+		const roots = new Set<Element>();
+		const over = [...(candidate ? misses(el, x0, y0) : []), ...atCentres(el)];
+		for (const hit of over) {
+			if (!hit || owns(el, labels, hit)) continue;
+			let root: Element | null = null;
+			for (
+				let p: Element | null = hit;
+				p && !p.contains(el);
+				p = p.parentElement
+			) {
+				if (/^(fixed|absolute|sticky)$/.test(getComputedStyle(p).position))
+					root = p;
+			}
+			if (root) roots.add(root);
+		}
+		return roots;
+	};
+	// Layers seen not to move during a wait: never waited for again.
+	const still = new Set<Element>();
 
 	// A floating layer (a menu, a listbox, a dialog, a tooltip, a toast, an
 	// open popover or dialog) that does not hold the target: one that opens
@@ -215,7 +249,6 @@ export async function probeHitAreas(
 	// its anchor) to move their layers; a timer only when frames do not run.
 	// Bounded per call: after three retries in a row that changed no verdict,
 	// nothing on the page moves, and misses are not retried any more.
-	let fruitless = 0;
 	const settle = () =>
 		new Promise<void>((done) => {
 			const timer = setTimeout(done, 500);
@@ -267,17 +300,33 @@ export async function probeHitAreas(
 				behavior: 'instant',
 			});
 			const first = probe();
-			if (
-				first === 'enlarged' ||
-				(first === 'small' && !candidate) ||
-				fruitless >= 3
-			) {
+			if (first === 'enlarged' || (first === 'small' && !candidate)) {
 				return first;
 			}
+			const moved = rectOf(el);
+			const to = moved && square(moved);
+			const layers = to
+				? [...layersAt(el, candidate, to.x, to.y)].filter((l) => !still.has(l))
+				: [];
+			// Nothing positioned that could still move: the miss stands.
+			if (layers.length === 0) return first;
+			const before = layers.map((l) => l.getBoundingClientRect());
 			waited = true;
 			await settle();
+			layers.forEach((l, i) => {
+				const a = before[i];
+				const b = l.getBoundingClientRect();
+				if (
+					a &&
+					a.x === b.x &&
+					a.y === b.y &&
+					a.width === b.width &&
+					a.height === b.height
+				) {
+					still.add(l);
+				}
+			});
 			const second = probe();
-			fruitless = second === first ? fruitless + 1 : 0;
 			// A retry may clear a miss, never hide one: reached, it stays judged.
 			return first === 'small' && second === 'covered' ? first : second;
 		} finally {

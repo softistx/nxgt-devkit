@@ -490,10 +490,11 @@ the current scroll position first; only when that probe misses is it scrolled
 and probed again. A miss right after the scroll is probed once more two frames
 later, once the page's scroll listeners have moved their layers (a menu in a
 `fixed` popper that follows its anchor), and the page gets the same two frames
-after the scroll is put back. A target that passes at once costs no wait; a
-miss costs about four frames, and three retries in a row that change nothing
-end the retries for the call. A retry never turns a reached target into a
-covered one. A neighbour over part of its square still fails it; a
+after the scroll is put back. Only a miss under a positioned layer (`fixed`,
+`absolute` or `sticky`, which a scroll listener can move) waits, about four
+frames; a layer seen not to move during a wait is not waited for again, so a
+still scrim costs one wait and a plain miss none. A retry never turns a reached
+target into a covered one. A neighbour over part of its square still fails it; a
 floating layer does not. That is an element with a `role` attribute of `menu`,
 `listbox`, `dialog`, `alertdialog`, `tooltip`, `status` or `alert`, an open
 popover or an open `<dialog>`, that does not hold the target and floats (in the
