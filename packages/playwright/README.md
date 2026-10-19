@@ -489,12 +489,15 @@ fixture. See [docs/guide/a11y.md](docs/guide/a11y.md).
 
 Sticky form actions (`DEFAULT_UNSTICK`) are put back in the flow while axe
 runs, so `target-size` does not depend on where the page stopped scrolling.
-Add your own sticky bars, or turn it off with `unstick: []`:
+Add your own sticky bars (a sticky header included), or turn it off with
+`unstick: []`:
 
 ```ts
 import { DEFAULT_UNSTICK, expectAccessible } from '@nxgt/playwright/a11y';
 
-await expectAccessible(page, { unstick: [...DEFAULT_UNSTICK, '.app-bottom-bar'] });
+await expectAccessible(page, {
+	unstick: [...DEFAULT_UNSTICK, '.app-header', '.app-bottom-bar'],
+});
 ```
 
 axe does not check WCAG 2.4.11 (Focus Not Obscured), so a control hidden under

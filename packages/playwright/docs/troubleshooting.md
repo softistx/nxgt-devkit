@@ -790,12 +790,13 @@ await expectAccessible(page, {
 
 ```
 1. target-size [serious] All touch targets must be 24px large, or leave sufficient space
-   Target has insufficient size because it is obscured
 ```
 
 The node is a control under a sticky header or near a bottom bar, and the
-failure comes and goes with where the page stopped scrolling (a refused form
-that scrolls its first field to the top, a spec that scrolled a little).
+failure comes and goes with where the page stopped scrolling (a form that
+scrolls its first invalid field to the top, a spec that scrolled a little). In
+the raw `accessibilityScan` result, the node's message reads "Target has
+insufficient size because it is partially obscured".
 
 **When:** a bar is `position: sticky` or `fixed` (a form's actions bar at the
 bottom, as `@nxgt/material` 2.20 does on `[data-slot="form-actions"]`, or an
