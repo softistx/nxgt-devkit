@@ -26,6 +26,36 @@ test('settled waits for a transition to end', async ({ page }) => {
 	).toBe('1');
 });
 
+test('settled waits for a view transition whose animations have not started yet', async ({
+	page,
+}) => {
+	// The update callback takes 200ms (a framework rendering the new state):
+	// until it resolves, the transition is active but has no animation yet.
+	await page.setContent(
+		`<style>::view-transition-old(root),::view-transition-new(root){animation-duration:400ms}</style><p id="state">Old</p>`,
+	);
+	test.skip(
+		!(await page.evaluate(() => 'startViewTransition' in document)),
+		'no view transitions in this browser',
+	);
+	await page.evaluate(() => {
+		document.startViewTransition(async () => {
+			await new Promise((r) => setTimeout(r, 200));
+			(document.getElementById('state') as HTMLElement).textContent = 'New';
+		});
+	});
+	await settled(page);
+	expect(
+		await page.evaluate(() => ({
+			state: document.getElementById('state')?.textContent,
+			active:
+				(document as Document & { activeViewTransition?: unknown })
+					.activeViewTransition ?? null,
+			animations: document.getAnimations().length,
+		})),
+	).toEqual({ state: 'New', active: null, animations: 0 });
+});
+
 test('settled leaves an infinite animation running', async ({ page }) => {
 	await page.setContent(`<style>@keyframes spin{to{transform:rotate(1turn)}}</style>
 <div style="animation:spin 1s linear infinite">Spinner</div>`);
