@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.9.7
+
+### Patch Changes
+
+- [#88](https://github.com/softistx/nxgt-devkit/pull/88) [`382b6bc`](https://github.com/softistx/nxgt-devkit/commit/382b6bcacdb9c9e59d010d6ce1d68779a2ed453e) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `settled(page)` waits for the active view transition (`document.activeViewTransition`, where the browser exposes it) before the document's animations: a transition started by React's `<ViewTransition>` or `document.startViewTransition` creates its `::view-transition-*` animations only once the new state is rendered, so `settled` used to resolve before them, and a screenshot showed the old and new content on top of each other. A transition that starts while it waits is awaited too, up to ten in a row; one whose update never resolves is awaited only until the browser aborts it.
+
 ## 0.9.6
 
 ### Patch Changes
