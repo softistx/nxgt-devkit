@@ -100,6 +100,7 @@ Nothing is planned yet.
   needs nothing from the app and `elementHydrated` for late elements. 0.3.0.
 - **Settled-page waits and toasts** — `nextFrames`, `settled` (finite
   animations and transitions ended), `toastsGone` and `isMobileProject`. 0.3.0.
+  `settled` awaits the active view transition first. 0.9.7.
 - **Inner-scroller check** — `expectNoHorizontalScroll` takes a `scroller`, so
   an app shell whose `main` scrolls sideways is caught. 0.3.0.
 - **Full-page screens** — `saveScreen` captures an inner-scrolling app shell

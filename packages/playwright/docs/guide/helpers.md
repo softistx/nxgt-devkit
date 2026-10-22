@@ -112,10 +112,16 @@ function settled(page: Page): Promise<void>;
 
 - `nextFrames` resolves after `count` animation frames. After a render, the
   first frame commits it and the second has run the effects it scheduled.
-- `settled` resolves once every finite CSS animation, CSS transition and Web
-  Animation in the document has ended (`document.getAnimations()`). An
-  infinite one, such as a spinner, is left running; a cancelled one counts as
-  ended.
+- `settled` resolves once the active view transition has finished, then once
+  every finite CSS animation, CSS transition and Web Animation in the document
+  has ended (`document.getAnimations()`). An infinite one, such as a spinner,
+  is left running; a cancelled one counts as ended. A view transition (React's
+  `<ViewTransition>`, `document.startViewTransition`) creates its
+  `::view-transition-*` animations only once the new state is rendered, so
+  `settled` awaits `document.activeViewTransition` first, where the browser
+  exposes it; a transition that starts while it waits is awaited too (up to ten
+  in a row). One whose update never resolves is awaited until the browser
+  aborts it (about 4 s in Chromium and WebKit, 10 s in Firefox).
 
 ```ts
 import { expectAccessible } from '@nxgt/playwright/a11y';

@@ -896,6 +896,28 @@ test('dialog is accessible', async ({ page }) => {
 });
 ```
 
+### A screenshot or scan shows the old and new content on top of each other
+
+Two states of the same area are drawn at once: the button that was clicked and
+the content that replaced it, half transparent.
+
+**When:** right after an action that runs a view transition (React's
+`<ViewTransition>`, `document.startViewTransition`).
+**Why:** a view transition draws a snapshot of the old state over the new one
+until its `::view-transition-*` animations end, and creates those animations
+only once the new state is rendered. Before 0.9.7, `settled` saw no animation
+yet and resolved at once.
+**Fix:** call `settled(page)` after the action, on 0.9.7 or newer: it awaits
+`document.activeViewTransition` first. In a browser that does not expose it,
+wait for the new content before settling.
+
+```ts
+await page.getByRole('button', { name: 'Go' }).click();
+await expect(page.getByText('Done')).toBeVisible();
+await settled(page);
+await page.screenshot({ path: 'done.png' });
+```
+
 ### `expectNoHorizontalScroll` passes on a phone for a page that is clearly too wide
 
 **When:** on a `mobile-chromium` or `mobile-webkit` project.
