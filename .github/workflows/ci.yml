@@ -32,7 +32,8 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
       - name: Lint code
-        run: biome ci
+        # The lockfile's Biome, as locally: `latest` broke lint on a release.
+        run: bunx biome ci
       # Build FIRST: every package's `exports` points at `./dist/*`, so on a
       # clean checkout a sibling import resolves to nothing until it is built.
       - name: Build packages
