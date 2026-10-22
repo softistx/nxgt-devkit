@@ -120,7 +120,8 @@ function settled(page: Page): Promise<void>;
   `::view-transition-*` animations only once the new state is rendered, so
   `settled` awaits `document.activeViewTransition` first, where the browser
   exposes it; a transition that starts while it waits is awaited too (up to ten
-  in a row).
+  in a row). One whose update never resolves is awaited until the browser
+  aborts it (about 4 s in Chromium and WebKit, 10 s in Firefox).
 
 ```ts
 import { expectAccessible } from '@nxgt/playwright/a11y';

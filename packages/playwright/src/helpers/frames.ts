@@ -37,7 +37,10 @@ export async function settled(page: Page): Promise<void> {
 		const active = () =>
 			(
 				document as Document & {
-					activeViewTransition?: { finished: Promise<void> } | null;
+					activeViewTransition?: {
+						finished: Promise<void>;
+						ready: Promise<void>;
+					} | null;
 				}
 			).activeViewTransition ?? null;
 		const animations = () =>
@@ -52,7 +55,19 @@ export async function settled(page: Page): Promise<void> {
 			);
 		// Bounded: a page that chains transitions for ever still resolves.
 		for (let round = 0; round < 10; round++) {
-			await active()?.finished.catch(() => undefined);
+			// `finished` never settles for a transition the browser aborts (an
+			// update callback that never resolves, ~4s): its rejected `ready`
+			// ends the wait.
+			const transition = active();
+			if (transition) {
+				await Promise.race([
+					transition.finished,
+					transition.ready.then(
+						() => transition.finished,
+						() => undefined,
+					),
+				]).catch(() => undefined);
+			}
 			await animations();
 			if (!active()) return;
 		}

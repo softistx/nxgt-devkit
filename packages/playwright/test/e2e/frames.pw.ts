@@ -56,6 +56,29 @@ test('settled waits for a view transition whose animations have not started yet'
 	).toEqual({ state: 'New', active: null, animations: 0 });
 });
 
+test('settled resolves once the browser aborts a transition whose update never resolves', async ({
+	page,
+}) => {
+	await page.setContent('<p>Stuck</p>');
+	test.skip(
+		!(await page.evaluate(() => 'startViewTransition' in document)),
+		'no view transitions in this browser',
+	);
+	await page.evaluate(() => {
+		document.startViewTransition(() => new Promise<void>(() => {}));
+	});
+	const started = Date.now();
+	await settled(page);
+	expect(Date.now() - started).toBeLessThan(8000);
+	expect(
+		await page.evaluate(
+			() =>
+				(document as Document & { activeViewTransition?: unknown })
+					.activeViewTransition ?? null,
+		),
+	).toBeNull();
+});
+
 test('settled leaves an infinite animation running', async ({ page }) => {
 	await page.setContent(`<style>@keyframes spin{to{transform:rotate(1turn)}}</style>
 <div style="animation:spin 1s linear infinite">Spinner</div>`);
