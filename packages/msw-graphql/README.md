@@ -45,7 +45,7 @@ Node server patches the process.
 
 | Subpath | Exports | Needs |
 | --- | --- | --- |
-| `@nxgt/msw-graphql` | `createExecutor`, `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`, `createMockState`, `mockState`, `failure`; types `Executor`, `ExecutorInput`, `ExecutorOptions`, `MockState` | `msw`, `graphql` |
+| `@nxgt/msw-graphql` | `createExecutor`, `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`, `createMockState`, `mockState`, `failure`, `closeStreams`; types `Executor`, `ExecutorInput`, `ExecutorOptions`, `MockState` | `msw`, `graphql` |
 | `@nxgt/msw-graphql/schema` | `buildMockSchema` | + `@graphql-tools/schema`, `@graphql-tools/mock` |
 | `@nxgt/msw-graphql/sdl` | `loadSdl` | nothing |
 | `@nxgt/msw-graphql/browser` | `enableMocking` (msw worker, handlers imported on demand) | `msw`, a browser |

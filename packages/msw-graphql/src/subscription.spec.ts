@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { post, schema } from '../test/schema';
 import { createMockControl } from './control';
+import { GraphQLHttpError } from './errors';
 import { createExecutor } from './executor';
 import { createMockState } from './state';
 
@@ -44,6 +45,24 @@ describe('subscriptions over SSE', () => {
 		expect(text).toContain('{"data":{"flaky":{"text":"one"}}}');
 		expect(text).toContain('"errors":[{"message":"upstream lost"}]');
 		expect(text.endsWith('event: complete\ndata:\n\n')).toBe(true);
+	});
+
+	test('a failing API and a guard answer before any stream', async () => {
+		const state = createMockState();
+		const query = 'subscription { events { type } }';
+		state.failing = 503;
+		const down = await createExecutor({ schema, state })({
+			query,
+			request: post({ query }, SSE),
+		});
+		expect(down.status).toBe(503);
+		state.failing = null;
+		const refused = await createExecutor({
+			schema,
+			state,
+			guard: () => new GraphQLHttpError('no', 401),
+		})({ query, request: post({ query }, SSE) });
+		expect(refused.status).toBe(401);
 	});
 
 	test('validation still answers 400 before any stream', async () => {
