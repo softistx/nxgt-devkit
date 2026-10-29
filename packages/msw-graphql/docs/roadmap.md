@@ -24,6 +24,10 @@ Nothing is parked.
 
 ## Shipped
 
+- **Subscriptions over SSE** — a subscription asked with `Accept: text/event-stream` runs
+  with scripted async-iterator resolvers and answers `next` / `complete`
+  events, a refusal before the stream with a real status, an error payload
+  mid-stream; `control.reset()` and `closeStreams` end live streams.
 - **`startMockServer` on msw 3 under Bun** (0.3.0) — it patches
   `globalThis.fetch` and answers with msw's public `getResponse` (shared with
   `createMockFetch`) where `setupServer` intercepts nothing, with the same

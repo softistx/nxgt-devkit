@@ -1,4 +1,5 @@
 import { type MockState, mockState } from '../state';
+import { closeStreams } from '../subscription';
 import { handleControl } from './handle';
 import { type Override, overrideHandler, overrideProblem } from './override';
 import { isProduction, UnknownScenarioError } from './shared';
@@ -45,11 +46,12 @@ export function createMockControl(options: MockControlOptions) {
 			return state.failing;
 		},
 		/**
-		 * Back to the start: no forced failure, the initial handlers, then the
+		 * Back to the start: no forced failure, no live event stream, the initial handlers, then the
 		 * app's own reset — nothing else (its sessions, say, are its business).
 		 */
 		async reset() {
 			state.failing = null;
+			closeStreams(state);
 			server.resetHandlers();
 			await options.reset?.();
 		},

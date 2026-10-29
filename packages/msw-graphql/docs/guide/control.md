@@ -57,7 +57,7 @@ await control.reset();
 
 | Method | Effect |
 | --- | --- |
-| `reset()` | `failing = null`, `server.resetHandlers()` (drops overrides), then your `reset`. Nothing else: sessions, say, are the app's business |
+| `reset()` | `failing = null`, ends live SSE streams, `server.resetHandlers()` (drops overrides), then your `reset`. Nothing else: sessions, say, are the app's business |
 | `fail(status \| null)` | While set, the executor answers that status first ([order](executor.md#the-order)) |
 | `scenario(name, args?)` | Runs `scenarios[name](args)`. Throws `UnknownScenarioError` (`No scenario "x". Registered: empty, remove.`) for an unregistered name |
 | `override(...overrides)` | A static answer per operation, until the next reset. Throws `TypeError` for an invalid one |

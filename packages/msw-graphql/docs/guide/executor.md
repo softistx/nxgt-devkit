@@ -46,8 +46,9 @@ Each call goes through these steps, and the first that answers ends it:
 3. **Parse**: a syntax error answers `400` with `{ errors }`.
 4. **Validate**: validation errors against the schema answer `400`.
 5. **Execute**, with the `context`.
-6. **Status**: the first error with an `extensions.http.status` number sets the HTTP status; otherwise `200`, even with `errors` (as GraphQL servers do).
-7. The result is round-tripped through JSON, so the client reads exactly what was serialised.
+6. **Subscription**: a subscription asked with `Accept: text/event-stream` is served as a stream instead (see [Subscriptions over SSE](#subscriptions-over-sse)).
+7. **Status**: the first error with an `extensions.http.status` number sets the HTTP status; otherwise `200`, even with `errors` (as GraphQL servers do).
+8. The result is round-tripped through JSON, so the client reads exactly what was serialised.
 
 `graphqlEndpoint` sits in front: a body that is not JSON, or has no `query`
 string, answers `400` before the executor runs.
@@ -112,6 +113,66 @@ const resolvers = {
 
 A plain `Error` thrown in a resolver is an ordinary GraphQL error: `200` with
 `errors`, since it names no status.
+
+## Subscriptions over SSE
+
+A subscription sent with `Accept: text/event-stream` is executed with
+graphql-js `subscribe` and answered in the graphql-sse "distinct connections"
+format, the one GraphQL Yoga serves (what `@nxgt/graphql-client`'s
+`useSubscription` and `@alxia/react-router`'s `createSubscriptionProxy` read):
+
+```
+event: next
+data: {"data":{"events":{"type":"delta","text":"hi"}}}
+
+event: complete
+data:
+```
+
+A test scripts the stream with the schema's resolvers, an async generator (or
+any async iterable) per subscription field. Without `resolve`, the yielded
+object is keyed by the field name, as graphql-js defaults:
+
+```ts
+import { GraphQLHttpError } from '@nxgt/msw-graphql';
+import { buildMockSchema } from '@nxgt/msw-graphql/schema';
+
+const schema = buildMockSchema({
+	typeDefs: `
+		type Event { type: String!, text: String }
+		type Query { ping: String }
+		type Subscription { events: Event! }
+	`,
+	resolvers: {
+		Subscription: {
+			events: {
+				subscribe: async function* () {
+					yield { events: { type: 'delta', text: 'hi' } };
+					yield { events: { type: 'delta', text: ' there' } };
+					// Falling off the end sends `complete`.
+				},
+			},
+		},
+	},
+});
+```
+
+| Script | Answer |
+| --- | --- |
+| Yield values, then return | One `next` event each, then `complete` |
+| `subscribe` throws before the stream (`throw new GraphQLHttpError('rate-limited', 429, { http: { status: 429, headers: { 'retry-after': '30' } } })`) | No stream: a JSON `{ errors }` with that real HTTP status, and the headers named in `extensions.http.headers` |
+| The iterator throws mid-stream | A last `next` event `{ errors: [...] }`, then `complete` |
+| A resolver error on one event | That event's `next` carries `{ data, errors }`; the stream goes on |
+| The client aborts, or `control.reset()` / `closeStreams(state)` runs | The iterator is returned (`finally` blocks run) and the stream ends cleanly |
+
+The guard, `failing` and the context apply as for any operation, and an
+invalid subscription is still a `400`. Streams are tracked in
+`state.streams`; `control.reset()` ends every live one, so a test starts clean.
+`closeStreams(state?)` does it alone (`import { closeStreams, mockState }`).
+A generator parked on a never-settling `await` cannot return until it
+settles: make waits abortable, or script them with `setTimeout`.
+
+A subscription sent without the event-stream `Accept` is not streamed.
 
 ## Calling it without msw
 
