@@ -9,7 +9,7 @@ import {
 import type { MockState } from './state';
 
 /** A running event stream the mocks can end: see {@link closeStreams}. */
-export type MockStream = { close: () => void };
+export type MockStream = { close: () => void; scope?: string };
 
 const encoder = new TextEncoder();
 
@@ -62,6 +62,8 @@ type Options = {
 	context: unknown;
 	request: Request;
 	state: MockState;
+	/** The mock scope of the call; its streams are ended by that scope's reset. */
+	scope?: string;
 	/** The HTTP status of a refusal, from the errors. */
 	statusOf: (errors: ReadonlyArray<GraphQLError> | undefined) => number;
 };
@@ -115,7 +117,7 @@ export async function serveSubscription(options: Options): Promise<Response> {
 			// Already closed by the consumer's cancel.
 		}
 	};
-	stream = { close: finish };
+	stream = { close: finish, scope: options.scope };
 
 	const body = new ReadableStream<Uint8Array>({
 		start(c) {
@@ -169,6 +171,7 @@ export async function serveSubscription(options: Options): Promise<Response> {
  * and the clients read a clean end of stream. The control's `reset()` calls it,
  * so a test starts from no live stream.
  */
-export function closeStreams(state: MockState): void {
-	for (const stream of [...state.streams]) stream.close();
+export function closeStreams(state: MockState, scope?: string): void {
+	for (const stream of [...state.streams])
+		if (scope === undefined || stream.scope === scope) stream.close();
 }

@@ -93,6 +93,67 @@ by the name of the query's only operation (a document with several operations
 and none selected matches nothing). It stands aside while the API is failing. Later overrides
 are consulted first.
 
+## Mock scopes
+
+The mocks are process-global, so two Playwright workers sharing one app server
+reset each other's overrides and forced failures. A **scope** keeps them apart:
+a short token (1-64 characters of letters, digits and `_ . : -`, in practice a
+worker index) under which the control keeps its own forced failure, overrides
+and event streams. Off by default; nothing changes until a call carries a scope.
+
+```ts
+const mine = control.scope('1');   // the same methods, acting on scope "1" only
+mine.fail(503);                    // only calls of scope "1" answer 503
+mine.override({ operationName: 'GetStudents', data: { students: [] } });
+await mine.scenario('remove', { id: '1' });
+await mine.reset();                // scope "1" only; the others are untouched
+mine.failing;                      // number | null
+```
+
+`control.scope(id)` returns `reset`, `fail`, `scenario`, `override` and
+`failing` (type `MockControlMethods`) and throws a `TypeError` for an invalid
+id. A scoped reset clears that scope's failure, overrides and streams, then
+calls your `reset` with `{ scope }`; a scoped scenario is called with
+`(args, { scope })`. Unscoped calls pass no extra argument, as before. Your
+reseed must key its data by `context.scope` for the scopes to be independent;
+the control cannot know your data. An unscoped `reset()` clears every scope. A
+global `fail()` still reaches every scope.
+
+**Which scope does an API call have?** The executor and the override handlers
+take it from `withScope`, else from an `x-mock-scope` header on the API request
+itself. The app's server receives the header on the browser's request, so it
+forwards it once, around the code that makes its API calls:
+
+```ts
+import { scopeOf, withScope } from '@nxgt/msw-graphql';
+
+export async function fetch(request: Request) {
+	const response = await control.handle(request); // scoped by the header
+	if (response) return response;
+	return withScope(scopeOf(request), () => app.fetch(request));
+}
+```
+
+| Export | Effect |
+| --- | --- |
+| `scopeOf(request)` | The valid `x-mock-scope` of a request, else `undefined` |
+| `withScope(scope, fn)` | Runs `fn` with `scope` current, across awaits (an `AsyncLocalStorage`); `undefined` runs `fn` as is. Without `AsyncLocalStorage` (a browser) it just runs `fn` |
+| `currentScope()` | The scope `withScope` set, if any |
+| `SCOPE_HEADER` | `'x-mock-scope'` |
+
+Two rules follow from this. `withScope(undefined, fn)` inside an outer
+`withScope` keeps the outer scope; it never clears it. And the scope `withScope`
+set wins over an `x-mock-scope` header on the API request itself.
+
+**Reset through the control.** A scope's override handler is registered with the
+server once. If your app calls `server.resetHandlers()` itself, outside the
+control's `reset`, that handler is dropped and the scope's overrides stop
+answering; reset through `control.reset()` or `control.scope(id).reset()`.
+
+`@nxgt/playwright`'s `createMockServerTest(base, { scope: true })` sends the
+header with the worker index; see its
+[mock-server guide](../../../playwright/docs/guide/mock-server.md#parallel-workers-the-scope-option).
+
 ## Over HTTP
 
 `control.handle(request)` is a Fetch API handler: `Request -> Promise<Response | null>`.
@@ -119,7 +180,8 @@ A custom `path` must match the mount and the client's.
 ### Routes
 
 All are `POST <path>/<route>` with `Content-Type: application/json`, even when the body is empty (`reset`
-sends `{}`). Any other POST is a `415`.
+sends `{}`). Any other POST is a `415`. An `x-mock-scope` header scopes the call
+([mock scopes](#mock-scopes)); an invalid one is a `400`, never a global call.
 
 | Route | Body | Effect |
 | --- | --- | --- |

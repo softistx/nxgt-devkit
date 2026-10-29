@@ -8,5 +8,11 @@ export {
 	type ExecutorOptions,
 	failure,
 } from './executor';
+export {
+	currentScope,
+	SCOPE_HEADER,
+	scopeOf,
+	withScope,
+} from './scope';
 export { createMockState, type MockState, mockState } from './state';
 export { closeStreams } from './subscription';

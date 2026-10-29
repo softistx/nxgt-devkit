@@ -258,11 +258,46 @@ hit one app server. In this repository the mock-server spec failed 11 of 18
 when run in parallel with the other specs.
 **Why:** server mocks (`fail`, `scenario`, `use`, the reset around each test)
 are process-global; workers overwrite one another.
-**Fix:** run those projects with one worker, or give each worker its own server:
+**Fix:** scope the mocks per worker (`@nxgt/msw-graphql` 0.5 with `@nxgt/playwright`'s
+`createMockServerTest(base, { scope: true })`, see
+[mock scopes](guide/control.md#mock-scopes)), or run those projects with one worker:
 
 ```ts
 // playwright.config.ts
 export default defineConfig({ workers: 1, fullyParallel: false });
+```
+
+## Parallel workers still trample each other's mocks
+
+**When:** the Playwright fixture sends `scope: true`, yet one worker's `fail`,
+`use` or reset still shows up in another worker's pages.
+**Why:** a scope separates what the control and the executor see; they find it
+only on the call. The app's server must forward the incoming request's scope to
+its API calls, and the app's own reseed must key its data by scope.
+**Fix:** wrap the app's request handling in `withScope(scopeOf(request), …)` and
+read `context?.scope` in `reset` and in the scenarios. See
+[mock scopes](guide/control.md#mock-scopes). An `x-mock-scope` header that is
+not 1-64 characters of letters, digits and `_ . : -` is a `400` from the control.
+
+## A scope's overrides stop answering after `server.resetHandlers()`
+
+**When:** `control.scope(id).override(...)` worked, then answers fall back to
+the real handlers after the app called `server.resetHandlers()` itself.
+**Why:** the scope's override handler is registered with the server once;
+`server.resetHandlers()` called outside the control drops it.
+**Fix:** reset through the control (`control.reset()` or
+`control.scope(id).reset()`), and call `override` again after any reset you
+make on the server directly. See [mock scopes](guide/control.md#mock-scopes).
+
+## `A mock scope is 1-64 characters of letters, digits and _ . : - (got "...")`
+
+**When:** `control.scope(id)` throws a `TypeError` with this message.
+**Why:** the id is empty, longer than 64 characters, or holds a character
+outside letters, digits and `_ . : -` (a `/` or a space, for instance).
+**Fix:** pass a short token such as a worker index or a test id:
+
+```ts
+const mine = control.scope(String(workerIndex)); // not control.scope('a/b')
 ```
 
 ## My second `startMockServer` call's handlers or options are ignored

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { bypass, HttpResponse, http, passthrough } from 'msw';
 import { schema } from '../../test/schema';
 import { bearerToken, createExecutor, graphqlEndpoint } from '../index';
+import { withScope } from '../scope';
 import { createMockState } from '../state';
 import { createMockFetch } from './index';
 
@@ -226,4 +227,24 @@ test('Bun’s extra options reach the fallback of a bypass and of an unhandled r
 		await real.stop(true);
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+test('mock scopes: withScope reaches the handlers of concurrent calls', async () => {
+	const { fetch, control } = setup();
+	control.scope('1').fail(503);
+	control.scope('2').override({ operationName: 'W', data: { whoami: 'two' } });
+	const ask = (scope: string) =>
+		withScope(scope, async () => {
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			return query(fetch, 'query W { whoami }');
+		});
+	const [one, two, none] = await Promise.all([
+		ask('1'),
+		ask('2'),
+		query(fetch, 'query W { whoami }'),
+	]);
+	expect(one.status).toBe(503);
+	expect(await two.json()).toEqual({ data: { whoami: 'two' } });
+	expect(none.status).toBe(200);
+	expect((await none.json()).data.whoami).toBe('t1');
 });

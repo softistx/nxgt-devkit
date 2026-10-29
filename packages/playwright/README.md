@@ -611,7 +611,11 @@ test.describe('forbidden', () => {
 ```
 
 The mocks are reset before and after every test. They are process-global:
-run these specs with `workers: 1`. See [docs/guide/mock-server.md](docs/guide/mock-server.md).
+run these specs with `workers: 1`, or scope them per worker with
+`createMockServerTest(base, { scope: true })`: the control calls, the `page` and
+the `request` then carry `x-mock-scope: <workerIndex>`, and an app whose control
+keeps a state per scope (`@nxgt/msw-graphql`'s `control.scope`, `withScope`)
+runs with `workers > 1`. See [docs/guide/mock-server.md](docs/guide/mock-server.md#parallel-workers-the-scope-option).
 
 ### Mail links (Mailpit)
 
@@ -692,8 +696,9 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 - **`auth.setup.ts` belongs in `playwright/config/`** — the `setup` project
   looks only there — and `playwright/.auth/` holds live session cookies:
   add it to `.gitignore`.
-- **Server mocks are global to the app's server**: specs using `mockServer`
-  or `serverMocks` run with `workers: 1` (`overrides: { workers: 1, fullyParallel: false }`).
+- **Server mocks are global to the app's server** unless `scope: true`: specs
+  using `mockServer` or `serverMocks` run with `workers: 1`
+  (`overrides: { workers: 1, fullyParallel: false }`) or with a scoped fixture.
 - **`test.use({ handlers })` replaces the default handlers**; to add one, use
   `network.use(...)` or spread the defaults after it.
 - **`mobile` adds projects, it does not filter `browsers`**: `browsers: ['firefox'], mobile: true`

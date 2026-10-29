@@ -1,3 +1,4 @@
+import { SCOPE_HEADER, scopeOf } from '../scope';
 import type { MockControl } from './index';
 import { isHttpStatus, type Override, overrideProblem } from './override';
 import { isProduction, UnknownScenarioError } from './shared';
@@ -45,6 +46,15 @@ export async function handleControl(
 			return error('The body is not JSON.', 400);
 		}
 	}
+	// An invalid scope is refused: treating it as none would reset every scope.
+	const scoped = request.headers.has(SCOPE_HEADER);
+	const scope = scopeOf(request);
+	if (scoped && scope === undefined)
+		return error(
+			`\`${SCOPE_HEADER}\` must be 1-64 characters of letters, digits and _ . : -.`,
+			400,
+		);
+	const target = scope === undefined ? control : control.scope(scope);
 	const fields = (isRecord(body) ? body : {}) as Record<string, unknown>;
 
 	try {
@@ -55,23 +65,23 @@ export async function handleControl(
 						'`status` must be an HTTP status (100-599) or null.',
 						400,
 					);
-				control.fail(fields.status);
+				target.fail(fields.status);
 				break;
 			case 'scenario':
 				if (typeof fields.name !== 'string')
 					return error('`name` must be a string.', 400);
-				await control.scenario(fields.name, fields.args);
+				await target.scenario(fields.name, fields.args);
 				break;
 			case 'override': {
 				const list: unknown[] = Array.isArray(body) ? body : [body];
 				const problem = list.map(overrideProblem).find(Boolean);
 				if (problem) return error(problem, 400);
 				// overrideProblem has checked each entry against `Override`.
-				control.override(...(list as Override[]));
+				target.override(...(list as Override[]));
 				break;
 			}
 			default:
-				await control.reset();
+				await target.reset();
 		}
 	} catch (cause) {
 		if (cause instanceof UnknownScenarioError) return error(cause.message, 404);

@@ -38,6 +38,10 @@ Nothing is planned yet.
 
 ## Shipped
 
+- **Per-worker mock scope** — `createMockServerTest(base, { scope: true })` sends
+  `x-mock-scope: <workerIndex>` on the control calls and on the page and request
+  traffic, so specs that use `mockServer` can run with more than one worker
+  against an app whose control keeps a state per scope.
 - **Tap targets measure the real hit area** — `expectTapTargets` (and
   `checkScreen`'s `tapTargets`) no longer flags a small checkbox, switch or
   close button whose invisible 44px `::before` / `::after` fills the square: it

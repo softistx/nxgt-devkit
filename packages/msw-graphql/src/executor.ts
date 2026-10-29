@@ -7,7 +7,8 @@ import {
 	validate,
 } from 'graphql';
 import type { GraphQLHttpError } from './errors';
-import { type MockState, mockState } from './state';
+import { scopeOfCall } from './scope';
+import { failingFor, type MockState, mockState } from './state';
 import {
 	isSubscription,
 	serveSubscription,
@@ -92,7 +93,9 @@ export function createExecutor<TContext = unknown>(
 	const { schema, context, guard, state = mockState } = options;
 
 	return async ({ query, variables, operationName, request }) => {
-		if (state.failing !== null) return failure(state.failing);
+		const scope = scopeOfCall(request);
+		const failing = failingFor(state, scope);
+		if (failing !== null) return failure(failing);
 
 		const refused = await guard?.(request);
 		if (refused) {
@@ -119,6 +122,7 @@ export function createExecutor<TContext = unknown>(
 				context: contextValue,
 				request,
 				state,
+				scope,
 				statusOf,
 			});
 		}

@@ -64,6 +64,7 @@ function createMockServerTest<T extends PlaywrightTestArgs & PlaywrightTestOptio
 | Option | Type | Default | Effect |
 | --- | --- | --- | --- |
 | `path` (of `createMockServerTest`) | `string` | `/__mocks` | Where the app mounts the control. A trailing `/` is dropped. |
+| `scope` (of `createMockServerTest`) | `boolean` | `false` | Send `x-mock-scope: <workerIndex>` so workers do not share mocks, see [below](#parallel-workers-the-scope-option). |
 | `serverMocks` (a test option) | `ServerOverride[]` | `[]` | Overrides applied before each test, see below. |
 
 `mockServer` is an automatic fixture: every test of the extended `test` gets
@@ -182,7 +183,36 @@ control on the app side, in Hono, Elysia or a plain fetch handler, is
 `@nxgt/msw-graphql`'s `createMockControl`; the control answers 404 in production
 (`NODE_ENV=production` or `import.meta.env.PROD`), so a production build never obeys a spec.
 
+## Parallel workers: the `scope` option
+
+```ts
+export const test = createMockServerTest(base, { scope: true });
+```
+
+With `scope: true`, the fixture sends `x-mock-scope: <workerIndex>` on its
+control calls (`reset`, `fail`, `scenario`, `override`) and, through
+`extraHTTPHeaders`, on every request of the `page` and the `request` fixture.
+Each worker then has its own forced failure, overrides and streams on the
+server, and one worker's reset leaves the others untouched. Other
+`extraHTTPHeaders` of the project are kept. Off by default: without it nothing is
+sent and the mocks stay process-global.
+
+The server must cooperate. With `@nxgt/msw-graphql`, `control.handle` reads the
+header, and the app forwards the scope from its incoming request to its API
+calls with `withScope(scopeOf(request), …)`; its `reset` and scenarios receive
+`{ scope }` to reseed per scope. See
+the ["Mock scopes" section](https://github.com/softistx/nxgt-devkit/blob/develop/packages/msw-graphql/docs/guide/control.md#mock-scopes) of `@nxgt/msw-graphql`'s control guide. An app
+that mounts the same four routes by hand must read the header itself.
+
+Two cautions. `extraHTTPHeaders` reaches **every** request of the page,
+cross-origin ones included, and a custom header makes those preflighted: if a
+third-party origin refuses it, keep `scope` off for that project. And the scope
+is the worker index, so tests of one worker still run one after another against
+their scope: this isolates workers, not the tests of one worker.
+
 ## One worker: `workers: 1`
+
+Without `scope: true`:
 
 The mocks live in **one** server process and are global to it. Two tests
 running at once against the same server change each other's mocks (one
@@ -206,7 +236,7 @@ Measured in this repository: the contract spec run in parallel with the other
 specs against one server failed 11 of 18; with `workers: 1` it passes, which is
 why it has a config of its own.
 
-To keep parallelism, give each worker its own server on its own port
+To keep parallelism, use the `scope` option above, or give each worker its own server on its own port
 (one `webServer` per port, and a `baseURL` chosen from
 `testInfo.parallelIndex` in a worker-scoped fixture) so no two tests share a
 process. Only the one-worker rule is covered by this package's tests.
