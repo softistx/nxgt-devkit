@@ -170,3 +170,82 @@ describe('mailpit().latest and clear', () => {
 		await expect(mailpit().clear()).rejects.toThrow('500');
 	});
 });
+
+describe('mailpit() link extraction and requests', () => {
+	const one =
+		(html: string, text = '') =>
+		(url: string) =>
+			url.includes('/search')
+				? json({ messages: [{ ID: 'm' }] })
+				: json(mail('m', html, text));
+
+	test('strips trailing punctuation from a bare URL', async () => {
+		stub(one('', 'Open https://app.test/reset?t=1.'));
+		expect(
+			await mailpit().waitForLink({ to: 'a@b.test', match: /reset/ }),
+		).toBe('https://app.test/reset?t=1');
+	});
+
+	test('decodes numeric entities', async () => {
+		stub(one('<a href="http://app.test/c?a=1&#38;b=2&#x26;c=3">x</a>'));
+		expect(
+			await mailpit().waitForLink({ to: 'a@b.test', match: /\/c\?/ }),
+		).toBe('http://app.test/c?a=1&b=2&c=3');
+	});
+
+	test('reads a single-quoted href', async () => {
+		stub(one("<a href='http://app.test/s?x=1'>x</a>"));
+		expect(
+			await mailpit().waitForLink({ to: 'a@b.test', match: /\/s\?/ }),
+		).toBe('http://app.test/s?x=1');
+	});
+
+	test('a mailto: link is ignored unless the pattern asks for it', async () => {
+		stub(
+			one(
+				'<a href="mailto:help@app.test">h</a><a href="http://app.test/ok">k</a>',
+			),
+		);
+		expect(
+			await mailpit().waitForLink({ to: 'a@b.test', match: /^http/ }),
+		).toBe('http://app.test/ok');
+		expect(
+			await mailpit().waitForLink({ to: 'a@b.test', match: /^mailto:/ }),
+		).toBe('mailto:help@app.test');
+	});
+
+	test('escapes a quote in the address', async () => {
+		const seen = stub(() => json({ messages: [] }));
+		await mailpit().latest({ to: 'a"b@c.test' });
+		expect(decodeURIComponent(seen.urls[0]?.split('query=')[1] ?? '')).toBe(
+			'to:"a\\"b@c.test"',
+		);
+	});
+
+	test('latest copes with a missing Created', async () => {
+		stub((url) =>
+			url.includes('/search')
+				? json({ messages: [{ ID: 'x' }, { ID: 'y' }] })
+				: json(mail(url.endsWith('/x') ? 'x' : 'y', '')),
+		);
+		expect((await mailpit().latest({ to: 'a@b.test' }))?.id).toBe('x');
+	});
+
+	test('each request carries an abort signal, so a hung Mailpit cannot outlast the timeout', async () => {
+		const signals: (AbortSignal | undefined | null)[] = [];
+		globalThis.fetch = ((_url: unknown, init?: RequestInit) => {
+			signals.push(init?.signal);
+			return new Promise<Response>((_resolve, reject) =>
+				init?.signal?.addEventListener('abort', () =>
+					reject(init.signal?.reason),
+				),
+			);
+		}) as typeof fetch;
+		const started = Date.now();
+		await expect(
+			mailpit().waitForLink({ to: 'a@b.test', match: /x/, timeout: 50 }),
+		).rejects.toBeDefined();
+		expect(Date.now() - started).toBeLessThan(1000);
+		expect(signals[0]).toBeInstanceOf(AbortSignal);
+	});
+});

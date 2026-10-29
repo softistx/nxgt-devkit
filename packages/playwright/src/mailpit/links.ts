@@ -7,11 +7,18 @@ const ENTITIES: Record<string, string> = {
 	'&gt;': '>',
 };
 
-/** Decodes the few entities an HTML attribute carries, `&amp;` first among them. */
+/** Decodes the entities an HTML attribute carries: `&amp;`, a few named ones and numeric ones (`&#38;`, `&#x26;`). */
 export function decodeEntities(text: string): string {
 	return text.replace(
-		/&(?:amp|quot|lt|gt|#39|#x27);/gi,
-		(entity) => ENTITIES[entity.toLowerCase()] ?? entity,
+		/&(?:#x([0-9a-f]+)|#(\d+)|[a-z]+);/gi,
+		(entity, hex?: string, dec?: string) => {
+			if (hex === undefined && dec === undefined)
+				return ENTITIES[entity.toLowerCase()] ?? entity;
+			const code = hex === undefined ? Number(dec) : Number.parseInt(hex, 16);
+			return Number.isInteger(code) && code >= 0 && code <= 0x10ffff
+				? String.fromCodePoint(code)
+				: entity;
+		},
 	);
 }
 
@@ -23,7 +30,7 @@ export function linksOf(html: string, text: string): string[] {
 	}
 	for (const body of [html, text]) {
 		for (const m of body.matchAll(/https?:\/\/[^\s"'<>)\]]+/gi)) {
-			links.push(decodeEntities(m[0]));
+			links.push(decodeEntities(m[0]).replace(/[.,;:!?]+$/, ''));
 		}
 	}
 	return links;

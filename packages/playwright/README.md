@@ -3,7 +3,7 @@
 The Playwright boilerplate every app ends up writing, written once: a shared
 `playwright.config.ts`, `BasePage` and `FormPage` page objects, sign-in and
 storage-state fixtures, msw network fixtures, a driver for the mocks of an
-SSR app's server, navigation and fills that wait
+SSR app's server, links read from a local Mailpit, navigation and fills that wait
 for hydration, waits for a page at rest, axe accessibility checks, phone
 projects and a no-sideways-scroll check, full-page screens of every state,
 PWA specs against a production build (offline, a new worker version, what the
@@ -632,7 +632,7 @@ test('confirms the address', async ({ page }) => {
 });
 ```
 
-`waitForLink` returns the first matching link of the newest message to that
+`waitForLink` returns the first link `match` accepts, newest message first, for that
 address, absolute and with `&amp;` decoded, and throws a message naming the
 address and the pattern on timeout. See [docs/guide/mailpit.md](docs/guide/mailpit.md).
 

@@ -779,7 +779,7 @@ Or give each worker a server of its own on its own port.
 For example `Mailpit GET http://localhost:8025/api/v1/search?query=… answered 404`
 (or `DELETE …/api/v1/messages answered …` from `clear()`).
 
-**When:** any call of `mailpit()`.
+**When:** any method of the object `mailpit()` returns.
 **Why:** the URL is the one that was called. A 404 usually means `url` points
 at something that is not Mailpit's HTTP port (8025 is the web and API port,
 1025 is SMTP), or at a Mailpit older than API v1. 401 or 403: Mailpit runs with

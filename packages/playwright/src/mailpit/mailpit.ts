@@ -1,4 +1,5 @@
-import { firstLink, linksOf } from './links';
+import { createClient } from './client';
+import { firstLink } from './links';
 
 export type MailpitOptions = {
 	/** The Mailpit HTTP address. Default `process.env.E2E_MAILPIT_URL`, then `http://localhost:8025`. */
@@ -34,14 +35,6 @@ export type Mailpit = {
 	clear(): Promise<void>;
 };
 
-type SearchResult = { messages?: { ID: string; Created?: string }[] };
-type MessageResult = {
-	ID: string;
-	Subject?: string;
-	HTML?: string;
-	Text?: string;
-};
-
 const sleep = (ms: number) =>
 	new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -51,57 +44,19 @@ export function mailpit(options: MailpitOptions = {}): Mailpit {
 		process.env.E2E_MAILPIT_URL ??
 		'http://localhost:8025'
 	).replace(/\/+$/, '');
-
-	async function call(path: string, init?: RequestInit): Promise<Response> {
-		const url = `${base}${path}`;
-		const res = await fetch(url, init);
-		if (!res.ok)
-			throw new Error(
-				`Mailpit ${init?.method ?? 'GET'} ${url} answered ${res.status}`,
-			);
-		return res;
-	}
-
-	async function idsTo(to: string): Promise<string[]> {
-		const query = encodeURIComponent(`to:"${to}"`);
-		const found = (await (
-			await call(`/api/v1/search?query=${query}`)
-		).json()) as SearchResult;
-		// The search lists the newest first; sort anyway so a reordering never returns a stale link.
-		return [...(found.messages ?? [])]
-			.sort(
-				(a, b) =>
-					(Date.parse(b.Created ?? '') || 0) -
-					(Date.parse(a.Created ?? '') || 0),
-			)
-			.map((m) => m.ID);
-	}
-
-	async function read(id: string): Promise<MailpitMessage> {
-		const m = (await (
-			await call(`/api/v1/message/${encodeURIComponent(id)}`)
-		).json()) as MessageResult;
-		const html = m.HTML ?? '';
-		const text = m.Text ?? '';
-		return {
-			id: m.ID,
-			subject: m.Subject ?? '',
-			html,
-			text,
-			links: linksOf(html, text),
-		};
-	}
+	const { call, idsTo, read } = createClient(base);
 
 	return {
 		async waitForLink({ to, match, timeout = 15_000, interval = 250 }) {
 			const deadline = Date.now() + timeout;
+			const left = () => deadline - Date.now();
 			for (;;) {
-				for (const id of await idsTo(to)) {
-					const message = await read(id);
+				for (const id of await idsTo(to, left())) {
+					const message = await read(id, left());
 					const link = firstLink(message.html, message.text, match, base);
 					if (link) return link;
 				}
-				if (Date.now() + interval > deadline) {
+				if (left() < interval) {
 					throw new Error(
 						`No mail to ${to} with a link matching ${match} reached Mailpit at ${base} within ${timeout} ms`,
 					);
