@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.10.0
+
+### Minor Changes
+
+- [#100](https://github.com/softistx/nxgt-devkit/pull/100) [`e62ec6a`](https://github.com/softistx/nxgt-devkit/commit/e62ec6aa851d1c743ce6cde4cf2e7d133397ddc8) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `@nxgt/playwright/mailpit`: `mailpit({ url })` reads mail from a local Mailpit in e2e tests. `waitForLink({ to, match, timeout, interval })` polls the newest message to an address until a link matching the pattern appears and returns it absolute (`&amp;` decoded), `latest({ to })` returns the newest message and its links, `clear()` empties the inbox. The URL defaults to `E2E_MAILPIT_URL`, then `http://localhost:8025`. It uses `fetch` only: no new dependency and no peer.
+
 ## 0.9.7
 
 ### Patch Changes
