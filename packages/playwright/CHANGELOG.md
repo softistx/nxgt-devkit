@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.11.0
+
+### Minor Changes
+
+- [#103](https://github.com/softistx/nxgt-devkit/pull/103) [`5b3fef1`](https://github.com/softistx/nxgt-devkit/commit/5b3fef1d1d0f9bf7502967247322470053bc5114) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `createMockServerTest(base, { scope: true })` scopes the server mocks to the worker. The `mockServer` control calls (`reset`, `fail`, `scenario`, `override`) and the `page` and `request` traffic (through `extraHTTPHeaders`) carry `x-mock-scope: <workerIndex>`, so specs that use `mockServer` or `serverMocks` can run with `workers > 1` against an app whose control keeps a state per scope (`@nxgt/msw-graphql` 0.5). Off by default: without the option nothing is sent and the fixture is unchanged.
+
 ## 0.10.0
 
 ### Minor Changes
