@@ -1,7 +1,7 @@
 {
 	"name": "@nxgt/playwright",
 	"version": "0.9.7",
-	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, hydration-aware navigation and fills, settled-page waits, axe accessibility checks, Content-Security-Policy checks (refusal guard, nonce on every script), phone projects, full-page screens, PWA specs against a production build (offline, worker updates, cache checks), and Storybook stories as Vitest browser tests with preview capture",
+	"description": "The Playwright boilerplate every app repeats, written once: a shared config, BasePage and FormPage, login and storage-state fixtures, msw network fixtures, mail links read from a local Mailpit, hydration-aware navigation and fills, settled-page waits, axe accessibility checks, Content-Security-Policy checks (refusal guard, nonce on every script), phone projects, full-page screens, PWA specs against a production build (offline, worker updates, cache checks), and Storybook stories as Vitest browser tests with preview capture",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -90,6 +90,11 @@
 			"import": "./dist/mock-server/index.js",
 			"default": "./dist/mock-server/index.js"
 		},
+		"./mailpit": {
+			"types": "./dist/mailpit/index.d.ts",
+			"import": "./dist/mailpit/index.js",
+			"default": "./dist/mailpit/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -108,7 +113,8 @@
 		"csp",
 		"service-worker",
 		"react-router",
-		"mock-server"
+		"mock-server",
+		"mailpit"
 	],
 	"repository": {
 		"type": "git",
@@ -142,7 +148,8 @@
 			"src/storybook/index.ts",
 			"src/storybook/capture.ts",
 			"src/storybook/setup.ts",
-			"src/mock-server/index.ts"
+			"src/mock-server/index.ts",
+			"src/mailpit/index.ts"
 		],
 		"browserOnly": [
 			"./storybook/capture",

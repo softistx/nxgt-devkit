@@ -3,7 +3,7 @@
 The Playwright boilerplate every app ends up writing, written once: a shared
 `playwright.config.ts`, `BasePage` and `FormPage` page objects, sign-in and
 storage-state fixtures, msw network fixtures, a driver for the mocks of an
-SSR app's server, navigation and fills that wait
+SSR app's server, links read from a local Mailpit, navigation and fills that wait
 for hydration, waits for a page at rest, axe accessibility checks, phone
 projects and a no-sideways-scroll check, full-page screens of every state,
 PWA specs against a production build (offline, a new worker version, what the
@@ -27,6 +27,7 @@ subpaths you import:
 | `/csp` | `@playwright/test` |
 | `/msw` | `@playwright/test`, `msw` (`^2.12.10 \|\| ^3.0.0`), `@msw/playwright` (`>=0.6.7 <0.8`; 0.7 needs msw 3) |
 | `/mock-server` | `@playwright/test` only (it talks HTTP) |
+| `/mailpit` | nothing (`fetch` only) |
 | `/storybook`, `/storybook/capture`, `/storybook/setup` | `vitest` (`^4.0.0`), `@vitest/browser-playwright` (`^4.0.0`), `@storybook/addon-vitest` (`>=10.3.0 <11`), and `playwright` itself (required by `@vitest/browser-playwright`) |
 
 ```bash
@@ -55,11 +56,12 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/csp` | `watchCsp`, `withCspGuard`, `cspTest`, `expectNoncedPage`, `cspNonce`, `loadPolicy`; types `CspGuardFixtures`, `ExpectNoncedPageOptions`, `LoadedPolicy` | Node |
 | `@nxgt/playwright/msw` | `createMswTest`, `MswFixtures`, `MswTestOptions` | Node |
 | `@nxgt/playwright/mock-server` | `createMockServerTest`, `MockServer`, `ServerOverride`, `MockServerFixtures`, `MockServerTestOptions` | Node |
+| `@nxgt/playwright/mailpit` | `mailpit`, `Mailpit`, `MailpitMessage`, `MailpitOptions`, `WaitForLinkOptions` | Node |
 | `@nxgt/playwright/storybook` | `storybookProject`, `componentId`, `titleToComponentId`; types `StorybookProjectOptions`, `StorybookBrowser`, `PreviewCaptureOptions`, `StoryPreviewParameters` | Node (Vitest config) |
 | `@nxgt/playwright/storybook/capture` | `capturePreview` | **browser only** |
 | `@nxgt/playwright/storybook/setup` | an `afterEach(capturePreview)` side effect | **browser only** |
 
-The root barrel does not re-export `/a11y`, `/csp`, `/msw`, `/mock-server` or `/storybook`, so an app
+The root barrel does not re-export `/a11y`, `/csp`, `/msw`, `/mock-server`, `/mailpit` or `/storybook`, so an app
 without those peers can still import it, nor the `/react-router` adapter.
 
 ## Usage
@@ -611,6 +613,29 @@ test.describe('forbidden', () => {
 The mocks are reset before and after every test. They are process-global:
 run these specs with `workers: 1`. See [docs/guide/mock-server.md](docs/guide/mock-server.md).
 
+### Mail links (Mailpit)
+
+For mail flows (address verification, password reset, sign-in links) tested
+against a local [Mailpit](https://mailpit.axllent.org) SMTP sink. It needs no
+peer: it only calls Mailpit's HTTP API with `fetch`.
+
+```ts
+import { mailpit } from '@nxgt/playwright/mailpit';
+
+const mail = mailpit(); // E2E_MAILPIT_URL, else http://localhost:8025
+
+test('confirms the address', async ({ page }) => {
+	await mail.clear();
+	await signUp(page, 'new@example.test');
+	const link = await mail.waitForLink({ to: 'new@example.test', match: /\/confirm\?/ });
+	await page.goto(link);
+});
+```
+
+`waitForLink` returns the first link `match` accepts, newest message first, for that
+address, absolute and with `&amp;` decoded, and throws a message naming the
+address and the pattern on timeout. See [docs/guide/mailpit.md](docs/guide/mailpit.md).
+
 ### Storybook
 
 ```ts
@@ -709,6 +734,6 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium bun run test:stories
 
 ## Documentation
 
-- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md), [Content-Security-Policy](docs/guide/csp.md), [mock server](docs/guide/mock-server.md).
+- [Guide](docs/README.md) — every option, default and the realistic setup, per area; [hydration](docs/guide/hydration.md), [screens](docs/guide/screens.md), [PWA](docs/guide/pwa.md), [accessibility](docs/guide/a11y.md), [Content-Security-Policy](docs/guide/csp.md), [mock server](docs/guide/mock-server.md), [mail links](docs/guide/mailpit.md).
 - [Troubleshooting](docs/troubleshooting.md) — the error you are looking at, and its fix.
 - [Roadmap](docs/roadmap.md) — what is coming, and what is not planned.
