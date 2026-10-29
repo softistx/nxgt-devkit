@@ -5,7 +5,10 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-Nothing is in progress.
+- **Mail links from Mailpit** — `./mailpit`: `mailpit().waitForLink({ to,
+  match })` returns the first link matching a pattern in the newest mail to an
+  address, `latest` reads that mail and `clear` empties the inbox, for e2e
+  tests of verification, reset and sign-in mails.
 
 ## Next
 

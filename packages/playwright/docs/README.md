@@ -12,6 +12,7 @@
 | [guide/csp.md](guide/csp.md) | a page must run without a Content-Security-Policy refusal, or its policy must carry a fresh nonce on every script |
 | [guide/msw.md](guide/msw.md) | the app's API should be mocked in the browser, per file or per test |
 | [guide/mock-server.md](guide/mock-server.md) | the mocks live in the app's server (an SSR/BFF app calling its API), and a spec must fail it, reseed it or change its answers, one worker at a time |
+| [guide/mailpit.md](guide/mailpit.md) | a spec must read the link of a mail (verification, reset, sign-in) from a local Mailpit |
 | [guide/storybook.md](guide/storybook.md) | you want every story rendered as a test, or WebP previews of your components captured from stories |
 | [guide/migrating.md](guide/migrating.md) | you already have a hand-written `playwright/` folder and want to replace it with this package |
 | [troubleshooting.md](troubleshooting.md) | you have an error message and want its cause and fix |

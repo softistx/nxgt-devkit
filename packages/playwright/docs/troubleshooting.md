@@ -52,6 +52,9 @@ throws itself are quoted exactly.
 - [Mock server](#mock-server)
   - [`<path>/<route> answered <status>: <body>. Is the control mounted…`](#pathroute-answered-status-body-is-the-control-mounted)
   - [Mock-server specs pass alone and fail in parallel](#mock-server-specs-pass-alone-and-fail-in-parallel)
+- [Mailpit](#mailpit)
+  - [`Mailpit GET <url> answered <status>`](#mailpit-get-url-answered-status)
+  - [`No mail to <address> with a link matching <pattern> reached Mailpit`](#no-mail-to-address-with-a-link-matching-pattern-reached-mailpit)
 - [Accessibility](#accessibility)
   - [`disableRules: "…" is disabled without a reason`](#disablerules--is-disabled-without-a-reason)
   - [`target-size [serious]` on a control a sticky bar half covers](#target-size-serious-on-a-control-a-sticky-bar-half-covers)
@@ -106,6 +109,7 @@ you import needs a peer you have not installed.
 | `./screens` | `@playwright/test`, plus `@axe-core/playwright` when `checkScreen`'s scan runs (the default, or an options object) |
 | `./msw` | `@playwright/test`, `msw`, `@msw/playwright` |
 | `./mock-server` | `@playwright/test` |
+| `./mailpit` | nothing (`fetch` only) |
 | `./storybook`, `./storybook/capture`, `./storybook/setup` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 
 ```sh
@@ -767,6 +771,44 @@ export default defineAppConfig({
 ```
 
 Or give each worker a server of its own on its own port.
+
+## Mailpit
+
+### `Mailpit GET <url> answered <status>`
+
+For example `Mailpit GET http://localhost:8025/api/v1/search?query=… answered 404`
+(or `DELETE …/api/v1/messages answered …` from `clear()`).
+
+**When:** any call of `mailpit()`.
+**Why:** the URL is the one that was called. A 404 usually means `url` points
+at something that is not Mailpit's HTTP port (8025 is the web and API port,
+1025 is SMTP), or at a Mailpit older than API v1. 401 or 403: Mailpit runs with
+UI authentication. A connection error instead means Mailpit is not running.
+**Fix:** point `url` (or `E2E_MAILPIT_URL`) at the HTTP port.
+
+```ts
+const mail = mailpit({ url: 'http://localhost:8025' });
+```
+
+### `No mail to <address> with a link matching <pattern> reached Mailpit`
+
+The full message ends with `at <url> within <timeout> ms`.
+
+**When:** `waitForLink` found no message to the address with a link the
+pattern accepts before the timeout.
+**Why:** the app did not send the mail (its SMTP settings do not point at
+Mailpit's port 1025), it sent it to another address (the search is
+`to:"<address>"`), or `match` tests something the link does not contain: it is
+tested against each link alone, after `&amp;` is decoded, not against the body.
+**Fix:** open the Mailpit UI at the same URL and compare. Read the real links
+with `latest`, and widen the pattern or the timeout.
+
+```ts
+console.log((await mail.latest({ to }))?.links);
+const link = await mail.waitForLink({ to, match: /\/reset\?/, timeout: 30_000 });
+```
+
+See [guide/mailpit.md](guide/mailpit.md).
 
 ## Accessibility
 
