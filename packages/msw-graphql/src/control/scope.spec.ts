@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { getResponse } from 'msw';
 import { post, schema } from '../../test/schema';
 import { createExecutor, graphqlEndpoint } from '../index';
-import { currentScope, SCOPE_HEADER, scopeOf, withScope } from '../scope';
+import {
+	currentScope,
+	SCOPE_HEADER,
+	scopeOf,
+	scopeOfCall,
+	withScope,
+} from '../scope';
 import { createMockState } from '../state';
 import { createMockControl } from './index';
 
@@ -240,5 +246,22 @@ describe('over HTTP', () => {
 		const response = await control.handle(http('reset', {}, 'a b'));
 		expect(response?.status).toBe(400);
 		expect(control.failing).toBe(503);
+	});
+});
+
+describe('withScope nesting', () => {
+	test('undefined inside an outer scope keeps the outer scope', () => {
+		withScope('outer', () => {
+			withScope(undefined, () => expect(currentScope()).toBe('outer'));
+			withScope('inner', () => expect(currentScope()).toBe('inner'));
+			expect(currentScope()).toBe('outer');
+		});
+	});
+
+	test('the current scope wins over the request header', () => {
+		const request = post({});
+		request.headers.set(SCOPE_HEADER, 'header');
+		expect(scopeOfCall(request)).toBe('header');
+		withScope('current', () => expect(scopeOfCall(request)).toBe('current'));
 	});
 });

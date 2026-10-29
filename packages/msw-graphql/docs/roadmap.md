@@ -5,11 +5,6 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-- **Mock scopes** — `control.scope(id)` keeps the forced failure, overrides and
-  event streams per scope, `handle` reads `x-mock-scope`, and `scopeOf` /
-  `withScope` carry the scope from an app's request to its API calls, so
-  parallel Playwright workers stop resetting each other's mocks.
-
 ## Next
 
 Nothing is planned yet.
@@ -26,6 +21,11 @@ Nothing is parked.
 - **Concrete schemas, handlers and mock data** — they are the app's.
 
 ## Shipped
+
+- **Mock scopes** — `control.scope(id)` keeps the forced failure, overrides and
+  event streams per scope, `handle` reads `x-mock-scope`, and `scopeOf` /
+  `withScope` carry the scope from an app's request to its API calls, so
+  parallel Playwright workers stop resetting each other's mocks.
 
 - **Subscriptions over SSE** — a subscription asked with `Accept: text/event-stream` runs
   with scripted async-iterator resolvers and answers `next` / `complete`

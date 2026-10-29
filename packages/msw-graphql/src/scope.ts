@@ -44,6 +44,10 @@ const storage: Storage | undefined = (() => {
  * ```ts
  * return withScope(scopeOf(request), () => handleRequest(request));
  * ```
+ *
+ * Two rules to know: `withScope(undefined, fn)` inside an outer `withScope`
+ * keeps the outer scope (it does not clear it), and the current scope wins
+ * over a call's own `x-mock-scope` header.
  */
 export function withScope<R>(scope: string | undefined, fn: () => R): R {
 	return storage && scope !== undefined ? storage.run(scope, fn) : fn();

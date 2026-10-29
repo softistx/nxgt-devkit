@@ -141,6 +141,15 @@ export async function fetch(request: Request) {
 | `currentScope()` | The scope `withScope` set, if any |
 | `SCOPE_HEADER` | `'x-mock-scope'` |
 
+Two rules follow from this. `withScope(undefined, fn)` inside an outer
+`withScope` keeps the outer scope; it never clears it. And the scope `withScope`
+set wins over an `x-mock-scope` header on the API request itself.
+
+**Reset through the control.** A scope's override handler is registered with the
+server once. If your app calls `server.resetHandlers()` itself, outside the
+control's `reset`, that handler is dropped and the scope's overrides stop
+answering; reset through `control.reset()` or `control.scope(id).reset()`.
+
 `@nxgt/playwright`'s `createMockServerTest(base, { scope: true })` sends the
 header with the worker index; see its
 [mock-server guide](../../../playwright/docs/guide/mock-server.md#parallel-workers-the-scope-option).

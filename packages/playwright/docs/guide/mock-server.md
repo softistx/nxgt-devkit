@@ -201,7 +201,7 @@ The server must cooperate. With `@nxgt/msw-graphql`, `control.handle` reads the
 header, and the app forwards the scope from its incoming request to its API
 calls with `withScope(scopeOf(request), …)`; its `reset` and scenarios receive
 `{ scope }` to reseed per scope. See
-the "Mock scopes" section of `@nxgt/msw-graphql`'s control guide. An app
+the ["Mock scopes" section](https://github.com/softistx/nxgt-devkit/blob/develop/packages/msw-graphql/docs/guide/control.md#mock-scopes) of `@nxgt/msw-graphql`'s control guide. An app
 that mounts the same four routes by hand must read the header itself.
 
 Two cautions. `extraHTTPHeaders` reaches **every** request of the page,
