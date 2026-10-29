@@ -45,13 +45,13 @@ Node server patches the process.
 
 | Subpath | Exports | Needs |
 | --- | --- | --- |
-| `@nxgt/msw-graphql` | `createExecutor`, `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`, `createMockState`, `mockState`, `failure`, `closeStreams`; types `Executor`, `ExecutorInput`, `ExecutorOptions`, `MockState` | `msw`, `graphql` |
+| `@nxgt/msw-graphql` | `createExecutor`, `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`, `createMockState`, `mockState`, `failure`, `closeStreams`, `scopeOf`, `withScope`, `currentScope`, `SCOPE_HEADER`; types `Executor`, `ExecutorInput`, `ExecutorOptions`, `MockState` | `msw`, `graphql` |
 | `@nxgt/msw-graphql/schema` | `buildMockSchema` | + `@graphql-tools/schema`, `@graphql-tools/mock` |
 | `@nxgt/msw-graphql/sdl` | `loadSdl` | nothing |
 | `@nxgt/msw-graphql/browser` | `enableMocking` (msw worker, handlers imported on demand) | `msw`, a browser |
 | `@nxgt/msw-graphql/node` | `startMockServer` (msw server for SSR/BFF loaders) | `msw` |
 | `@nxgt/msw-graphql/fetch` | `createMockFetch` (a `fetch` answered by the handlers, no global patch; `{ fetch, control, server }`); type `CreateMockFetchOptions` | `msw` |
-| `@nxgt/msw-graphql/control` | `createMockControl` (`reset`, `fail`, `scenario`, `override`, `handle`), `UnknownScenarioError`; types `Override`, `Scenarios`, `MockControl` | `msw`, `graphql` |
+| `@nxgt/msw-graphql/control` | `createMockControl` (`reset`, `fail`, `scenario`, `override`, `scope(id)`, `handle`), `UnknownScenarioError`; types `Override`, `Scenarios`, `ScopeContext`, `MockControl`, `MockControlMethods` | `msw`, `graphql` |
 | `@nxgt/msw-graphql/response` | `ok`, `created`, `noContent`, `badRequest`, `unauthorized`, `forbidden`, `notFound`, `graphqlErrors` | `msw` |
 
 ## Usage
@@ -176,8 +176,33 @@ test.use({
 ```
 
 The mocks are reset before and after every test. Server mocks are
-process-global: run these projects with `workers: 1`. Details:
-[control](docs/guide/control.md).
+process-global: run these projects with `workers: 1`, or scope the mocks per
+worker (below). Details: [control](docs/guide/control.md).
+
+#### Mock scopes: parallel workers
+
+With `createMockServerTest(base, { scope: true })` from `@nxgt/playwright`,
+each worker's calls carry `x-mock-scope: <workerIndex>`. The control keeps a
+forced failure, overrides and event streams per scope, and the app forwards the
+scope from its incoming request to its server-side API calls:
+
+```ts
+import { scopeOf, withScope } from '@nxgt/msw-graphql';
+
+// the app's server entry
+const controlled = await control.handle(request); // reads x-mock-scope
+if (controlled) return controlled;
+return withScope(scopeOf(request), () => app.fetch(request));
+
+// the app's callbacks learn the scope, to reseed that scope only
+createMockControl({
+	server,
+	reset: (context) => reseed(context?.scope),
+	scenarios: { remove: (args, context) => remove(args, context?.scope) },
+});
+```
+
+Without the header nothing changes. See [control](docs/guide/control.md#mock-scopes).
 
 ### Subscriptions over SSE
 
@@ -239,8 +264,9 @@ await control.reset();
   the Production section of [docs/guide/control.md](docs/guide/control.md).
 - **The `?raw` import must stay a literal** in `loadSdl({ vite })`: Vite can only
   inline what it sees.
-- **Mocks are process-global**: one server, one `mockState`. Parallel specs
-  against one app server will trample each other.
+- **Mocks are process-global** unless scoped: one server, one `mockState`.
+  Parallel specs against one app server trample each other, except through
+  [mock scopes](docs/guide/control.md#mock-scopes).
 
 ## Documentation
 

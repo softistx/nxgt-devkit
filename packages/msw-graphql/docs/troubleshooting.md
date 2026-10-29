@@ -258,12 +258,26 @@ hit one app server. In this repository the mock-server spec failed 11 of 18
 when run in parallel with the other specs.
 **Why:** server mocks (`fail`, `scenario`, `use`, the reset around each test)
 are process-global; workers overwrite one another.
-**Fix:** run those projects with one worker, or give each worker its own server:
+**Fix:** scope the mocks per worker (`@nxgt/msw-graphql` 0.4 with `@nxgt/playwright`'s
+`createMockServerTest(base, { scope: true })`, see
+[mock scopes](guide/control.md#mock-scopes)), or run those projects with one worker:
 
 ```ts
 // playwright.config.ts
 export default defineConfig({ workers: 1, fullyParallel: false });
 ```
+
+## Parallel workers still trample each other's mocks
+
+**When:** the Playwright fixture sends `scope: true`, yet one worker's `fail`,
+`use` or reset still shows up in another worker's pages.
+**Why:** a scope separates what the control and the executor see; they find it
+only on the call. The app's server must forward the incoming request's scope to
+its API calls, and the app's own reseed must key its data by scope.
+**Fix:** wrap the app's request handling in `withScope(scopeOf(request), …)` and
+read `context?.scope` in `reset` and in the scenarios. See
+[mock scopes](guide/control.md#mock-scopes). An `x-mock-scope` header that is
+not 1-64 characters of letters, digits and `_ . : -` is a `400` from the control.
 
 ## My second `startMockServer` call's handlers or options are ignored
 

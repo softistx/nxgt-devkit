@@ -1,6 +1,7 @@
 import { parse } from 'graphql';
 import { HttpResponse, http } from 'msw';
-import type { MockState } from '../state';
+import { scopeOfCall } from '../scope';
+import { failingFor, type MockState } from '../state';
 
 /** A static answer for one GraphQL operation, serialisable over HTTP. */
 export type Override = {
@@ -78,7 +79,8 @@ function operationOf(body: unknown): string | null {
 export function overrideHandler(override: Override, state: MockState) {
 	let used = false;
 	return http.post('*', async ({ request }) => {
-		if (state.failing !== null || used) return undefined;
+		if (used || failingFor(state, scopeOfCall(request)) !== null)
+			return undefined;
 		const body = await request
 			.clone()
 			.json()
@@ -89,13 +91,47 @@ export function overrideHandler(override: Override, state: MockState) {
 			if (used) return undefined;
 			used = true;
 		}
-		const status = override.status ?? statusOfErrors(override.errors) ?? 200;
-		return HttpResponse.json(
-			{
-				...(override.data !== undefined && { data: override.data }),
-				...(override.errors && { errors: override.errors }),
-			},
-			{ status },
+		return answer(override);
+	});
+}
+
+function answer(override: Override) {
+	const status = override.status ?? statusOfErrors(override.errors) ?? 200;
+	return HttpResponse.json(
+		{
+			...(override.data !== undefined && { data: override.data }),
+			...(override.errors && { errors: override.errors }),
+		},
+		{ status },
+	);
+}
+
+/**
+ * The one msw handler of a mock scope: it answers only the calls of `scope`,
+ * from the overrides `state` holds for it, the latest first. It is registered
+ * once per scope, and a scoped reset empties the list, so handlers do not pile
+ * up over a long run.
+ */
+export function scopedOverrideHandler(scope: string, state: MockState) {
+	return http.post('*', async ({ request }) => {
+		if (scopeOfCall(request) !== scope) return undefined;
+		if (!state.scopes.get(scope)?.overrides.length) return undefined;
+		if (failingFor(state, scope) !== null) return undefined;
+		const name = operationOf(
+			await request
+				.clone()
+				.json()
+				.catch(() => null),
 		);
+		// Read after the await: a reset may have emptied the list meanwhile.
+		const entries = state.scopes.get(scope)?.overrides ?? [];
+		for (let i = entries.length - 1; i >= 0; i--) {
+			const entry = entries[i];
+			if (!entry || entry.used || entry.override.operationName !== name)
+				continue;
+			if (entry.override.once) entry.used = true;
+			return answer(entry.override);
+		}
+		return undefined;
 	});
 }

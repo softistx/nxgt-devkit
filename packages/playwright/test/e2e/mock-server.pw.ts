@@ -111,3 +111,14 @@ test.describe('the reset around a test', () => {
 		expect((await state(request)).resets).toBe(seen + 2);
 	});
 });
+
+test('the unscoped fixture sends no scope', async ({ page, request }) => {
+	await page.goto('/__scope');
+	expect(JSON.parse(await page.locator('body').innerText())).toEqual({
+		scope: null,
+		failing: null,
+	});
+	expect(
+		((await (await request.get('/__scope')).json()) as { scope: null }).scope,
+	).toBeNull();
+});

@@ -5,7 +5,7 @@
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { mockState } from '@nxgt/msw-graphql';
+import { mockState, scopeOf } from '@nxgt/msw-graphql';
 import { createMockControl } from '@nxgt/msw-graphql/control';
 
 const PORT = Number(process.env.PW_PORT) || 4599;
@@ -162,6 +162,15 @@ Bun.serve({
 		const url = new URL(request.url);
 		const controlled = await control.handle(request);
 		if (controlled) return controlled;
+		// The scope this request carries and the forced failure it would see:
+		// e2e/mock-scope.pw.ts runs two workers against it.
+		if (url.pathname === '/__scope') {
+			const scope = scopeOf(request);
+			return Response.json({
+				scope: scope ?? null,
+				failing: (scope && mockState.scopes.get(scope)?.failing) || null,
+			});
+		}
 		if (url.pathname === '/__state') {
 			return Response.json({
 				failing: mockState.failing,

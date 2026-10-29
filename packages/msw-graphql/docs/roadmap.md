@@ -5,7 +5,10 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
-Nothing is in progress.
+- **Mock scopes** — `control.scope(id)` keeps the forced failure, overrides and
+  event streams per scope, `handle` reads `x-mock-scope`, and `scopeOf` /
+  `withScope` carry the scope from an app's request to its API calls, so
+  parallel Playwright workers stop resetting each other's mocks.
 
 ## Next
 

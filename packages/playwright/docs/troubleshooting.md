@@ -761,7 +761,10 @@ error for no apparent reason.
 **Why:** the mocks live in the app's one server process and are global to it;
 workers reset and change each other's mocks. Measured here: the contract spec
 failed 11 of 18 run in parallel with the other specs.
-**Fix:** run those specs in a project with one worker.
+**Fix:** scope the mocks per worker with `createMockServerTest(base, { scope: true })`
+and have the app forward the scope (`withScope(scopeOf(request), …)` from
+`@nxgt/msw-graphql`, see the [guide](guide/mock-server.md#parallel-workers-the-scope-option)),
+or run those specs in a project with one worker.
 
 ```ts
 export default defineAppConfig({

@@ -5,6 +5,10 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
 
 ## Now
 
+- **Per-worker mock scope** — `createMockServerTest(base, { scope: true })` sends
+  `x-mock-scope: <workerIndex>` on the control calls and on the page and request
+  traffic, so specs that use `mockServer` can run with more than one worker
+  against an app whose control keeps a state per scope.
 - **Mail links from Mailpit** — `./mailpit`: `mailpit().waitForLink({ to,
   match })` returns the first link `match` accepts, newest message first, for an
   address, `latest` reads that mail and `clear` empties the inbox, for e2e
