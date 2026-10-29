@@ -1,5 +1,11 @@
 # @nxgt/msw-graphql
 
+## 0.4.0
+
+### Minor Changes
+
+- [#97](https://github.com/softistx/nxgt-devkit/pull/97) [`6fad339`](https://github.com/softistx/nxgt-devkit/commit/6fad339438f3cdd8f4df09b32c0481b760f3921f) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Serve GraphQL subscriptions over SSE: a subscription asked with `Accept: text/event-stream` runs with the schema's async-iterator resolvers and answers graphql-sse `next` / `complete` events, a refusal before the stream with a real HTTP status (and `extensions.http.headers`), and an error payload mid-stream. `control.reset()` ends live streams; `closeStreams(state)` does it alone. `MockState` gains `streams`.
+
 ## 0.3.0
 
 ### Minor Changes
