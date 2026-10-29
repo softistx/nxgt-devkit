@@ -8,6 +8,11 @@ import {
 } from 'graphql';
 import type { GraphQLHttpError } from './errors';
 import { type MockState, mockState } from './state';
+import {
+	isSubscription,
+	serveSubscription,
+	wantsEventStream,
+} from './subscription';
 
 /** One GraphQL operation as an HTTP request carried it. */
 export type ExecutorInput = {
@@ -73,7 +78,8 @@ function statusOf(errors: ReadonlyArray<GraphQLError> | undefined): number {
  * Parses, validates and executes each operation against `schema`, the way a
  * GraphQL server does, in this order: the API made to fail (`state.failing`),
  * the `guard`, parse (400), validate (400), execute, then the HTTP status of
- * the first error that names one.
+ * the first error that names one. A subscription asked with
+ * `Accept: text/event-stream` is served as a graphql-sse stream instead.
  *
  * A plain function of an operation, not an msw handler, so a generated
  * `mockGetStudentsQuery(({ query, variables }) => execute(...))` and
@@ -103,12 +109,26 @@ export function createExecutor<TContext = unknown>(
 		const errors = validate(schema, document);
 		if (errors.length > 0) return invalid(errors);
 
+		const contextValue = await context?.(request);
+		if (wantsEventStream(request) && isSubscription(document, operationName)) {
+			return serveSubscription({
+				schema,
+				document,
+				variables,
+				operationName,
+				context: contextValue,
+				request,
+				state,
+				statusOf,
+			});
+		}
+
 		const result = await execute({
 			schema,
 			document,
 			variableValues: variables ?? undefined,
 			operationName: operationName ?? undefined,
-			contextValue: await context?.(request),
+			contextValue,
 		});
 		// Through JSON: what the client reads is what was serialised, errors
 		// and `undefined` fields included.

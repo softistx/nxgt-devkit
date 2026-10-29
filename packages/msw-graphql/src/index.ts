@@ -9,3 +9,4 @@ export {
 	failure,
 } from './executor';
 export { createMockState, type MockState, mockState } from './state';
+export { closeStreams } from './subscription';

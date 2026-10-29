@@ -1,3 +1,5 @@
+import type { MockStream } from './subscription';
+
 /**
  * What the executor and the control channel share. One object rather than two
  * module variables, so a test can build an executor and a control around its
@@ -6,10 +8,12 @@
 export type MockState = {
 	/** The status every call answers while the API is made to fail, else null. */
 	failing: number | null;
+	/** The event streams being served (subscriptions), ended by `closeStreams`. */
+	streams: Set<MockStream>;
 };
 
 export function createMockState(): MockState {
-	return { failing: null };
+	return { failing: null, streams: new Set() };
 }
 
 /**

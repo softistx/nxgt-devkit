@@ -13,12 +13,35 @@ export const typeDefs = /* GraphQL */ `
 		plain: String
 	}
 	type Mutation { removeStudent(id: ID!): Boolean! }
+	type Event { type: String!, text: String }
+	type Subscription { events: Event!, denied: Event!, flaky: Event! }
 `;
 
 export const schema = buildMockSchema<{ token: string | null }>({
 	typeDefs,
 	mocks: { Date: () => '2020-01-01' },
 	resolvers: {
+		Subscription: {
+			events: {
+				subscribe: async function* () {
+					yield { events: { type: 'delta', text: 'hi' } };
+					yield { events: { type: 'delta', text: ' there' } };
+				},
+			},
+			denied: {
+				subscribe: () => {
+					throw new GraphQLHttpError('rate-limited', 429, {
+						http: { status: 429, headers: { 'retry-after': '30' } },
+					});
+				},
+			},
+			flaky: {
+				subscribe: async function* () {
+					yield { flaky: { type: 'delta', text: 'one' } };
+					throw new Error('upstream lost');
+				},
+			},
+		},
 		Query: {
 			student: (_root, { id }: { id: string }) => {
 				if (id === '404') throw new GraphQLHttpError('not-found', 404);

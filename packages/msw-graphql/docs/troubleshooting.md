@@ -318,3 +318,12 @@ graphql's own check.
 bun why graphql          # list the copies
 bun add graphql@^17      # one version everywhere
 ```
+
+## A subscription test hangs, or a stream never ends
+
+A scripted stream ends when its iterator ends. If the test's generator waits on
+a promise that never settles, the stream stays open; `control.reset()`
+(or `closeStreams(state)`) closes the client's side, but a generator parked in
+an `await` only returns once that settles. Script waits with `setTimeout` or an
+abortable promise. A request without `Accept: text/event-stream` is not
+streamed either: send the header.

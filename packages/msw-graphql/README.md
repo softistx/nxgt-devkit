@@ -179,6 +179,31 @@ The mocks are reset before and after every test. Server mocks are
 process-global: run these projects with `workers: 1`. Details:
 [control](docs/guide/control.md).
 
+### Subscriptions over SSE
+
+A subscription sent with `Accept: text/event-stream` is served as a graphql-sse
+stream (`next` events, then `complete`). Script it with an async generator in
+the schema's resolvers; `subscribe` throwing a `GraphQLHttpError` refuses it
+before the stream with a real status, an iterator that throws sends an error
+payload, and `control.reset()` ends live streams.
+
+```ts
+const schema = buildMockSchema({
+	typeDefs,
+	resolvers: {
+		Subscription: {
+			events: {
+				subscribe: async function* () {
+					yield { events: { type: 'delta', text: 'hi' } };
+				},
+			},
+		},
+	},
+});
+```
+
+See [docs/guide/executor.md](docs/guide/executor.md#subscriptions-over-sse).
+
 ### Unit tests without HTTP
 
 ```ts
