@@ -443,6 +443,51 @@ neighbour.
 Make each at least 44x44px (padding, or min-width and min-height, on the element itself), or exclude it.
 ```
 
+### `tapTargetVerdict` in the browser (`@nxgt/playwright/tap-targets`)
+
+`expectTapTargets` judges a page from Node. To judge one element where there
+is no Playwright (a Storybook `play`, a Vitest browser test, a page script),
+import the function the check itself runs in the page:
+
+```ts
+function tapTargetVerdict(
+	el: Element,
+	options?: { size?: number; tolerance?: number; hitArea?: boolean },
+): Promise<{
+	verdict: 'large' | 'enlarged' | 'small' | 'covered' | 'hidden';
+	ok: boolean; // large or enlarged
+	width: number; // the box, in CSS pixels
+	height: number;
+}>;
+```
+
+```ts
+import { tapTargetVerdict } from '@nxgt/playwright/tap-targets';
+
+export const SelectAll = {
+	play: async ({ canvas }) => {
+		const box = await canvas.findByRole('checkbox', { name: 'Select all' });
+		const { ok, verdict, width, height } = await tapTargetVerdict(box);
+		if (!ok) throw new Error(`select all: ${verdict}, ${width}x${height}px`);
+	},
+};
+```
+
+It is one source with the check (`expectTapTargets` and `checkScreen`'s
+`tapTargets` evaluate this very function in the page), so a story and an e2e
+spec give the same verdict. What it does: it takes the element's own box (a
+checkbox or radio `<input>` joined with its labels); a box under `size` still
+passes (`enlarged`) when a `size` square centred on it, moved inside the
+viewport, is all hit by the element, its descendants (`::before` / `::after`)
+or the labels; a floating layer over part of the square is seen through; an
+element off screen or covered where it sits is scrolled to the middle and
+every scroll position is put back (hence `async`). `covered`: another element
+still covers it there, so no pointer reaches it; `hidden`: it has no box.
+`hitArea: false` judges the visible box only. It does not select elements,
+skip hidden or disabled ones, or apply the spacing exception: the caller
+passes the element. The module touches no browser global when imported, so it
+also loads in Node; only calling it needs a browser.
+
 `SmallTapTarget` is one offender: `selector` (`tag#id.class`), `name` (its
 label), `width` and `height` in rounded CSS pixels, and with `spacing` `near`,
 the selector of the target that crowds it.

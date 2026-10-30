@@ -49,6 +49,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
 | `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `expectNoTextOverflow`, `formatTextOverflow`, `expectTapTargets`, `formatTapTargets`, `DEFAULT_TAP_TARGETS`, `screenshotName` | Node |
+| `@nxgt/playwright/tap-targets` | `tapTargetVerdict`; types `TapTargetVerdict`, `TapTargetVerdictKind`, `TapTargetVerdictOptions` | Browser (and Node to import) |
 | `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
@@ -360,6 +361,22 @@ test('tap targets fit a thumb', async ({ page }) => {
 	await page.goto('/projects');
 	await expectTapTargets(page, { exclude: '.legal a' });
 });
+```
+
+The same verdict runs in the browser for one element, where Playwright is not
+there, such as a Storybook play or a Vitest browser test:
+
+```ts
+import { tapTargetVerdict } from '@nxgt/playwright/tap-targets';
+
+export const SelectAll = {
+	play: async ({ canvas }) => {
+		const { ok, verdict, width, height } = await tapTargetVerdict(
+			await canvas.findByRole('checkbox', { name: 'Select all' }),
+		);
+		if (!ok) throw new Error(`${verdict}: ${width}x${height}px`);
+	},
+};
 ```
 
 **Trap:** a page without `<meta name="viewport" content="width=device-width,
