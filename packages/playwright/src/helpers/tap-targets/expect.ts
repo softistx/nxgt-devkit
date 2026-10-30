@@ -89,6 +89,7 @@ export async function expectTapTargets(
 			// A second pass, because it scrolls: the first one only reads.
 			const { enlarged, covered } = await handle.evaluate(probeHitAreas, {
 				size,
+				tolerance: TOLERANCE,
 			});
 			for (const i of enlarged) {
 				const box = boxes[i];

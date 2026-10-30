@@ -946,14 +946,15 @@ test('the probe tests the measured elements, whatever the page does in between',
 	});
 	const data = await handle.evaluate((r) => r.data);
 	expect(data.undersized).toEqual([0, 1, 2]);
-	expect(data.probe).toEqual([0, 1, 2]);
 	// A removed target (index 0) and a class dropped from the last one: the
 	// probe must not shift to other elements.
 	await page.evaluate(() => {
 		document.getElementById('a')?.remove();
 		document.getElementById('c')?.classList.remove('hit');
 	});
-	expect(await handle.evaluate(probeHitAreas, { size: 44 })).toEqual({
+	expect(
+		await handle.evaluate(probeHitAreas, { size: 44, tolerance: 0.5 }),
+	).toEqual({
 		enlarged: [1],
 		covered: [],
 	});

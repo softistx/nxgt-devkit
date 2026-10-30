@@ -38,6 +38,10 @@ Nothing is planned yet.
 
 ## Shipped
 
+- **A tap-target verdict in the browser** — `tapTargetVerdict(el)` from
+  `@nxgt/playwright/tap-targets` gives the 44px verdict of `expectTapTargets`
+  for one element in a Storybook play or a Vitest browser test; the screen check
+  runs the same function, so they cannot drift.
 - **Per-worker mock scope** — `createMockServerTest(base, { scope: true })` sends
   `x-mock-scope: <workerIndex>` on the control calls and on the page and request
   traffic, so specs that use `mockServer` can run with more than one worker

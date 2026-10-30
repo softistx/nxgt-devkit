@@ -85,6 +85,11 @@
 			"import": "./dist/storybook/setup.js",
 			"default": "./dist/storybook/setup.js"
 		},
+		"./tap-targets": {
+			"types": "./dist/tap-targets/index.d.ts",
+			"import": "./dist/tap-targets/index.js",
+			"default": "./dist/tap-targets/index.js"
+		},
 		"./mock-server": {
 			"types": "./dist/mock-server/index.d.ts",
 			"import": "./dist/mock-server/index.js",
@@ -148,6 +153,7 @@
 			"src/storybook/index.ts",
 			"src/storybook/capture.ts",
 			"src/storybook/setup.ts",
+			"src/tap-targets/index.ts",
 			"src/mock-server/index.ts",
 			"src/mailpit/index.ts"
 		],

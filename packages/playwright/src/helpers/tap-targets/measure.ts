@@ -7,15 +7,10 @@ export type MeasuredData = {
 	matched: number;
 	/**
 	 * Indices into `boxes` of the targets smaller than `size` (with
-	 * `hitArea`): the ones `probeHitAreas` (hit-area.ts) checks a pointer
-	 * reaches.
+	 * `hitArea`): the ones `probeHitAreas` (hit-area.ts) judges with
+	 * `tapTargetVerdict`.
 	 */
 	undersized: number[];
-	/**
-	 * The subset of `undersized` that could have an enlarged hit area: the
-	 * ones `probeHitAreas` also probes on the `size` square.
-	 */
-	probe: number[];
 };
 
 /**
@@ -34,11 +29,10 @@ export type Measured = {
  * Playwright serialises it, so it imports nothing at run time and every
  * helper lives inside it. It judges nothing about size; the caller does. It
  * only reads: it never scrolls. It also lists the index in `boxes` of the
- * undersized targets, and of those that could have an invisible hit area,
- * and the caller probes them with `probeHitAreas`, handed the same
+ * undersized targets, and the caller probes them with `probeHitAreas`, handed the same
  * `elements` (select once: no second selection to drift from this one).
  * Four parts: the text helpers (`say`), the predicates (`is`), the geometry
- * (`boxOf`) and the hit-area candidates (`mayEnlarge`).
+ * (`boxOf`).
  *
  * ACCEPTED LENGTH EXCEPTION: this function is long because Playwright
  * serialises it and it can import nothing, so every helper is a closure
@@ -168,49 +162,6 @@ export async function measure(args: {
 		};
 	};
 
-	const pseudoContent = (el: Element) =>
-		['::before', '::after'].some(
-			(p) => !/^(none|normal)$/.test(getComputedStyle(el, p).content),
-		);
-	// Whether the target could have a hit area larger than its box: a
-	// pseudo-element with content on it, on a label of a checkbox or radio, or
-	// on a descendant; a descendant drawn outside the box; a shadow tree.
-	// Anything else is hit-tested as the box, so it needs no probe.
-	// A custom element (its tag has a '-') may draw anything in a shadow tree,
-	// closed ones included, which the page cannot look into: it is a candidate.
-	const custom = (e: Element) => e.tagName.includes('-') || !!e.shadowRoot;
-	const mayEnlarge = (el: Element, box: TapTargetBox): boolean => {
-		const labels =
-			el instanceof HTMLInputElement && /^(checkbox|radio)$/.test(el.type)
-				? [...(el.labels ?? [])]
-				: [];
-		if (
-			[el, ...labels].some(
-				(r) => custom(r) || [...r.querySelectorAll('*')].some(custom),
-			)
-		)
-			return true;
-		const slack = args.tolerance;
-		const outside = (d: Element) => {
-			const r = d.getBoundingClientRect();
-			return (
-				r.width > 0 &&
-				r.height > 0 &&
-				(r.left < box.left - slack ||
-					r.top < box.top - slack ||
-					r.right > box.left + box.width + slack ||
-					r.bottom > box.top + box.height + slack)
-			);
-		};
-		return [el, ...labels].some(
-			(r) =>
-				pseudoContent(r) ||
-				[...r.querySelectorAll('*')].some(
-					(d) => pseudoContent(d) || outside(d),
-				),
-		);
-	};
-
 	const roots = args.include.length
 		? args.include.flatMap((s) => [...document.querySelectorAll(s)])
 		: [document.documentElement];
@@ -218,7 +169,6 @@ export async function measure(args: {
 	const boxes: TapTargetBox[] = [];
 	const elements: Element[] = [];
 	const undersized: number[] = [];
-	const probe: number[] = [];
 	for (const root of roots) {
 		for (const el of root.querySelectorAll(args.targets.join(','))) {
 			if (seen.has(el)) continue;
@@ -238,7 +188,6 @@ export async function measure(args: {
 					box.height < args.size - args.tolerance)
 			) {
 				undersized.push(boxes.length);
-				if (mayEnlarge(el, box)) probe.push(boxes.length);
 			}
 			boxes.push(box);
 			elements.push(el);
@@ -250,7 +199,6 @@ export async function measure(args: {
 			boxes,
 			matched: roots.length,
 			undersized,
-			probe,
 		},
 		elements,
 	};

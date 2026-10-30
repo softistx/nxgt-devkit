@@ -70,21 +70,26 @@ Every peer is **optional** and each subpath needs only its own:
 | `./screens` | `@playwright/test`; `checkScreen` needs `@axe-core/playwright` when the scan runs (the default, or an options object), reached through `a11y/scan`'s lazy `loadAxe` (never imported statically, never loaded with `a11y: false` or a function); the root re-exports it, so the same holds from `.` |
 | `./msw` | + `msw` (2.12.10+ or 3), `@msw/playwright` (0.6.7 to 0.7; 0.7 needs msw 3) |
 | `./mock-server` | `@playwright/test`; no msw import, it talks HTTP |
+| `./tap-targets` | nothing: `tapTargetVerdict` runs in a browser (a story's play) and is a plain import in Node |
 | `./mailpit` | nothing; `fetch` only, not re-exported by the root barrel |
 | `./storybook` | `vitest`, `@vitest/browser-playwright`, `@storybook/addon-vitest` |
 | `./storybook/capture`, `./storybook/setup` | the same, **in the browser** |
 
 `./mock-server` copies the wire types of `@nxgt/msw-graphql/control` (`ServerOverride`) on purpose, so it imports neither msw nor that package; `test/e2e/mock-server.pw.ts` imports both (`@nxgt/msw-graphql` is a devDependency) and fails to typecheck if the two types drift, and `test/server.ts` mounts the real control it drives. That spec runs in its own config (`test/playwright.mock-server.config.ts`, one worker): server mocks are process-global unless the fixture is scoped. `createMockServerTest(…, { scope: true })` is driven by `test/e2e/mock-scope.pw.ts` in `test/playwright.mock-scope.config.ts` (two workers), against `test/server.ts`'s `/__scope`; the header name is copied in `src/mock-server/create-mock-server-test.ts` for the same reason as the wire types.
 
+`src/tap-targets/verdict.ts` (`tapTargetVerdict`) is the single source of the hit-area probe and verdict: `probeHitAreas` (`helpers/tap-targets/hit-area.ts`) is built from its `toString()`, so `expectTapTargets` and a story's play run the same code. It must stay self-contained (no import, no outer helper). `measure` keeps its own `boxOf`, a copy of the verdict's `rectOf`: a change to one is made in both.
+
 The in-page `measure` functions (`src/helpers/text-overflow/measure.ts`, `src/helpers/tap-targets/measure.ts`, and `measure` in `src/helpers/no-horizontal-scroll.ts`) each carry their own `collapse` / `brief` / `describe` because Playwright serialises them; a change to one is made in all three.
 `src/helpers/tap-targets/hit-area.ts` (`probeHitAreas`) does not re-select:
 `expectTapTargets` runs `measure` with `page.evaluateHandle`, so the selected elements
 stay in the page, and the probe is run on that handle with `handle.evaluate(probeHitAreas,
-…)` (select once). It keeps its own `labelsOf` / `rectOf`, a copy of `measure`'s label
-join (`boxOf`: which inputs join their labels, and the union of their rects), because it
-re-reads the rects after scrolling; a change to one is made in both. Both in-page
-functions are long on purpose (Playwright serialises them, so every helper is a closure
-inside): an accepted exception to the function-length rule.
+…)` (select once). `probeHitAreas` is only a wrapper that loops over the undersized
+elements; the probe itself, with its own `labelsOf` / `rectOf` (a copy of `measure`'s label
+join, `boxOf`: which inputs join their labels, and the union of their rects, re-read after
+scrolling; a change to one is made in both), lives in `tapTargetVerdict`. Both in-page
+functions, `measure` and `tapTargetVerdict`, are long on purpose (Playwright serialises
+them, so every helper is a closure inside): an accepted exception to the function-length
+rule.
 
 The root barrel (`packages/playwright/src/index.ts`) re-exports `./auth`,
 `./config`, `./helpers`, `./pages`, `./pwa` and `./screens`; `./csp` and
