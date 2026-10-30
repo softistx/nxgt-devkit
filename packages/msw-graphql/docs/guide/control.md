@@ -140,6 +140,9 @@ export async function fetch(request: Request) {
 | `withScope(scope, fn)` | Runs `fn` with `scope` current, across awaits (an `AsyncLocalStorage`); `undefined` runs `fn` as is. Without `AsyncLocalStorage` (a browser) it just runs `fn` |
 | `currentScope()` | The scope `withScope` set, if any |
 | `SCOPE_HEADER` | `'x-mock-scope'` |
+| `scoped(make)` | A mutable object with one instance per scope, used as the object itself |
+| `scopedValue(initial)` | `{ get, set }`: a value with one slot per scope |
+| `scopedCounter()` | `{ next, reset }`: a count per scope |
 
 Two rules follow from this. `withScope(undefined, fn)` inside an outer
 `withScope` keeps the outer scope; it never clears it. And the scope `withScope`
@@ -153,6 +156,35 @@ answering; reset through `control.reset()` or `control.scope(id).reset()`.
 `@nxgt/playwright`'s `createMockServerTest(base, { scope: true })` sends the
 header with the worker index; see its
 [mock-server guide](../../../playwright/docs/guide/mock-server.md#parallel-workers-the-scope-option).
+
+
+### Per-scope mock data
+
+The control keeps its failure, overrides and streams per scope, but your mock
+data is yours, and it must be split too, or the workers still share it.
+`scoped`, `scopedValue` and `scopedCounter` hold state once per scope, keyed by
+`currentScope()` (the default scope, no `withScope` and no header, is `""`):
+
+```ts
+import { scoped, scopedCounter, scopedValue } from '@nxgt/msw-graphql';
+
+// A mutable object, one instance per scope, used exactly as the object itself.
+const students = scoped(() => new Map<string, { name: string }>());
+students.set('1', { name: 'Ada' }); // only the current scope's map changes
+
+// A scalar or a reassigned array, one slot per scope.
+const draft = scopedValue<string[]>(() => []);
+draft.set([...draft.get(), 'x']);
+
+// A counter, one count per scope.
+const ids = scopedCounter();
+ids.next();  // 1, then 2, ...
+ids.reset(); // back to 0 for the current scope only
+```
+
+Instances are created lazily by the function you give, the first time a scope
+touches them. In a `reset` or scenario callback, wrap the work in
+`withScope(context?.scope, () => students.clear())` to empty one scope's map.
 
 ## Over HTTP
 
