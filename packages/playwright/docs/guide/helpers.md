@@ -483,7 +483,7 @@ or the labels; a floating layer over part of the square is seen through; an
 element off screen or covered where it sits is scrolled to the middle and
 every scroll position is put back (hence `async`). `covered`: another element
 still covers it there, so no pointer reaches it; `hidden`: it has no box.
-`hitArea: false` judges the visible box only. It does not select elements,
+Defaults: `size` 44, `tolerance` 0.5 (a box this close to `size` is large enough), `hitArea` true; `hitArea: false` judges the visible box only. It does not select elements,
 skip hidden or disabled ones, or apply the spacing exception: the caller
 passes the element. The module touches no browser global when imported, so it
 also loads in Node; only calling it needs a browser.

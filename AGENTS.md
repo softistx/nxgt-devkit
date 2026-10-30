@@ -83,11 +83,13 @@ The in-page `measure` functions (`src/helpers/text-overflow/measure.ts`, `src/he
 `src/helpers/tap-targets/hit-area.ts` (`probeHitAreas`) does not re-select:
 `expectTapTargets` runs `measure` with `page.evaluateHandle`, so the selected elements
 stay in the page, and the probe is run on that handle with `handle.evaluate(probeHitAreas,
-…)` (select once). It keeps its own `labelsOf` / `rectOf`, a copy of `measure`'s label
-join (`boxOf`: which inputs join their labels, and the union of their rects), because it
-re-reads the rects after scrolling; a change to one is made in both. Both in-page
-functions are long on purpose (Playwright serialises them, so every helper is a closure
-inside): an accepted exception to the function-length rule.
+…)` (select once). `probeHitAreas` is only a wrapper that loops over the undersized
+elements; the probe itself, with its own `labelsOf` / `rectOf` (a copy of `measure`'s label
+join, `boxOf`: which inputs join their labels, and the union of their rects, re-read after
+scrolling; a change to one is made in both), lives in `tapTargetVerdict`. Both in-page
+functions, `measure` and `tapTargetVerdict`, are long on purpose (Playwright serialises
+them, so every helper is a closure inside): an accepted exception to the function-length
+rule.
 
 The root barrel (`packages/playwright/src/index.ts`) re-exports `./auth`,
 `./config`, `./helpers`, `./pages`, `./pwa` and `./screens`; `./csp` and

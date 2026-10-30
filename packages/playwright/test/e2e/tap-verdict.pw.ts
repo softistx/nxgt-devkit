@@ -66,7 +66,7 @@ test('size moves the bar', async ({ page }) => {
 	expect((await verdictOf(page, '#a', '{ size: 48 }')).ok).toBe(false);
 });
 
-test('a square near the screen edge is moved inside the viewport', async ({
+test('a neighbour over the clamped square makes the control small', async ({
 	page,
 }) => {
 	// Centre 20px from the edge: the centred square would stick out, so it is
@@ -77,6 +77,20 @@ test('a square near the screen edge is moved inside the viewport', async ({
 	expect(await verdictOf(page, '#a')).toMatchObject({
 		verdict: 'small',
 		ok: false,
+	});
+});
+
+test('a square near the screen edge is moved inside the viewport: only the clamped square passes', async ({
+	page,
+}) => {
+	// Centre 20px from the edge; the hit area spans x 0..44 exactly, so the
+	// centred square (-2..42) sticks out and only the clamped one is all hit.
+	await page.setContent(
+		'<style>body{margin:0}.edge{position:absolute;left:10px;top:100px;width:20px;height:20px;padding:0;border:0}.edge::before{content:"";position:absolute;left:-10px;top:-12px;width:44px;height:44px}</style><button id="a" class="edge"></button>',
+	);
+	expect(await verdictOf(page, '#a')).toMatchObject({
+		verdict: 'enlarged',
+		ok: true,
 	});
 });
 

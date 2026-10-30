@@ -16,6 +16,7 @@ export type TapTargetVerdictOptions = {
 	/**
 	 * Shared by the calls of one pass: the floating layers seen not to move
 	 * (never waited for again). Optional; `expectTapTargets` passes one.
+	 * @internal
 	 */
 	memo?: { still: Set<Element>; idle: number };
 };
@@ -455,7 +456,7 @@ export async function tapTargetVerdict(
 	if (!useHitArea) return { verdict: 'small', ok: false, ...sizes };
 	const verdict = await judge(el, mayEnlarge(own));
 	return {
-		verdict: verdict === 'small' ? 'small' : verdict,
+		verdict,
 		ok: verdict === 'enlarged',
 		...sizes,
 	};
