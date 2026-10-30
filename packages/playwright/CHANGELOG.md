@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.13.0
+
+### Minor Changes
+
+- [#112](https://github.com/softistx/nxgt-devkit/pull/112) [`9f10094`](https://github.com/softistx/nxgt-devkit/commit/9f1009490b5534793d9a218c782f94ab5cc27df0) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Export `withOverlaysInFlow(page, selectors, run)` from `@nxgt/playwright/a11y`: it puts sticky or fixed bars (for example `DEFAULT_UNSTICK`) back in the flow while `run` executes, then restores their inline `position`. Use it around a full-page screenshot of a page with a sticky form-actions bar. It was already used by the accessibility scan but not exported.
+
 ## 0.12.0
 
 ### Minor Changes
