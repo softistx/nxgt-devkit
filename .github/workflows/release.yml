@@ -12,6 +12,9 @@ name: Release
 on:
   push:
     branches: [develop]
+  # A rerun of a failed release can die at startup (no job started); a fresh
+  # run from the Actions tab publishes what is versioned and not yet on npm.
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
