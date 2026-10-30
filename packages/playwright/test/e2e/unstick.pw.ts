@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { DEFAULT_UNSTICK, withOverlaysInFlow } from '../../src/a11y';
 
 const html = `<!doctype html><html lang="en"><head><title>Probe</title><style>
@@ -7,7 +7,7 @@ main { height: 1200px; }
 [data-slot="form-actions"] { position: sticky; bottom: 0; height: 60px; }
 </style></head><body><main>Content</main><div data-slot="form-actions" style="position: sticky">Save</div></body></html>`;
 
-const position = (page: import('@playwright/test').Page) =>
+const position = (page: Page) =>
 	page
 		.locator('[data-slot="form-actions"]')
 		.evaluate((el) => getComputedStyle(el).position);
