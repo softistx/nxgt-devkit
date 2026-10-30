@@ -142,7 +142,8 @@ export async function fetch(request: Request) {
 | `SCOPE_HEADER` | `'x-mock-scope'` |
 | `scoped(make)` | A mutable object with one instance per scope, used as the object itself |
 | `scopedValue(initial)` | `{ get, set }`: a value with one slot per scope |
-| `scopedCounter()` | `{ next, reset }`: a count per scope |
+| `scopedCounter()` | `{ next, reset }`: a count per scope (`reset` affects the current scope only) |
+| `clearScopedState(scope?)` | Drops one scope's state, or every scope's with no argument |
 
 Two rules follow from this. `withScope(undefined, fn)` inside an outer
 `withScope` keeps the outer scope; it never clears it. And the scope `withScope`
@@ -156,7 +157,6 @@ answering; reset through `control.reset()` or `control.scope(id).reset()`.
 `@nxgt/playwright`'s `createMockServerTest(base, { scope: true })` sends the
 header with the worker index; see its
 [mock-server guide](../../../playwright/docs/guide/mock-server.md#parallel-workers-the-scope-option).
-
 
 ### Per-scope mock data
 
@@ -183,8 +183,25 @@ ids.reset(); // back to 0 for the current scope only
 ```
 
 Instances are created lazily by the function you give, the first time a scope
-touches them. In a `reset` or scenario callback, wrap the work in
-`withScope(context?.scope, () => students.clear())` to empty one scope's map.
+touches them. To reset them, call `clearScopedState` from your `reset` option:
+a scoped reset passes `{ scope }`, an unscoped one passes nothing and must clear
+every scope, as the control does for its own state.
+
+```ts
+import { clearScopedState } from '@nxgt/msw-graphql';
+import { createMockControl } from '@nxgt/msw-graphql/control';
+
+const control = createMockControl({
+	server,
+	state,
+	reset: (ctx) => clearScopedState(ctx?.scope), // one scope, or all
+});
+```
+
+`clearScopedState` also frees the stores of scopes that will not come back,
+which otherwise live as long as the process. A scenario writes into the scope
+it runs for with `withScope(ctx?.scope, () => ...)`. In a browser `withScope` is
+a no-op, so every scope collapses into the default scope `""`.
 
 ## Over HTTP
 

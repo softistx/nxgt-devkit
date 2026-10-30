@@ -12,6 +12,27 @@ const storeOf = (scope: string): Map<object, unknown> => {
 	return store;
 };
 
+/**
+ * Drops the state `scoped`, `scopedValue` and `scopedCounter` hold for one
+ * scope, or for every scope (the default one, `""`, included) when called with
+ * none. The next access recreates it from its `make` / `initial`. It also
+ * frees the stores of scopes that will not come back, which otherwise live as
+ * long as the process.
+ *
+ * ```ts
+ * createMockControl({
+ *   server,
+ *   reset: (ctx) => clearScopedState(ctx?.scope), // scoped reset: one scope; unscoped: all
+ * });
+ * ```
+ *
+ * Where `withScope` is a no-op (a browser), every scope is `""`.
+ */
+export function clearScopedState(scope?: string): void {
+	if (scope === undefined) stores.clear();
+	else stores.delete(scope);
+}
+
 function instanceOf<T>(slot: object, make: () => T): T {
 	const store = storeOf(currentScope() ?? '');
 	if (!store.has(slot)) store.set(slot, make());
@@ -77,7 +98,8 @@ export function scopedValue<T>(initial: () => T): {
 
 /**
  * A counter with one count per mock scope: `next()` returns the new count
- * (1, 2, …), `reset()` puts the current scope's count back to 0.
+ * (1, 2, …), `reset()` puts the current scope's count back to 0 (the current
+ * scope only; {@link clearScopedState} clears the others).
  *
  * ```ts
  * const ids = scopedCounter();

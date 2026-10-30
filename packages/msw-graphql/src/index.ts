@@ -14,6 +14,11 @@ export {
 	scopeOf,
 	withScope,
 } from './scope';
-export { scoped, scopedCounter, scopedValue } from './scoped-state';
+export {
+	clearScopedState,
+	scoped,
+	scopedCounter,
+	scopedValue,
+} from './scoped-state';
 export { createMockState, type MockState, mockState } from './state';
 export { closeStreams } from './subscription';
