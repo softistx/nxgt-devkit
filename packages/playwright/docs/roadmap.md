@@ -38,6 +38,9 @@ Nothing is planned yet.
 
 ## Shipped
 
+- **Sticky bars in flow, exported** — `withOverlaysInFlow(page, selectors, run)`
+  from `@nxgt/playwright/a11y` puts sticky or fixed bars back in the flow around
+  a step such as a full-page screenshot, then restores them.
 - **A tap-target verdict in the browser** — `tapTargetVerdict(el)` from
   `@nxgt/playwright/tap-targets` gives the 44px verdict of `expectTapTargets`
   for one element in a Storybook play or a Vitest browser test; the screen check
