@@ -25,3 +25,4 @@ export {
 	type ExpectAccessibleOptions,
 	expectAccessible,
 } from './scan';
+export { withOverlaysInFlow } from './unstick';
