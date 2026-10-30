@@ -140,6 +140,10 @@ export async function fetch(request: Request) {
 | `withScope(scope, fn)` | Runs `fn` with `scope` current, across awaits (an `AsyncLocalStorage`); `undefined` runs `fn` as is. Without `AsyncLocalStorage` (a browser) it just runs `fn` |
 | `currentScope()` | The scope `withScope` set, if any |
 | `SCOPE_HEADER` | `'x-mock-scope'` |
+| `scoped(make)` | A mutable object with one instance per scope, used as the object itself |
+| `scopedValue(initial)` | `{ get, set }`: a value with one slot per scope |
+| `scopedCounter()` | `{ next, reset }`: a count per scope (`reset` affects the current scope only) |
+| `clearScopedState(scope?)` | Drops one scope's state, or every scope's with no argument |
 
 Two rules follow from this. `withScope(undefined, fn)` inside an outer
 `withScope` keeps the outer scope; it never clears it. And the scope `withScope`
@@ -153,6 +157,51 @@ answering; reset through `control.reset()` or `control.scope(id).reset()`.
 `@nxgt/playwright`'s `createMockServerTest(base, { scope: true })` sends the
 header with the worker index; see its
 [mock-server guide](../../../playwright/docs/guide/mock-server.md#parallel-workers-the-scope-option).
+
+### Per-scope mock data
+
+The control keeps its failure, overrides and streams per scope, but your mock
+data is yours, and it must be split too, or the workers still share it.
+`scoped`, `scopedValue` and `scopedCounter` hold state once per scope, keyed by
+`currentScope()` (the default scope, no `withScope` and no header, is `""`):
+
+```ts
+import { scoped, scopedCounter, scopedValue } from '@nxgt/msw-graphql';
+
+// A mutable object, one instance per scope, used exactly as the object itself.
+const students = scoped(() => new Map<string, { name: string }>());
+students.set('1', { name: 'Ada' }); // only the current scope's map changes
+
+// A scalar or a reassigned array, one slot per scope.
+const draft = scopedValue<string[]>(() => []);
+draft.set([...draft.get(), 'x']);
+
+// A counter, one count per scope.
+const ids = scopedCounter();
+ids.next();  // 1, then 2, ...
+ids.reset(); // back to 0 for the current scope only
+```
+
+Instances are created lazily by the function you give, the first time a scope
+touches them. To reset them, call `clearScopedState` from your `reset` option:
+a scoped reset passes `{ scope }`, an unscoped one passes nothing and must clear
+every scope, as the control does for its own state.
+
+```ts
+import { clearScopedState } from '@nxgt/msw-graphql';
+import { createMockControl } from '@nxgt/msw-graphql/control';
+
+const control = createMockControl({
+	server,
+	state,
+	reset: (ctx) => clearScopedState(ctx?.scope), // one scope, or all
+});
+```
+
+`clearScopedState` also frees the stores of scopes that will not come back,
+which otherwise live as long as the process. A scenario writes into the scope
+it runs for with `withScope(ctx?.scope, () => ...)`. In a browser `withScope` is
+a no-op, so every scope collapses into the default scope `""`.
 
 ## Over HTTP
 

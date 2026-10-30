@@ -45,7 +45,7 @@ Node server patches the process.
 
 | Subpath | Exports | Needs |
 | --- | --- | --- |
-| `@nxgt/msw-graphql` | `createExecutor`, `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`, `createMockState`, `mockState`, `failure`, `closeStreams`, `scopeOf`, `withScope`, `currentScope`, `SCOPE_HEADER`; types `Executor`, `ExecutorInput`, `ExecutorOptions`, `MockState` | `msw`, `graphql` |
+| `@nxgt/msw-graphql` | `createExecutor`, `graphqlEndpoint`, `GraphQLHttpError`, `bearerToken`, `createMockState`, `mockState`, `failure`, `closeStreams`, `scopeOf`, `withScope`, `currentScope`, `SCOPE_HEADER`, `scoped`, `scopedValue`, `scopedCounter`, `clearScopedState`; types `Executor`, `ExecutorInput`, `ExecutorOptions`, `MockState` | `msw`, `graphql` |
 | `@nxgt/msw-graphql/schema` | `buildMockSchema` | + `@graphql-tools/schema`, `@graphql-tools/mock` |
 | `@nxgt/msw-graphql/sdl` | `loadSdl` | nothing |
 | `@nxgt/msw-graphql/browser` | `enableMocking` (msw worker, handlers imported on demand) | `msw`, a browser |
@@ -200,6 +200,24 @@ createMockControl({
 	reset: (context) => reseed(context?.scope),
 	scenarios: { remove: (args, context) => remove(args, context?.scope) },
 });
+```
+
+Your own mock data needs the same split. `scoped`, `scopedValue` and
+`scopedCounter` hold it once per scope, read through `currentScope()`:
+
+```ts
+import {
+	clearScopedState,
+	scoped,
+	scopedCounter,
+	scopedValue,
+} from '@nxgt/msw-graphql';
+
+const students = scoped(() => new Map<string, Student>()); // used as the Map
+const nextId = scopedCounter();                            // next(), reset()
+const open = scopedValue(() => false);                     // get(), set(v)
+
+clearScopedState('1'); // drop one scope's state; clearScopedState() drops all
 ```
 
 Without the header nothing changes. See [control](docs/guide/control.md#mock-scopes).
