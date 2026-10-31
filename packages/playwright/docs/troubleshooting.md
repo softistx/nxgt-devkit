@@ -76,6 +76,10 @@ throws itself are quoted exactly.
   - [`` expectTapTargets: `include` matched no element (<selectors>) ``](#expecttaptargets-include-matched-no-element-selectors)
   - [`` expectNoTextOverflow: `include` matched no element (<selectors>) ``](#expectnotextoverflow-include-matched-no-element-selectors)
   - [Tap targets pass in axe but fail `expectTapTargets`](#tap-targets-pass-in-axe-but-fail-expecttaptargets)
+  - [Tap targets measure 36px on a phone viewport, but a phone gets 44px](#tap-targets-measure-36px-on-a-phone-viewport-but-a-phone-gets-44px)
+  - [After `pointer: 'coarse'`, the page reports `hover: none` on Linux CI](#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci)
+  - [`` checkScreen: pointer: 'coarse' needs Chromium (it uses CDP touch emulation), but this page runs on <engine> ``](#checkscreen-pointer-coarse-needs-chromium-it-uses-cdp-touch-emulation-but-this-page-runs-on-engine)
+  - [`` checkScreen: pointer must be 'fine' or 'coarse', got … ``](#checkscreen-pointer-must-be-fine-or-coarse-got-)
 - [Content-Security-Policy](#content-security-policy)
   - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
   - [`expectNoncedPage` failures](#expectnoncedpage-failures)
@@ -438,6 +442,57 @@ that came from a variable (TypeScript already rejects a literal typo).
 ```sh
 bun -e "import { devices } from '@playwright/test'; console.log(Object.keys(devices).filter((d) => devices[d].isMobile))"
 ```
+
+### Tap targets measure 36px on a phone viewport, but a phone gets 44px
+
+`expectTapTargets` (or `checkScreen`'s `tapTargets`) lists buttons smaller than
+44x44 although the design enlarges them on touch.
+
+**When:** a desktop Chromium project with a phone `viewport`, on a component
+library that sizes targets under `@media (pointer: coarse)`.
+**Why:** resizing the viewport does not change the pointer. `hasTouch` is a
+context option fixed at creation, so the page keeps a fine pointer and the
+desktop sizes apply.
+**Fix:** `checkScreen(page, testInfo, 'home', { viewport: PHONE, tapTargets: true, pointer: 'coarse' })`.
+Chromium only; see [guide/screens.md](guide/screens.md#one-call-per-screen-checkscreen).
+
+### After `pointer: 'coarse'`, the page reports `hover: none` on Linux CI
+
+No error: after `checkScreen(…, { pointer: 'coarse' })` or `withPointer(page,
+'coarse', …)`, `@media (hover: hover)` and `(pointer: fine)` rules stop
+matching on the same page, and a later check or screenshot judges it without
+them. It passes on a Mac and fails on CI.
+
+**When:** headless Chromium on a machine with no mouse (a Linux CI runner),
+on the page the coarse check ran on. A new page is not affected.
+**Why:** Playwright fakes a mouse in headless Chromium with
+`--blink-settings=primaryPointerType=4,primaryHoverType=2,…`. Switching CDP
+touch emulation off restores the pointer Chromium read from the machine
+(none on the runner), not that faked one. No CDP call puts it back. A
+navigation does on the Chromium of Playwright 1.64 (it applies the launch
+settings again), but not on the one of Playwright 1.61, even for a reload. A
+Mac has a trackpad, so its machine pointer is already a mouse.
+**Fix:** make the coarse check the last one on that page, or carry on in a new
+page:
+
+```ts
+await checkScreen(page, testInfo, 'home-touch', { pointer: 'coarse', tapTargets: true });
+const next = await page.context().newPage(); // has the mouse Playwright fakes
+```
+
+### `` checkScreen: pointer: 'coarse' needs Chromium (it uses CDP touch emulation), but this page runs on <engine> ``
+
+**When:** `pointer: 'coarse'` on a Firefox or WebKit project.
+**Why:** the switch is Chrome DevTools Protocol, which only Chromium has.
+Skipping it silently would measure the fine-pointer sizes and mislead.
+**Fix:** run that check in a Chromium project, or give the Firefox or WebKit
+project `hasTouch: true` (a WebKit phone device already has it).
+
+### `` checkScreen: pointer must be 'fine' or 'coarse', got … ``
+
+**When:** `pointer` is anything else (a typo such as `'touch'`, or a boolean from plain JavaScript).
+**Why:** only the two pointers exist; guessing would measure the wrong sizes.
+**Fix:** pass `'coarse'`, or `'fine'` / nothing for the project's own pointer.
 
 ### A `mobile-firefox` project does not look like a phone
 

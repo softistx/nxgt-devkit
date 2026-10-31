@@ -50,7 +50,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
 | `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `expectNoTextOverflow`, `formatTextOverflow`, `expectTapTargets`, `formatTapTargets`, `DEFAULT_TAP_TARGETS`, `screenshotName` | Node |
 | `@nxgt/playwright/tap-targets` | `tapTargetVerdict`; types `TapTargetVerdict`, `TapTargetVerdictKind`, `TapTargetVerdictOptions` | Browser (and Node to import) |
-| `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `withViewport`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions`, `ScreenViewport` | Node |
+| `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `withViewport`, `withPointer`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions`, `ScreenViewport`, `ScreenPointer` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
 | `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `expectFocusAboveActions`, `expectFieldsAboveActions`, `formatViolations`, `withOverlaysInFlow`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `FocusOptions`, `FocusFieldsOptions`, `DisabledRule`, `AccessibilityResults` | Node |
@@ -368,7 +368,9 @@ An icon button a mouse hits and a thumb misses is the third.
 pixels, unless its invisible hit area (a 44px `::before`) fills that square
 (`hitArea: false` turns the probe off). A 24px minimum is axe's `target-size`,
 which `expectAccessible` already runs; `checkScreen` takes
-`tapTargets: (info) => isMobileProject(info)` for phones only:
+`tapTargets: (info) => isMobileProject(info)` for phones only. From a desktop
+Chromium project, `checkScreen(…, { viewport, tapTargets: true, pointer: 'coarse' })`
+judges the sizes a finger gets (`@media (pointer: coarse)`); other engines throw. Afterwards, on headless Linux, that page reports `hover: none` and `pointer: none` (a new page does not; [why](docs/troubleshooting.md#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci)), so make it the page's last check. `withPointer(page, pointer, run)` is the same switch around your own code:
 
 ```ts
 import { expectTapTargets } from '@nxgt/playwright/helpers';
@@ -377,6 +379,12 @@ test('tap targets fit a thumb', async ({ page }) => {
 	await page.goto('/projects');
 	await expectTapTargets(page, { exclude: '.legal a' });
 });
+```
+
+```ts
+import { withPointer } from '@nxgt/playwright/screens';
+
+await withPointer(page, 'coarse', () => expectTapTargets(page));
 ```
 
 The same verdict runs in the browser for one element, where Playwright is not

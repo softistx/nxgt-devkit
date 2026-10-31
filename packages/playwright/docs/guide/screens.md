@@ -158,6 +158,7 @@ test('students list', async ({ page }, testInfo) => {
 | `tapTargets` | `false` | `true` runs `expectTapTargets` (44x44px) in every project, an options object (`size`, `spacing`, `hitArea`, `targets`, `include`, `exclude`, `max`) is its own, and a function of the `testInfo` returning either picks per project: `(info) => isMobileProject(info)` for phones only. Off by default: a desktop layout has small targets on purpose. WCAG 2.5.8's 24px is axe's `target-size`, already in the default `a11y` scan. Runs last. |
 | `max` | `5` | How many offending elements the sideways-scroll message lists (and the text-overflow and tap-target ones', unless `textOverflow` or `tapTargets` sets its own). |
 | `viewport` | the page's own | `{ width, height }`: the page is resized for the whole call, so the save and every check (sideways scroll, axe, text overflow, tap targets) judge that size, then the previous viewport is restored in a `finally`, also when a check throws. Wins over `save.viewport`. |
+| `pointer` | the project's own | `'coarse'` judges the screen with a finger for the whole call: `@media (pointer: coarse)` and `hover: none` match, so tap targets a component library enlarges on touch are measured at the size a phone gets. **Chromium only** (CDP `Emulation.setTouchEmulationEnabled`, switched off and detached in a `finally`, also when a check throws); on Firefox or WebKit it throws `checkScreen: pointer: 'coarse' needs Chromium …` before anything runs, because a silent skip would judge the wrong sizes and report a pass or a failure for the wrong reason. `'fine'` keeps the project's own pointer (it does not force a mouse). A page that already has touch (`navigator.maxTouchPoints > 0`, a `hasTouch` project) is left alone. Any other value throws `checkScreen: pointer must be 'fine' or 'coarse', got …`. |
 | `save` | none | `saveScreen`'s options (`dir`, `maxGrowth`, `screenshot`), used when the run saves screens. |
 
 `@axe-core/playwright` is needed when the scan runs (the default, or an options
@@ -180,6 +181,42 @@ await checkScreen(page, testInfo, 'students-list-phone', {
 	viewport: { width: 390, height: 844 },
 	tapTargets: true,
 });
+```
+
+A phone screen with a finger, from a desktop Chromium project. Libraries often
+size buttons 36px with a mouse and 44px under `@media (pointer: coarse)`;
+`hasTouch` is a context option fixed at creation, so `viewport` alone keeps the
+mouse and measures the 36px:
+
+```ts
+await checkScreen(page, testInfo, 'students-list-phone', {
+	viewport: { width: 390, height: 844 },
+	tapTargets: true,
+	pointer: 'coarse',
+});
+```
+
+On Firefox and WebKit this throws, so guard the spec with
+`test.skip(({ browserName }) => browserName !== 'chromium')`.
+
+Make it the last check on that page, or carry on in a new page. Touch emulation
+is switched off when the call ends, but in headless Chromium on a machine with
+no pointing device (a Linux CI runner) the page then reports `pointer: none`
+and `hover: none`, not the mouse it had: Chromium restores the machine's
+pointer, not the one Playwright's headless launch fakes. A new page has the
+mouse; a `page.reload()` brings it back on the Chromium of Playwright 1.64, not
+on the one of 1.61. `pointer: coarse` and `navigator.maxTouchPoints` are back
+to the page's own either way. See
+[troubleshooting](../troubleshooting.md#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci).
+
+`withPointer(page, pointer, run)` (`pointer`: `'fine' | 'coarse'`) is the same
+switch around code of your own, with the same Chromium-only rule:
+
+```ts
+import { expectTapTargets } from '@nxgt/playwright/helpers';
+import { withPointer } from '@nxgt/playwright/screens';
+
+await withPointer(page, 'coarse', () => expectTapTargets(page));
 ```
 
 ## A check you compose yourself

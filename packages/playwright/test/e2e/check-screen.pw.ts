@@ -286,3 +286,60 @@ test('saves nothing when the run does not save screens', async ({
 		);
 	}
 });
+
+const COARSE_BUTTON = doc(
+	'<style>button{width:36px;height:36px}@media (pointer: coarse){button{width:44px;height:44px}}</style><button aria-label="Menu">&#8801;</button>',
+);
+
+test.describe('pointer', () => {
+	test.skip(
+		({ browserName, hasTouch }) => browserName !== 'chromium' || hasTouch,
+		'pointer: coarse is Chromium only, and a hasTouch project already has it',
+	);
+
+	test('a coarse pointer measures the sizes a phone gets, then switches touch off', async ({
+		page,
+	}, testInfo) => {
+		await page.setContent(COARSE_BUTTON);
+		const media = (p = page) =>
+			p.evaluate(() => [
+				matchMedia('(pointer: coarse)').matches,
+				matchMedia('(hover: none)').matches,
+			]);
+		const before = await media();
+		const fine = await checkScreen(page, testInfo, 'fine', {
+			tapTargets: true,
+			a11y: false,
+		}).catch((e: Error) => e);
+		expect((fine as Error).message).toContain('36x36');
+		await checkScreen(page, testInfo, 'coarse', {
+			pointer: 'coarse',
+			tapTargets: true,
+			a11y: false,
+		});
+		// Touch is off again. On headless Linux this page keeps `pointer: none`
+		// and `hover: none` (Chromium restores the machine's pointer, not the
+		// mouse Playwright fakes with --blink-settings); a new page has the mouse.
+		expect(
+			await page.evaluate(() => [
+				navigator.maxTouchPoints,
+				matchMedia('(pointer: coarse)').matches,
+			]),
+		).toEqual([0, false]);
+		const fresh = await page.context().newPage();
+		expect(await media(fresh)).toEqual(before);
+		await fresh.close();
+	});
+
+	test('touch is switched off when a check throws', async ({
+		page,
+	}, testInfo) => {
+		await page.setContent(NO_ALT);
+		await checkScreen(page, testInfo, 'throws', { pointer: 'coarse' }).catch(
+			() => undefined,
+		);
+		expect(
+			await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
+		).toBe(false);
+	});
+});
