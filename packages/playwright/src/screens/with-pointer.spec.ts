@@ -33,8 +33,7 @@ function fakePage(
 				return cdp;
 			},
 		}),
-		evaluate: async () => ({ touchPoints, coarse: false, hoverNone: false }),
-		waitForFunction: async () => undefined,
+		evaluate: async () => touchPoints,
 	};
 	return { page: page as unknown as Page, log };
 }
@@ -124,16 +123,16 @@ describe('checkScreen pointer', () => {
 	test('wraps the checks, with touch emulation on while they run', async () => {
 		const { page, log } = fakePage();
 		(page as unknown as { viewportSize: () => null }).viewportSize = () => null;
-		(page as unknown as { evaluate: () => Promise<unknown> }).evaluate =
-			(() => {
-				let calls = 0;
-				return async () => {
-					// The first call reads maxTouchPoints; the rest are the checks.
-					if (calls++ === 0)
-						return { touchPoints: 0, coarse: false, hoverNone: false };
-					log.push('check');
-				};
-			})();
+		(
+			page as unknown as { evaluate: () => Promise<number | undefined> }
+		).evaluate = (() => {
+			let calls = 0;
+			return async () => {
+				// The first call reads maxTouchPoints; the rest are the checks.
+				if (calls++ === 0) return 0;
+				log.push('check');
+			};
+		})();
 		await checkScreen(
 			page,
 			{ project: { name: 'x' }, config: { metadata: {} } } as never,

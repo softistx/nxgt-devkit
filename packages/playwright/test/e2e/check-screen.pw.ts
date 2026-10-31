@@ -297,7 +297,7 @@ test.describe('pointer', () => {
 		'pointer: coarse is Chromium only, and a hasTouch project already has it',
 	);
 
-	test('a coarse pointer measures the sizes a phone gets, then restores the mouse', async ({
+	test('a coarse pointer measures the sizes a phone gets, then switches touch off', async ({
 		page,
 	}, testInfo) => {
 		await page.setContent(COARSE_BUTTON);
@@ -317,10 +317,20 @@ test.describe('pointer', () => {
 			tapTargets: true,
 			a11y: false,
 		});
+		// Touch is off again. Headless Linux keeps `pointer: none` and
+		// `hover: none` (Chromium restores the machine's pointer, not the mouse
+		// Playwright fakes with --blink-settings) until the page navigates.
+		expect(
+			await page.evaluate(() => [
+				navigator.maxTouchPoints,
+				matchMedia('(pointer: coarse)').matches,
+			]),
+		).toEqual([0, false]);
+		await page.reload();
 		expect(await media()).toEqual(before);
 	});
 
-	test('the mouse is restored when a check throws', async ({
+	test('touch is switched off when a check throws', async ({
 		page,
 	}, testInfo) => {
 		await page.setContent(NO_ALT);

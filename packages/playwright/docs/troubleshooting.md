@@ -76,6 +76,10 @@ throws itself are quoted exactly.
   - [`` expectTapTargets: `include` matched no element (<selectors>) ``](#expecttaptargets-include-matched-no-element-selectors)
   - [`` expectNoTextOverflow: `include` matched no element (<selectors>) ``](#expectnotextoverflow-include-matched-no-element-selectors)
   - [Tap targets pass in axe but fail `expectTapTargets`](#tap-targets-pass-in-axe-but-fail-expecttaptargets)
+  - [Tap targets measure 36px on a phone viewport, but a phone gets 44px](#tap-targets-measure-36px-on-a-phone-viewport-but-a-phone-gets-44px)
+  - [After `pointer: 'coarse'`, the page reports `hover: none` on Linux CI](#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci)
+  - [`` checkScreen: pointer: 'coarse' needs Chromium (it uses CDP touch emulation), but this page runs on <engine> ``](#checkscreen-pointer-coarse-needs-chromium-it-uses-cdp-touch-emulation-but-this-page-runs-on-engine)
+  - [`` checkScreen: pointer must be 'fine' or 'coarse', got … ``](#checkscreen-pointer-must-be-fine-or-coarse-got-)
 - [Content-Security-Policy](#content-security-policy)
   - [`Content-Security-Policy refusals`](#content-security-policy-refusals)
   - [`expectNoncedPage` failures](#expectnoncedpage-failures)
@@ -451,6 +455,28 @@ context option fixed at creation, so the page keeps a fine pointer and the
 desktop sizes apply.
 **Fix:** `checkScreen(page, testInfo, 'home', { viewport: PHONE, tapTargets: true, pointer: 'coarse' })`.
 Chromium only; see [guide/screens.md](guide/screens.md#one-call-per-screen-checkscreen).
+
+### After `pointer: 'coarse'`, the page reports `hover: none` on Linux CI
+
+No error: after `checkScreen(…, { pointer: 'coarse' })` or `withPointer(page,
+'coarse', …)`, `@media (hover: hover)` and `(pointer: fine)` rules stop
+matching on the same page, and a later check or screenshot judges it without
+them. It passes on a Mac and fails on CI.
+
+**When:** headless Chromium on a machine with no mouse (a Linux CI runner),
+on the page the coarse check ran on, until that page navigates.
+**Why:** Playwright fakes a mouse in headless Chromium with
+`--blink-settings=primaryPointerType=4,primaryHoverType=2,…`. Switching CDP
+touch emulation off restores the pointer Chromium read from the machine
+(none on the runner), not that faked one. No CDP call puts it back; a
+navigation does, since it applies the launch settings again. A Mac has a
+trackpad, so its machine pointer is already a mouse.
+**Fix:** make the coarse check the last one on that page, or navigate after it:
+
+```ts
+await checkScreen(page, testInfo, 'home-touch', { pointer: 'coarse', tapTargets: true });
+await page.reload(); // back to the mouse Playwright fakes, before more checks
+```
 
 ### `` checkScreen: pointer: 'coarse' needs Chromium (it uses CDP touch emulation), but this page runs on <engine> ``
 
