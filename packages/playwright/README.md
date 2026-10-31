@@ -368,7 +368,9 @@ An icon button a mouse hits and a thumb misses is the third.
 pixels, unless its invisible hit area (a 44px `::before`) fills that square
 (`hitArea: false` turns the probe off). A 24px minimum is axe's `target-size`,
 which `expectAccessible` already runs; `checkScreen` takes
-`tapTargets: (info) => isMobileProject(info)` for phones only:
+`tapTargets: (info) => isMobileProject(info)` for phones only. From a desktop
+Chromium project, `checkScreen(…, { viewport, tapTargets: true, pointer: 'coarse' })`
+judges the sizes a finger gets (`@media (pointer: coarse)`); other engines throw:
 
 ```ts
 import { expectTapTargets } from '@nxgt/playwright/helpers';

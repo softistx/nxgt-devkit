@@ -19,6 +19,7 @@ import {
 	saveScreen,
 	savingScreens,
 } from './save-screen';
+import { type ScreenPointer, withPointer } from './with-pointer';
 import { type ScreenViewport, withViewport } from './with-viewport';
 
 export type CheckScreenOptions = {
@@ -73,6 +74,17 @@ export type CheckScreenOptions = {
 	 * `{ width: 390, height: 844 }`. Wins over `save.viewport`.
 	 */
 	viewport?: ScreenViewport;
+	/**
+	 * `'coarse'` judges the screen with a finger, not a mouse, for the whole
+	 * call: `@media (pointer: coarse)` matches, so a component library that
+	 * enlarges its tap targets there is measured at the size a phone gets.
+	 * Pair it with `viewport` and `tapTargets` from a desktop project, where
+	 * `hasTouch` cannot be changed after the context exists. Chromium only
+	 * (CDP `Emulation.setTouchEmulationEnabled`, disabled and detached
+	 * afterwards, also when a check throws); on Firefox or WebKit it throws
+	 * before anything runs. `'fine'` (the default) keeps the project's own pointer.
+	 */
+	pointer?: ScreenPointer;
 	/** `saveScreen`'s options, used when the run saves screens. */
 	save?: SaveScreenOptions;
 	/** `expectNoHorizontalScroll`'s `max`, and `expectNoTextOverflow`'s and `expectTapTargets`'s unless they set their own. */
@@ -100,8 +112,10 @@ export function checkScreen(
 	name: string,
 	options: CheckScreenOptions = {},
 ): Promise<void> {
-	return withViewport(page, options.viewport, () =>
-		checkCurrentScreen(page, testInfo, name, options),
+	return withPointer(page, options.pointer, () =>
+		withViewport(page, options.viewport, () =>
+			checkCurrentScreen(page, testInfo, name, options),
+		),
 	);
 }
 

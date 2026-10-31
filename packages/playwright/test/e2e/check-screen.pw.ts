@@ -286,3 +286,45 @@ test('saves nothing when the run does not save screens', async ({
 		);
 	}
 });
+
+const COARSE_BUTTON = doc(
+	'<style>button{width:36px;height:36px}@media (pointer: coarse){button{width:44px;height:44px}}</style><button aria-label="Menu">&#8801;</button>',
+);
+
+test.describe('pointer', () => {
+	test.skip(
+		({ browserName }) => browserName !== 'chromium',
+		'pointer: coarse is Chromium only',
+	);
+
+	test('a coarse pointer measures the sizes a phone gets, then restores the mouse', async ({
+		page,
+	}, testInfo) => {
+		await page.setContent(COARSE_BUTTON);
+		const fine = await checkScreen(page, testInfo, 'fine', {
+			tapTargets: true,
+			a11y: false,
+		}).catch((e: Error) => e);
+		expect((fine as Error).message).toContain('36x36');
+		await checkScreen(page, testInfo, 'coarse', {
+			pointer: 'coarse',
+			tapTargets: true,
+			a11y: false,
+		});
+		expect(
+			await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
+		).toBe(false);
+	});
+
+	test('the mouse is restored when a check throws', async ({
+		page,
+	}, testInfo) => {
+		await page.setContent(NO_ALT);
+		await checkScreen(page, testInfo, 'throws', { pointer: 'coarse' }).catch(
+			() => undefined,
+		);
+		expect(
+			await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
+		).toBe(false);
+	});
+});

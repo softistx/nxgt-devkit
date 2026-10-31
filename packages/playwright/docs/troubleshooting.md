@@ -439,6 +439,27 @@ that came from a variable (TypeScript already rejects a literal typo).
 bun -e "import { devices } from '@playwright/test'; console.log(Object.keys(devices).filter((d) => devices[d].isMobile))"
 ```
 
+### Tap targets measure 36px on a phone viewport, but a phone gets 44px
+
+`expectTapTargets` (or `checkScreen`'s `tapTargets`) lists buttons smaller than
+44x44 although the design enlarges them on touch.
+
+**When:** a desktop Chromium project with a phone `viewport`, on a component
+library that sizes targets under `@media (pointer: coarse)`.
+**Why:** resizing the viewport does not change the pointer. `hasTouch` is a
+context option fixed at creation, so the page keeps a fine pointer and the
+desktop sizes apply.
+**Fix:** `checkScreen(page, testInfo, 'home', { viewport: PHONE, tapTargets: true, pointer: 'coarse' })`.
+Chromium only; see [guide/screens.md](guide/screens.md#one-call-per-screen-checkscreen).
+
+### `` checkScreen: pointer: 'coarse' needs Chromium (it uses CDP touch emulation), but this page runs on <engine> ``
+
+**When:** `pointer: 'coarse'` on a Firefox or WebKit project.
+**Why:** the switch is Chrome DevTools Protocol, which only Chromium has.
+Skipping it silently would measure the fine-pointer sizes and mislead.
+**Fix:** run that check in a Chromium project, or give the Firefox or WebKit
+project `hasTouch: true` (a WebKit phone device already has it).
+
 ### A `mobile-firefox` project does not look like a phone
 
 No error: the page renders as a narrow desktop page, ignores

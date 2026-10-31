@@ -10,6 +10,10 @@ number on this page; [`CHANGELOG.md`](../CHANGELOG.md) holds the full history.
   address, `latest` reads that mail and `clear` empties the inbox, for e2e
   tests of verification, reset and sign-in mails.
 
+- **Coarse pointer for `checkScreen`** — `pointer: 'coarse'` judges a phone
+  screen with a finger from a desktop Chromium project, so touch-only tap-target
+  sizes are measured; other engines throw a clear error.
+
 ## Next
 
 Nothing is planned yet.

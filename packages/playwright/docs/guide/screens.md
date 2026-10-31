@@ -158,6 +158,7 @@ test('students list', async ({ page }, testInfo) => {
 | `tapTargets` | `false` | `true` runs `expectTapTargets` (44x44px) in every project, an options object (`size`, `spacing`, `hitArea`, `targets`, `include`, `exclude`, `max`) is its own, and a function of the `testInfo` returning either picks per project: `(info) => isMobileProject(info)` for phones only. Off by default: a desktop layout has small targets on purpose. WCAG 2.5.8's 24px is axe's `target-size`, already in the default `a11y` scan. Runs last. |
 | `max` | `5` | How many offending elements the sideways-scroll message lists (and the text-overflow and tap-target ones', unless `textOverflow` or `tapTargets` sets its own). |
 | `viewport` | the page's own | `{ width, height }`: the page is resized for the whole call, so the save and every check (sideways scroll, axe, text overflow, tap targets) judge that size, then the previous viewport is restored in a `finally`, also when a check throws. Wins over `save.viewport`. |
+| `pointer` | the project's own | `'coarse'` judges the screen with a finger for the whole call: `@media (pointer: coarse)` and `hover: none` match, so tap targets a component library enlarges on touch are measured at the size a phone gets. **Chromium only** (CDP `Emulation.setTouchEmulationEnabled`, switched off and detached in a `finally`, also when a check throws); on Firefox or WebKit it throws `checkScreen: pointer: 'coarse' needs Chromium …` before anything runs, because a silent skip would judge the wrong sizes and report a pass or a failure for the wrong reason. `'fine'` changes nothing. |
 | `save` | none | `saveScreen`'s options (`dir`, `maxGrowth`, `screenshot`), used when the run saves screens. |
 
 `@axe-core/playwright` is needed when the scan runs (the default, or an options
@@ -181,6 +182,23 @@ await checkScreen(page, testInfo, 'students-list-phone', {
 	tapTargets: true,
 });
 ```
+
+A phone screen with a finger, from a desktop Chromium project. Libraries often
+size buttons 36px with a mouse and 44px under `@media (pointer: coarse)`;
+`hasTouch` is a context option fixed at creation, so `viewport` alone keeps the
+mouse and measures the 36px:
+
+```ts
+await checkScreen(page, testInfo, 'students-list-phone', {
+	viewport: { width: 390, height: 844 },
+	tapTargets: true,
+	pointer: 'coarse',
+});
+```
+
+On Firefox and WebKit this throws, so guard the spec with
+`test.skip(({ browserName }) => browserName !== 'chromium')`.
+`withPointer(page, 'coarse', run)` is the same switch around code of your own.
 
 ## A check you compose yourself
 
