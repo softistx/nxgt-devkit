@@ -1,5 +1,11 @@
 # @nxgt/msw-graphql
 
+## 0.7.0
+
+### Minor Changes
+
+- [#121](https://github.com/softistx/nxgt-devkit/pull/121) [`5688566`](https://github.com/softistx/nxgt-devkit/commit/5688566afc28e1e73ebb775bd8a51529d290ec62) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Widen the optional peers to the newest `@graphql-tools` majors: `@graphql-tools/mock` `^9.1.0 || ^10.0.0` and `@graphql-tools/schema` `^10.0.0 || ^11.0.0`. The `/schema` entry is tested against mock 10 and schema 11; the older majors stay accepted, as the API it uses did not change, but are not measured.
+
 ## 0.6.0
 
 ### Minor Changes
