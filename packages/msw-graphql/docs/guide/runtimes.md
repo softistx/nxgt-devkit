@@ -110,7 +110,7 @@ and that carries no stream body is sent with the caller's own `input` and
 
 ## graphql 16 or 17
 
-Both work, as the matrix shows; the peer is `^16.0.0 || ^17.0.0`. `@graphql-tools/mock` 9.1.16 accepts both.
+Both work, as the matrix shows; the peer is `^16.0.0 || ^17.0.0`. `@graphql-tools/mock` 9.1.16 and 10 accept both.
 
 ## `typescript-msw`
 
