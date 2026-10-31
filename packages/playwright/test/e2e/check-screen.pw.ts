@@ -331,6 +331,35 @@ test.describe('pointer', () => {
 		await fresh.close();
 	});
 
+	test('a coarse pointer holds when the call saves a page taller than the viewport', async ({
+		page,
+	}, testInfo) => {
+		await page.setContent(
+			doc(
+				'<style>button{width:36px;height:36px}@media (pointer: coarse){button{width:44px;height:44px}}</style><button aria-label="Menu">&#8801;</button><div style="height:2000px">taller than the viewport</div>',
+			),
+		);
+		const saving = Object.create(testInfo, {
+			config: {
+				value: {
+					...testInfo.config,
+					metadata: {
+						[SCREENS_METADATA_KEY]: { dir: 'unused', enabled: true },
+					},
+				},
+			},
+		});
+		const result = await checkScreen(page, saving, 'coarse-saving', {
+			pointer: 'coarse',
+			viewport: { width: 390, height: 500 },
+			save: { dir: testInfo.outputPath('screens') },
+			tapTargets: true,
+		}).catch((e: Error) => e);
+		// The tap targets pass (44px under coarse) and the pointer was coarse
+		// after the save's viewport resizes.
+		expect(result).toBeUndefined();
+	});
+
 	test('touch is switched off when a check throws', async ({
 		page,
 	}, testInfo) => {
