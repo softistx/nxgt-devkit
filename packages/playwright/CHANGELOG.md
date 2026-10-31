@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.15.0
+
+### Minor Changes
+
+- [#125](https://github.com/softistx/nxgt-devkit/pull/125) [`c195aa3`](https://github.com/softistx/nxgt-devkit/commit/c195aa39516d29d8ec64d5ad47e7257a16ded416) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add a `pointer` option to `checkScreen` (`@nxgt/playwright/screens`): `pointer: 'coarse'` judges the screen with a finger from a desktop Chromium project, so `@media (pointer: coarse)` matches and a component library that enlarges its tap targets there is measured at the size a phone gets (`checkScreen(page, testInfo, 'home', { viewport: PHONE, tapTargets: true, pointer: 'coarse' })`). It applies CDP `Emulation.setTouchEmulationEnabled` for the call and disables and detaches it afterwards, also when a check throws. On headless Chromium without a pointing device (Linux CI) the page then reports `hover: none` and `pointer: none` (a new page does not), so make it the page's last check or carry on in a new page. On Firefox and WebKit it throws before anything runs. `withPointer(page, pointer, run)` is exported for the same around code of your own.
+
 ## 0.14.0
 
 ### Minor Changes
