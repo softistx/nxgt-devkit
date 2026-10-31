@@ -5,15 +5,19 @@ import { join } from 'node:path';
 import type { Page, TestInfo } from '@playwright/test';
 import { checkScreen } from './check-screen';
 import { saveScreen } from './save-screen';
+import { withViewport } from './with-viewport';
 
 const phone = { width: 390, height: 844 };
 
 /** A page that records its viewport sizes and each call that saw one. */
-function fakePage(fail?: 'screenshot') {
-	let size: { width: number; height: number } | null = {
+function fakePage(
+	fail?: 'screenshot',
+	initial: { width: number; height: number } | null = {
 		width: 1280,
 		height: 720,
-	};
+	},
+) {
+	let size: { width: number; height: number } | null = initial;
 	const sizes: Array<{ width: number; height: number } | null> = [];
 	const page = {
 		viewportSize: () => size,
@@ -89,5 +93,23 @@ describe('checkScreen with a viewport', () => {
 			}),
 		).rejects.toThrow('axe failed');
 		expect(current()).toEqual({ width: 1280, height: 720 });
+	});
+});
+
+describe('withViewport on a page without a viewport size', () => {
+	test('resizes, runs, and leaves the page at the requested size', async () => {
+		const { page, current } = fakePage(undefined, null);
+		const seen: unknown[] = [];
+		await withViewport(page, phone, async () => {
+			seen.push(page.viewportSize());
+		});
+		expect(seen).toEqual([phone]);
+		expect(current()).toEqual(phone);
+	});
+
+	test('without a viewport it only runs', async () => {
+		const { page, sizes } = fakePage(undefined, null);
+		await withViewport(page, undefined, async () => undefined);
+		expect(sizes).toEqual([]);
 	});
 });
