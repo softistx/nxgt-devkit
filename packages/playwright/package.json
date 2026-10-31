@@ -148,6 +148,8 @@
 			"src/pwa/index.ts",
 			"src/screens/index.ts",
 			"src/screens/clear.ts",
+			"src/warm-up/index.ts",
+			"src/warm-up/setup.ts",
 			"src/react-router/index.ts",
 			"src/msw/index.ts",
 			"src/storybook/index.ts",

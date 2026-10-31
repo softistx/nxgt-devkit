@@ -6,6 +6,7 @@ import {
 } from '@playwright/test';
 import { type ScreensOption, withScreens } from './screens';
 import { selectedProjects } from './selected-projects';
+import { chainSetups, type WarmUpOption, warmUpConfig } from './warm-up';
 
 export type Browser = 'chromium' | 'firefox' | 'webkit' | 'msedge' | 'chrome';
 
@@ -63,6 +64,15 @@ export type AppConfigOptions = {
 	 * `<dir>/<project>/`. `true` takes both defaults. Default `false`.
 	 */
 	screens?: ScreensOption;
+	/**
+	 * Opens a page of the dev server once before the specs and reloads it
+	 * until it hydrates, so a cold Vite server (which answers 504 "Outdated
+	 * Optimize Dep" to the first page while it optimizes) does not fail the
+	 * first spec: `{ path: '/sign-in' }`, with optional `timeout` (default
+	 * 3 min), `reloadEvery` (default 15 s) and `marker`. `true` opens `/`.
+	 * Chained after the `screens` global setup. Default `false`.
+	 */
+	warmUp?: WarmUpOption;
 	/** Merged last, over everything above. */
 	overrides?: PlaywrightTestConfig;
 };
@@ -193,6 +203,16 @@ export function defineAppConfig(options: AppConfigOptions) {
 		options.overrides,
 	);
 
+	const warm = warmUpConfig(options.warmUp);
+	const globalSetup = chainSetups(screens.globalSetup, warm.globalSetup);
+	// `defineConfig` replaces `metadata` wholesale: keep both options' entries
+	// and the app's own.
+	const metadata = {
+		...screens.metadata,
+		...warm.metadata,
+		...overrides.metadata,
+	};
+
 	return defineConfig(
 		{
 			testDir: options.testDir ?? './playwright/e2e',
@@ -204,7 +224,8 @@ export function defineAppConfig(options: AppConfigOptions) {
 			reporter: 'html',
 			projects,
 			...(webServer ? { webServer } : {}),
-			...screens,
+			...(Object.keys(metadata).length ? { metadata } : {}),
+			...(globalSetup ? { globalSetup } : {}),
 			use: {
 				testIdAttribute: options.testIdAttribute ?? 'data-pw',
 				baseURL,
@@ -213,6 +234,6 @@ export function defineAppConfig(options: AppConfigOptions) {
 				screenshot: 'only-on-failure',
 			},
 		},
-		overrides,
+		overrides.metadata ? { ...overrides, metadata } : overrides,
 	);
 }

@@ -10,3 +10,4 @@ export {
 	projectsFromArgv,
 	selectedProjects,
 } from './selected-projects';
+export type { WarmUpOption } from './warm-up';

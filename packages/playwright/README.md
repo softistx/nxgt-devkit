@@ -44,8 +44,8 @@ imports, so the consumer's `tsconfig.json` needs
 
 | Subpath | Exports | Runs in |
 | --- | --- | --- |
-| `@nxgt/playwright` | everything from `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa` | Node |
-| `@nxgt/playwright/config` | `defineAppConfig`, `selectedProjects`, `projectsFromArgv`, `PROJECTS_ENV`; types `AppConfigOptions`, `Browser`, `DeviceName`, `MobileProject` | Node |
+| `@nxgt/playwright` | everything from `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `warmUp` | Node |
+| `@nxgt/playwright/config` | `defineAppConfig`, `selectedProjects`, `projectsFromArgv`, `PROJECTS_ENV`; types `AppConfigOptions`, `WarmUpOption`, `Browser`, `DeviceName`, `MobileProject` | Node |
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
 | `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `expectNoTextOverflow`, `formatTextOverflow`, `expectTapTargets`, `formatTapTargets`, `DEFAULT_TAP_TARGETS`, `screenshotName` | Node |
@@ -252,6 +252,21 @@ await elementHydrated(page.getByRole('button', { name: 'Continue' }));
 `hydrationWarnings(page)` collects the console's hydration-mismatch warnings
 (call it before `goto`, expect `[]` after). See
 [docs/guide/hydration.md](docs/guide/hydration.md).
+
+A cold Vite dev server answers 504 "Outdated Optimize Dep" to the first page
+while it optimizes, and that page never hydrates. `warmUp` opens a page once
+before the specs and reloads it until it hydrates (`reloadEvery` 15 s,
+`timeout` 3 min, then it fails naming the URL); `warmUp()` is the same for a
+`globalSetup` of your own:
+
+```ts
+import { reactRouterHydrated } from '@nxgt/playwright/react-router';
+
+export default defineAppConfig({
+	port: 5174,
+	warmUp: { path: '/sign-in', marker: reactRouterHydrated },
+});
+```
 
 ### A page at rest
 

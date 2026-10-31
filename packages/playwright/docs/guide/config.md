@@ -274,6 +274,17 @@ Stores the screens folder and whether this run saves in the config's
 `metadata`, and on a `SCREENS=1` run empties the folder first. Everything
 about it, including the `globalSetup` it sets, is in [screens.md](screens.md).
 
+### `warmUp`
+
+```ts
+export default defineAppConfig({ port: 5174, warmUp: { path: '/sign-in' } });
+```
+
+Opens the path in Chromium once before the specs and reloads it until it
+hydrates, so a cold dev server does not fail the first spec. `true` opens `/`.
+Options, the `warmUp()` helper and the failure message are in
+[hydration.md](hydration.md#warming-a-cold-dev-server-up).
+
 ## `selectedProjects`
 
 The `--project` names on the command line, from `@nxgt/playwright/config` (also
