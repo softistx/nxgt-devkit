@@ -300,6 +300,9 @@ test.describe('pointer', () => {
 	test('a coarse pointer measures the sizes a phone gets, then switches touch off', async ({
 		page,
 	}, testInfo) => {
+		// A served page, as an app's: reloading about:blank does not apply the
+		// launch settings again on every Chromium.
+		await page.goto('/');
 		await page.setContent(COARSE_BUTTON);
 		const media = () =>
 			page.evaluate(() => [
