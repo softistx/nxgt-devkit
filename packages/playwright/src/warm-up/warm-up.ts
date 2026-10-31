@@ -40,7 +40,10 @@ type Loop = Required<Omit<WarmUpOptions, 'path'>> & {
  * connection) counts as a page that has not hydrated.
  */
 export async function warmUpPage(page: WarmUpPage, loop: Loop): Promise<void> {
-	const { url, marker, timeout, reloadEvery, now = Date.now } = loop;
+	const { url, marker, now = Date.now } = loop;
+	// Playwright reads `timeout: 0` as "no timeout": never pass less than 1 ms.
+	const timeout = Math.max(1, loop.timeout);
+	const reloadEvery = Math.max(1, loop.reloadEvery);
 	const deadline = now() + timeout;
 	let attempts = 0;
 	let last = '';

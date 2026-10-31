@@ -75,6 +75,81 @@ describe('warmUpPage', () => {
 	});
 });
 
+describe('warmUpPage timeouts and statuses', () => {
+	/** A page that records every timeout it is given, on a fake clock. */
+	function recording(hydratesOn: number, status: number | null = 504) {
+		let clock = 0;
+		let loads = 0;
+		const gotoTimeouts: number[] = [];
+		const waitTimeouts: number[] = [];
+		const page = {
+			goto: async (_url: string, o: { timeout: number }) => {
+				gotoTimeouts.push(o.timeout);
+				loads += 1;
+				clock += 10;
+				if (status === null) return null;
+				return { status: () => (loads < hydratesOn ? status : 200) };
+			},
+			waitForFunction: async (
+				_f: unknown,
+				_a: unknown,
+				o: { timeout: number },
+			) => {
+				waitTimeouts.push(o.timeout);
+				if (loads >= hydratesOn) return {};
+				clock += o.timeout;
+				throw new Error('Timeout exceeded');
+			},
+		} as unknown as WarmUpPage;
+		return { page, now: () => clock, gotoTimeouts, waitTimeouts };
+	}
+
+	test('never passes a timeout of 0, whatever the options', async () => {
+		const r = recording(Number.POSITIVE_INFINITY);
+		await warmUpPage(r.page, loop(r.now, { timeout: 0, reloadEvery: 0 })).catch(
+			() => undefined,
+		);
+		const r2 = recording(3);
+		await warmUpPage(r2.page, loop(r2.now, { reloadEvery: 0 }));
+		for (const t of [
+			...r.gotoTimeouts,
+			...r.waitTimeouts,
+			...r2.gotoTimeouts,
+			...r2.waitTimeouts,
+		]) {
+			expect(t).toBeGreaterThanOrEqual(1);
+		}
+	});
+
+	test('no timeout exceeds the time left', async () => {
+		const r = recording(Number.POSITIVE_INFINITY);
+		await warmUpPage(
+			r.page,
+			loop(r.now, { timeout: 100, reloadEvery: 50_000 }),
+		).catch(() => undefined);
+		expect(r.waitTimeouts.length).toBeGreaterThan(0);
+		let spent = 0;
+		r.gotoTimeouts.forEach((g, i) => {
+			expect(g).toBeLessThanOrEqual(100 - spent);
+			spent += 10;
+			expect(r.waitTimeouts[i]).toBeLessThanOrEqual(100 - spent);
+			spent += r.waitTimeouts[i] ?? 0;
+		});
+	});
+
+	test('a goto that resolves with a 504 is reloaded until it hydrates', async () => {
+		const r = recording(3, 504);
+		await warmUpPage(r.page, loop(r.now));
+		expect(r.gotoTimeouts).toHaveLength(3);
+	});
+
+	test('a goto that resolves with null is reloaded until it hydrates', async () => {
+		const r = recording(3, null);
+		await warmUpPage(r.page, loop(r.now));
+		expect(r.gotoTimeouts).toHaveLength(3);
+	});
+});
+
 describe('warmUp', () => {
 	const launcher = (server: ReturnType<typeof fakeServer>) => {
 		const closed: number[] = [];
@@ -174,11 +249,17 @@ describe('defineAppConfig warmUp', () => {
 	});
 
 	test('the global setup is a no-op with the option set but no base URL', async () => {
-		const { default: setup } = await import('./setup');
-		await setup({
-			metadata: { nxgtWarmUp: { path: '/sign-in' } },
-			projects: [{ use: {} }],
-		} as unknown as FullConfig);
+		const launch = spyOn(chromium, 'launch');
+		try {
+			const { default: setup } = await import('./setup');
+			await setup({
+				metadata: { nxgtWarmUp: { path: '/sign-in' } },
+				projects: [{ use: {} }],
+			} as unknown as FullConfig);
+			expect(launch).not.toHaveBeenCalled();
+		} finally {
+			launch.mockRestore();
+		}
 	});
 
 	test('the global setup does nothing without the option', async () => {
