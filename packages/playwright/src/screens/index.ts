@@ -5,3 +5,4 @@ export {
 	saveScreen,
 	savingScreens,
 } from './save-screen';
+export { type ScreenViewport, withViewport } from './with-viewport';

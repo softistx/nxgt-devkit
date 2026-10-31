@@ -50,7 +50,7 @@ imports, so the consumer's `tsconfig.json` needs
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
 | `@nxgt/playwright/helpers` | `withHydration`, `hydrated`, `hydrationWarnings`, `DEFAULT_HYDRATION_MARKER`, `settled`, `nextFrames`, `toastsGone`, `isMobileProject`, `fillSettled`, `fillUntilEnabled`, `expectNoHorizontalScroll`, `formatOverflow`, `expectNoTextOverflow`, `formatTextOverflow`, `expectTapTargets`, `formatTapTargets`, `DEFAULT_TAP_TARGETS`, `screenshotName` | Node |
 | `@nxgt/playwright/tap-targets` | `tapTargetVerdict`; types `TapTargetVerdict`, `TapTargetVerdictKind`, `TapTargetVerdictOptions` | Browser (and Node to import) |
-| `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions` | Node |
+| `@nxgt/playwright/screens` | `checkScreen`, `saveScreen`, `savingScreens`, `withViewport`, `DEFAULT_SCREENS_DIR`, `CheckScreenOptions`, `ScreenViewport` | Node |
 | `@nxgt/playwright/pwa` | `pwaProject`, `isPwaRun`, `serviceWorkerControlled`, `goOffline`, `goOnline`, `nextWorkerVersion`, `appendVersionComment`, `cachedUrls`, `expectNotCached`, `fillCaches`, `expectOnlyCaches`, `cacheProblems`, `filledCacheUrl`; types `PwaProjectOptions`, `GoOfflineOptions`, `NextWorkerVersionOptions`, `CacheMatcher` | Node |
 | `@nxgt/playwright/react-router` | `reactRouterHydrated`, `elementHydrated` | Node |
 | `@nxgt/playwright/a11y` | `expectAccessible`, `accessibilityScan`, `withA11y`, `expectFocusAboveActions`, `expectFieldsAboveActions`, `formatViolations`, `withOverlaysInFlow`, `DEFAULT_TAGS`, `DEFAULT_UNSTICK`; types `A11yOptions`, `FocusOptions`, `FocusFieldsOptions`, `DisabledRule`, `AccessibilityResults` | Node |
@@ -422,6 +422,20 @@ test('projects', async ({ page }, testInfo) => {
 	// Fonts and motion settled, screen saved when SCREENS=1, then the axe scan
 	// and the no-sideways-scroll check. Options: `a11y`, `scroller`, `textOverflow`, `tapTargets`, …
 	await checkScreen(page, testInfo, 'projects');
+});
+```
+
+A phone screen inside a desktop pass: `viewport` resizes the page, saves and
+checks at that size (sideways scroll, axe, tap targets), then restores the
+previous viewport, also when a check throws.
+
+```ts
+await checkScreen(page, testInfo, 'projects-phone', {
+	viewport: { width: 390, height: 844 },
+	tapTargets: true,
+});
+await saveScreen(page, testInfo, 'projects-phone-shot', {
+	viewport: { width: 390, height: 844 },
 });
 ```
 

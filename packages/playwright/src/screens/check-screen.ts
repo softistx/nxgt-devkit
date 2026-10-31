@@ -19,6 +19,7 @@ import {
 	saveScreen,
 	savingScreens,
 } from './save-screen';
+import { type ScreenViewport, withViewport } from './with-viewport';
 
 export type CheckScreenOptions = {
 	/**
@@ -65,6 +66,13 @@ export type CheckScreenOptions = {
 		| boolean
 		| TapTargetOptions
 		| ((testInfo: TestInfo) => boolean | TapTargetOptions);
+	/**
+	 * Resizes the page to this viewport for the whole call — the save and every
+	 * check run at that size — then restores the previous one, also when a
+	 * check throws. A phone screen inside a desktop pass:
+	 * `{ width: 390, height: 844 }`. Wins over `save.viewport`.
+	 */
+	viewport?: ScreenViewport;
 	/** `saveScreen`'s options, used when the run saves screens. */
 	save?: SaveScreenOptions;
 	/** `expectNoHorizontalScroll`'s `max`, and `expectNoTextOverflow`'s and `expectTapTargets`'s unless they set their own. */
@@ -86,7 +94,18 @@ export type CheckScreenOptions = {
  * });
  * ```
  */
-export async function checkScreen(
+export function checkScreen(
+	page: Page,
+	testInfo: TestInfo,
+	name: string,
+	options: CheckScreenOptions = {},
+): Promise<void> {
+	return withViewport(page, options.viewport, () =>
+		checkCurrentScreen(page, testInfo, name, options),
+	);
+}
+
+async function checkCurrentScreen(
 	page: Page,
 	testInfo: TestInfo,
 	name: string,
@@ -98,14 +117,15 @@ export async function checkScreen(
 		tapTargets = false,
 		save,
 		max,
-	}: CheckScreenOptions = {},
+	}: CheckScreenOptions,
 ): Promise<void> {
 	// Web fonts change widths, and a scan half-way through a transition reads
 	// colours never shown at rest: measure once fonts are in and motion is over.
 	await page.evaluate(() => document.fonts.ready);
 	await settled(page);
 	// Saved first, so a failing check still leaves the screen to look at.
-	if (savingScreens(testInfo)) await saveScreen(page, testInfo, name, save);
+	if (savingScreens(testInfo))
+		await saveScreen(page, testInfo, name, { ...save, viewport: undefined });
 	if (typeof a11y === 'function') await a11y(page);
 	else if (a11y !== false) await expectAccessible(page, { ...a11y, testInfo });
 	if (horizontalScroll) {
