@@ -60,6 +60,7 @@ the viewport until no inner scroll container hides content (only boxes at
 least 200px tall count, so a short list in a card is left alone), takes the
 shot with `fullPage: true`, `animations: 'disabled'` and the caret hidden,
 then puts the viewport back and waits for frames and [`settled`](helpers.md#nextframes-and-settled).
+Whatever else moves (data, the clock) is as deterministic as the spec makes it.
 
 ### A phone screen inside a desktop pass
 
@@ -73,8 +74,10 @@ await saveScreen(page, testInfo, 'items-phone', {
 ```
 
 `withViewport(page, viewport, run)` is the same resize-and-restore, exported
-for code of your own.
-Whatever else moves (data, the clock) is as deterministic as the spec makes it.
+for code of your own: it resizes, waits for frames, runs `run`, then restores
+the previous viewport in a `finally`. Without a `viewport` it only runs `run`.
+A page configured with `viewport: null` has no previous size to restore, so it
+stays at the size you asked for.
 
 ## `savingScreens`
 

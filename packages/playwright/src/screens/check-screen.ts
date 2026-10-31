@@ -123,6 +123,7 @@ async function checkCurrentScreen(
 	// colours never shown at rest: measure once fonts are in and motion is over.
 	await page.evaluate(() => document.fonts.ready);
 	await settled(page);
+	// The resize is done by checkScreen, once: not passed on to saveScreen.
 	// Saved first, so a failing check still leaves the screen to look at.
 	if (savingScreens(testInfo))
 		await saveScreen(page, testInfo, name, { ...save, viewport: undefined });
