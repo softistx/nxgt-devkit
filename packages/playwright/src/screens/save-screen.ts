@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import type { Page, PageScreenshotOptions, TestInfo } from '@playwright/test';
 import { nextFrames, settled } from '../helpers/frames';
 import { screensDir, screensMetadata } from './dir';
+import { reapplyPointer } from './with-pointer';
 import { type ScreenViewport, withViewport } from './with-viewport';
 
 export type SaveScreenOptions = {
@@ -111,5 +112,8 @@ async function saveCurrentScreen(
 			await settled(page);
 		}
 	}
+	// A page taller than the viewport is captured beyond it, which turns the
+	// coarse pointer of `checkScreen` off: put it back, after the restore.
+	await reapplyPointer(page);
 	return path;
 }

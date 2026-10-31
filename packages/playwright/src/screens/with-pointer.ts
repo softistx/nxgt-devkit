@@ -4,6 +4,20 @@ import { nextFrames } from '../helpers/frames';
 /** The pointer a screen is judged with: `'fine'` is the project's own, `'coarse'` is a finger. */
 export type ScreenPointer = 'fine' | 'coarse';
 
+/** Per page, the call that switches its touch emulation back on, while `withPointer` holds it. */
+const reapply = new WeakMap<Page, () => Promise<void>>();
+
+/**
+ * Puts a coarse pointer back after something switched it off, when the page
+ * is inside `withPointer(page, 'coarse', …)`; does nothing otherwise. A full
+ * page screenshot of a page taller than the viewport does it: Playwright
+ * captures beyond the viewport, which turns touch emulation off and only
+ * restores it for a `hasTouch` context.
+ */
+export async function reapplyPointer(page: Page): Promise<void> {
+	await reapply.get(page)?.();
+}
+
 /**
  * Runs `run` with the page reporting a coarse pointer (`@media (pointer:
  * coarse)`, `navigator.maxTouchPoints`), then switches touch emulation off
@@ -50,15 +64,24 @@ export async function withPointer<T>(
 	const touchPoints = await page.evaluate(() => navigator.maxTouchPoints);
 	if (touchPoints > 0) return run();
 	const cdp = await context.newCDPSession(page);
+	const enable = () =>
+		cdp
+			.send('Emulation.setTouchEmulationEnabled', {
+				enabled: true,
+				maxTouchPoints: 5,
+			})
+			.then(() => undefined);
 	try {
-		await cdp.send('Emulation.setTouchEmulationEnabled', {
-			enabled: true,
-			maxTouchPoints: 5,
+		await enable();
+		reapply.set(page, async () => {
+			await enable();
+			await nextFrames(page);
 		});
 		// Styles under (pointer: coarse) are applied before the page is measured.
 		await nextFrames(page);
 		return await run();
 	} finally {
+		reapply.delete(page);
 		try {
 			// A failing disable must not hide the check's own error.
 			await cdp

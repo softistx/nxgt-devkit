@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { Page } from '@playwright/test';
 import { checkScreen } from './check-screen';
-import { withPointer } from './with-pointer';
+import { reapplyPointer, withPointer } from './with-pointer';
 
 /** A page whose context records the CDP calls and the order of events. */
 function fakePage(
@@ -41,6 +41,22 @@ function fakePage(
 const ON =
 	'Emulation.setTouchEmulationEnabled {"enabled":true,"maxTouchPoints":5}';
 const OFF = 'Emulation.setTouchEmulationEnabled {"enabled":false}';
+
+describe('reapplyPointer', () => {
+	test('re-enables touch inside a coarse run, and does nothing outside', async () => {
+		const { page, log } = fakePage();
+		await reapplyPointer(page);
+		expect(log).toEqual([]);
+		await withPointer(page, 'coarse', async () => {
+			log.length = 0;
+			await reapplyPointer(page);
+			expect(log).toEqual([ON]);
+		});
+		log.length = 0;
+		await reapplyPointer(page);
+		expect(log).toEqual([]);
+	});
+});
 
 describe('withPointer', () => {
 	test('coarse enables touch emulation around the run, then disables and detaches', async () => {
