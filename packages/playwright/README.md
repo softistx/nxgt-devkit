@@ -370,7 +370,7 @@ pixels, unless its invisible hit area (a 44px `::before`) fills that square
 which `expectAccessible` already runs; `checkScreen` takes
 `tapTargets: (info) => isMobileProject(info)` for phones only. From a desktop
 Chromium project, `checkScreen(…, { viewport, tapTargets: true, pointer: 'coarse' })`
-judges the sizes a finger gets (`@media (pointer: coarse)`); other engines throw. Afterwards, on headless Linux, that page reports `hover: none` (a new page does not) ([why](docs/troubleshooting.md#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci)), so make it the page's last check. `withPointer(page, pointer, run)` is the same switch around your own code:
+judges the sizes a finger gets (`@media (pointer: coarse)`); other engines throw. Afterwards, on headless Linux, that page reports `hover: none` and `pointer: none` (a new page does not; [why](docs/troubleshooting.md#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci)), so make it the page's last check. `withPointer(page, pointer, run)` is the same switch around your own code:
 
 ```ts
 import { expectTapTargets } from '@nxgt/playwright/helpers';

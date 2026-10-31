@@ -6,8 +6,8 @@ export type ScreenPointer = 'fine' | 'coarse';
 
 /**
  * Runs `run` with the page reporting a coarse pointer (`@media (pointer:
- * coarse)`, `navigator.maxTouchPoints`), then puts the project's
- * own pointer back, also when `run` throws. `'fine'` or no pointer only runs
+ * coarse)`, `navigator.maxTouchPoints`), then switches touch emulation off
+ * again, also when `run` throws. `'fine'` or no pointer only runs
  * `run`: it keeps the project's pointer and does not force a mouse. A page that
  * already has touch (`navigator.maxTouchPoints > 0`, a `hasTouch` project) is
  * left alone, with no emulation enabled or disabled.
@@ -16,8 +16,8 @@ export type ScreenPointer = 'fine' | 'coarse';
  * machine, not the mouse Playwright's headless launch fakes with
  * `--blink-settings=primaryPointerType=4,…`. On a machine with no pointing
  * device (a headless Linux CI runner) the page then reports `pointer: none`
- * and `hover: none` until its next navigation (`page.goto`, `page.reload`);
- * no CDP call puts the faked mouse back without one. `pointer: coarse` and
+ * and `hover: none`: a navigation brings the mouse back on Playwright 1.64,
+ * not even `page.reload` does on 1.61, and no CDP call does. A new page does. `pointer: coarse` and
  * `navigator.maxTouchPoints` are always back to the page's own.
  *
  * Chromium only: it is Chrome DevTools Protocol's

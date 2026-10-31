@@ -208,6 +208,7 @@ mouse; a `page.reload()` brings it back on the Chromium of Playwright 1.64, not
 on the one of 1.61. `pointer: coarse` and `navigator.maxTouchPoints` are back
 to the page's own either way. See
 [troubleshooting](../troubleshooting.md#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci).
+
 `withPointer(page, pointer, run)` (`pointer`: `'fine' | 'coarse'`) is the same
 switch around code of your own, with the same Chromium-only rule:
 
