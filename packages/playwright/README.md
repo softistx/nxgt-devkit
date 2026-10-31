@@ -434,7 +434,7 @@ await checkScreen(page, testInfo, 'projects-phone', {
 	viewport: { width: 390, height: 844 },
 	tapTargets: true,
 });
-await saveScreen(page, testInfo, 'projects-phone-shot', {
+await saveScreen(page, testInfo, 'projects-phone-save', {
 	viewport: { width: 390, height: 844 },
 });
 ```
