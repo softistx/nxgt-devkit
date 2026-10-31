@@ -301,6 +301,12 @@ test.describe('pointer', () => {
 		page,
 	}, testInfo) => {
 		await page.setContent(COARSE_BUTTON);
+		const media = () =>
+			page.evaluate(() => [
+				matchMedia('(pointer: coarse)').matches,
+				matchMedia('(hover: none)').matches,
+			]);
+		const before = await media();
 		const fine = await checkScreen(page, testInfo, 'fine', {
 			tapTargets: true,
 			a11y: false,
@@ -311,12 +317,7 @@ test.describe('pointer', () => {
 			tapTargets: true,
 			a11y: false,
 		});
-		expect(
-			await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
-		).toBe(false);
-		expect(await page.evaluate(() => matchMedia('(hover: none)').matches)).toBe(
-			false,
-		);
+		expect(await media()).toEqual(before);
 	});
 
 	test('the mouse is restored when a check throws', async ({
