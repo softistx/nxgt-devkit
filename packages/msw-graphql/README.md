@@ -19,8 +19,8 @@ bun add -d @graphql-tools/schema @graphql-tools/mock   # only for /schema
 | `typescript` | `^6.0.3 \|\| ^7.0.0` | yes |
 | `msw` | `^2.12.10 \|\| ^3.0.0` | yes |
 | `graphql` | `^16.0.0 \|\| ^17.0.0` | yes |
-| `@graphql-tools/schema` | `^10.0.0` | optional, only `/schema` |
-| `@graphql-tools/mock` | `^9.1.0` | optional, only `/schema` |
+| `@graphql-tools/schema` | `^10.0.0 \|\| ^11.0.0` | optional, only `/schema` |
+| `@graphql-tools/mock` | `^9.1.0 \|\| ^10.0.0` | optional, only `/schema` |
 
 msw 3 needs Node >= 22.12. `startMockServer` also runs under Bun, on msw 2 or
 3 (on msw 3 it patches `fetch` only, and `server.events` and
