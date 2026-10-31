@@ -1,5 +1,13 @@
 # @nxgt/playwright
 
+## 0.14.0
+
+### Minor Changes
+
+- [#116](https://github.com/softistx/nxgt-devkit/pull/116) [`9da5da8`](https://github.com/softistx/nxgt-devkit/commit/9da5da836152a9596147c0f1646cf6cd48ea7d96) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add a dev-server warm-up: `defineAppConfig({ warmUp: { path: '/sign-in' } })` opens the path in Chromium once before the specs and reloads it until it hydrates (`reloadEvery`, default 15 s; `timeout`, default 3 min; `marker`, the one `withHydration` takes), then fails naming the URL. A cold Vite server answers 504 "Outdated Optimize Dep" to the first page and that page never hydrates. The `warmUp(baseURL, options)` helper does the same from a `globalSetup` of your own. The warm-up chains after the screens' global setup.
+
+- [#119](https://github.com/softistx/nxgt-devkit/pull/119) [`e419da8`](https://github.com/softistx/nxgt-devkit/commit/e419da8e18c3723add078c5a8afc045c028fbdcc) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add a `viewport` option to `saveScreen` and `checkScreen` (`@nxgt/playwright/screens`): `saveScreen(page, testInfo, 'items-phone', { viewport: { width: 390, height: 844 } })` resizes the page, saves the screen, then restores the previous viewport, also when the save throws. On `checkScreen` the whole call runs at that size, so the sideways-scroll, axe, text-overflow and tap-target checks judge the phone layout. `withViewport(page, viewport, run)` is exported for the same resize-and-restore around code of your own.
+
 ## 0.13.0
 
 ### Minor Changes
