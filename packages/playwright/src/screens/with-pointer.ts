@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { CDPSession, Page } from '@playwright/test';
 import { nextFrames } from '../helpers/frames';
 
 /** The pointer a screen is judged with: `'fine'` is the project's own, `'coarse'` is a finger. */
@@ -39,8 +39,14 @@ export async function withPointer<T>(
 	}
 	// A page that already has touch (a hasTouch project) has a coarse pointer:
 	// nothing to enable, and nothing to disable afterwards.
-	const touchPoints = await page.evaluate(() => navigator.maxTouchPoints);
-	if (touchPoints > 0) return run();
+	const read = () =>
+		page.evaluate(() => ({
+			touchPoints: navigator.maxTouchPoints,
+			coarse: matchMedia('(pointer: coarse)').matches,
+			hoverNone: matchMedia('(hover: none)').matches,
+		}));
+	const before = await read();
+	if (before.touchPoints > 0) return run();
 	const cdp = await context.newCDPSession(page);
 	try {
 		await cdp.send('Emulation.setTouchEmulationEnabled', {
@@ -56,8 +62,36 @@ export async function withPointer<T>(
 			await cdp
 				.send('Emulation.setTouchEmulationEnabled', { enabled: false })
 				.catch(() => undefined);
+			// The media features (hover, pointer) are re-evaluated later than the
+			// call returns, and headless Linux can keep `hover: none`: wait until
+			// the page reports the pointer it had before, re-sending the disable
+			// once if it does not.
+			await settleMedia(page, cdp, before);
 		} finally {
 			await cdp.detach().catch(() => undefined);
 		}
+	}
+}
+
+async function settleMedia(
+	page: Page,
+	cdp: CDPSession,
+	before: { coarse: boolean; hoverNone: boolean },
+): Promise<void> {
+	const back = () =>
+		page.waitForFunction(
+			(b) =>
+				matchMedia('(pointer: coarse)').matches === b.coarse &&
+				matchMedia('(hover: none)').matches === b.hoverNone,
+			before,
+			{ timeout: 1000 },
+		);
+	try {
+		await back();
+	} catch {
+		await cdp
+			.send('Emulation.setTouchEmulationEnabled', { enabled: false })
+			.catch(() => undefined);
+		await back().catch(() => undefined);
 	}
 }
