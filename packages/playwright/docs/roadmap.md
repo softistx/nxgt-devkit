@@ -38,6 +38,10 @@ Nothing is planned yet.
 
 ## Shipped
 
+- **Dev-server warm-up** — `defineAppConfig({ warmUp: { path } })` opens a page
+  once before the specs and reloads it until it hydrates, so a cold Vite server
+  does not fail the first spec; `warmUp()` does the same from a `globalSetup`
+  of your own.
 - **Sticky bars in flow, exported** — `withOverlaysInFlow(page, selectors, run)`
   from `@nxgt/playwright/a11y` puts sticky or fixed bars back in the flow around
   a step such as a full-page screenshot, then restores them.

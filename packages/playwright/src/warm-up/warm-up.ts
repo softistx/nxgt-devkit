@@ -14,8 +14,9 @@ export type WarmUpOptions = {
 	reloadEvery?: number;
 	/**
 	 * What tells the page has hydrated, the same marker as `withHydration`'s.
-	 * Default `html[data-hydrated]`. A function marker is read in the runner's
-	 * process only, which is where a global setup runs.
+	 * Default `html[data-hydrated]`. A function marker runs in the page: it
+	 * must be self-contained, like `withHydration`'s (`reactRouterHydrated`
+	 * is).
 	 */
 	marker?: HydrationMarker;
 };
@@ -43,6 +44,7 @@ export async function warmUpPage(page: WarmUpPage, loop: Loop): Promise<void> {
 	const deadline = now() + timeout;
 	let attempts = 0;
 	let last = '';
+	const remaining = () => Math.max(1, deadline - now());
 	for (;;) {
 		if (now() >= deadline) {
 			throw new Error(
@@ -55,7 +57,7 @@ export async function warmUpPage(page: WarmUpPage, loop: Loop): Promise<void> {
 		}
 		attempts += 1;
 		await page
-			.goto(url, { timeout: Math.min(NAVIGATION_TIMEOUT, deadline - now()) })
+			.goto(url, { timeout: Math.min(NAVIGATION_TIMEOUT, remaining()) })
 			.catch((error: Error) => {
 				last = error.message;
 			});
@@ -64,10 +66,12 @@ export async function warmUpPage(page: WarmUpPage, loop: Loop): Promise<void> {
 				await page.waitForFunction(
 					(selector) => document.querySelector(selector) !== null,
 					marker,
-					{ timeout: reloadEvery },
+					{ timeout: Math.min(reloadEvery, remaining()) },
 				);
 			} else {
-				await page.waitForFunction(marker, undefined, { timeout: reloadEvery });
+				await page.waitForFunction(marker, undefined, {
+					timeout: Math.min(reloadEvery, remaining()),
+				});
 			}
 			return;
 		} catch (error) {
@@ -93,8 +97,23 @@ export async function warmUp(
 	baseURL: string,
 	options: WarmUpOptions = {},
 ): Promise<void> {
+	await warmUpWith(() => chromium.launch(), baseURL, options);
+}
+
+/** What {@link warmUpWith} needs of a browser, so a fake one can stand in. */
+export type WarmUpBrowser = {
+	newPage(): Promise<WarmUpPage>;
+	close(): Promise<void>;
+};
+
+/** {@link warmUp} with the browser launcher injected. */
+export async function warmUpWith(
+	launch: () => Promise<WarmUpBrowser>,
+	baseURL: string,
+	options: WarmUpOptions = {},
+): Promise<void> {
 	const url = new URL(options.path ?? '/', baseURL).href;
-	const browser = await chromium.launch();
+	const browser = await launch();
 	try {
 		const page = await browser.newPage();
 		await warmUpPage(page, {

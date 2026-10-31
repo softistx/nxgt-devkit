@@ -282,6 +282,7 @@ export default defineAppConfig({ port: 5174, warmUp: { path: '/sign-in' } });
 
 Opens the path in Chromium once before the specs and reloads it until it
 hydrates, so a cold dev server does not fail the first spec. `true` opens `/`.
+Default `false`.
 Options, the `warmUp()` helper and the failure message are in
 [hydration.md](hydration.md#warming-a-cold-dev-server-up).
 

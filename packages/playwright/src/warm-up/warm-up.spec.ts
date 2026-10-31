@@ -1,9 +1,9 @@
-import { describe, expect, test } from 'bun:test';
-import type { FullConfig } from '@playwright/test';
+import { describe, expect, spyOn, test } from 'bun:test';
+import { chromium, type FullConfig } from '@playwright/test';
 import { defineAppConfig } from '../config/define-app-config';
 import { clearScreensSetup } from '../config/screens';
 import { warmUpSetup } from '../config/warm-up';
-import { type WarmUpPage, warmUpPage } from './warm-up';
+import { type WarmUpPage, warmUpPage, warmUpWith } from './warm-up';
 
 /** A server that hydrates only from its `hydratesOn`-th request, on a fake clock. */
 function fakeServer(hydratesOn: number, tick = 1_000) {
@@ -75,6 +75,39 @@ describe('warmUpPage', () => {
 	});
 });
 
+describe('warmUp', () => {
+	const launcher = (server: ReturnType<typeof fakeServer>) => {
+		const closed: number[] = [];
+		return {
+			closed,
+			launch: async () => ({
+				newPage: async () => server.page,
+				close: async () => {
+					closed.push(1);
+				},
+			}),
+		};
+	};
+
+	test('closes the browser after a success', async () => {
+		const server = fakeServer(2);
+		const { launch, closed } = launcher(server);
+		await warmUpWith(launch, 'http://localhost:5174', { path: '/sign-in' });
+		expect(closed).toHaveLength(1);
+	});
+
+	test('closes the browser after a failure', async () => {
+		const server = fakeServer(Number.POSITIVE_INFINITY);
+		const { launch, closed } = launcher(server);
+		const error = await warmUpWith(launch, 'http://localhost:5174', {
+			path: '/sign-in',
+			timeout: 1,
+		}).catch((e: Error) => e);
+		expect((error as Error).message).toContain('http://localhost:5174/sign-in');
+		expect(closed).toHaveLength(1);
+	});
+});
+
 describe('defineAppConfig warmUp', () => {
 	test('off by default', () => {
 		const config = defineAppConfig({ port: 5174 });
@@ -110,6 +143,42 @@ describe('defineAppConfig warmUp', () => {
 			if (saved === undefined) delete process.env.SCREENS;
 			else process.env.SCREENS = saved;
 		}
+	});
+
+	test('the global setup warms the base URL up with the option', async () => {
+		const server = fakeServer(3);
+		const urls: string[] = [];
+		const goto = server.page.goto;
+		server.page.goto = ((url: string, o: never) => {
+			urls.push(url);
+			return goto(url, o);
+		}) as WarmUpPage['goto'];
+		let closed = 0;
+		const launch = spyOn(chromium, 'launch').mockResolvedValue({
+			newPage: async () => server.page,
+			close: async () => {
+				closed += 1;
+			},
+		} as never);
+		try {
+			const { default: setup } = await import('./setup');
+			await setup({
+				metadata: { nxgtWarmUp: { path: '/sign-in' } },
+				projects: [{ use: { baseURL: 'http://localhost:5174' } }],
+			} as unknown as FullConfig);
+		} finally {
+			launch.mockRestore();
+		}
+		expect(urls).toEqual(Array(3).fill('http://localhost:5174/sign-in'));
+		expect(closed).toBe(1);
+	});
+
+	test('the global setup is a no-op with the option set but no base URL', async () => {
+		const { default: setup } = await import('./setup');
+		await setup({
+			metadata: { nxgtWarmUp: { path: '/sign-in' } },
+			projects: [{ use: {} }],
+		} as unknown as FullConfig);
 	});
 
 	test('the global setup does nothing without the option', async () => {

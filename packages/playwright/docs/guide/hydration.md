@@ -226,7 +226,16 @@ export default defineAppConfig({
 It runs in Chromium as a `globalSetup`, chained after the screens' one. The
 deadline is checked before each navigation; past it, the setup fails with
 `warm-up: <url> did not hydrate within <timeout>ms`, naming the URL and the last
-error. The browser is closed in every case. For a `globalSetup` of your own,
+error. The browser is closed in every case. A slower server gets longer limits:
+
+```ts
+defineAppConfig({
+	port: 5174,
+	warmUp: { path: '/sign-in', timeout: 300_000, reloadEvery: 20_000 },
+});
+```
+
+For a `globalSetup` of your own,
 call the helper:
 
 ```ts

@@ -44,7 +44,7 @@ imports, so the consumer's `tsconfig.json` needs
 
 | Subpath | Exports | Runs in |
 | --- | --- | --- |
-| `@nxgt/playwright` | everything from `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `warmUp` | Node |
+| `@nxgt/playwright` | everything from `/config`, `/pages`, `/auth`, `/helpers`, `/screens`, `/pwa`, `warmUp`, `WarmUpOptions`, `DEFAULT_WARM_UP_TIMEOUT`, `DEFAULT_WARM_UP_RELOAD_EVERY` | Node |
 | `@nxgt/playwright/config` | `defineAppConfig`, `selectedProjects`, `projectsFromArgv`, `PROJECTS_ENV`; types `AppConfigOptions`, `WarmUpOption`, `Browser`, `DeviceName`, `MobileProject` | Node |
 | `@nxgt/playwright/pages` | `BasePage`, `FormPage`, `DEFAULT_SCREENSHOT_DIR`, option types | Node |
 | `@nxgt/playwright/auth` | `authSetup`, `authFile`, `withLoginFixture`, `DEFAULT_AUTH_DIR` | Node |
@@ -260,6 +260,7 @@ before the specs and reloads it until it hydrates (`reloadEvery` 15 s,
 `globalSetup` of your own:
 
 ```ts
+import { defineAppConfig } from '@nxgt/playwright';
 import { reactRouterHydrated } from '@nxgt/playwright/react-router';
 
 export default defineAppConfig({
