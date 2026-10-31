@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import type { Page, PageScreenshotOptions, TestInfo } from '@playwright/test';
 import { nextFrames, settled } from '../helpers/frames';
 import { screensDir, screensMetadata } from './dir';
+import { type ScreenViewport, withViewport } from './with-viewport';
 
 export type SaveScreenOptions = {
 	/**
@@ -17,6 +18,12 @@ export type SaveScreenOptions = {
 	maxGrowth?: number;
 	/** Passed to `page.screenshot`, over the defaults. */
 	screenshot?: Omit<PageScreenshotOptions, 'path'>;
+	/**
+	 * Resizes the page to this viewport (a phone: `{ width: 390, height: 844 }`)
+	 * for the save, then restores the previous one, also when the save throws.
+	 * Default: the page's own viewport.
+	 */
+	viewport?: ScreenViewport;
 };
 
 /** Whether this run saves screens: `defineAppConfig`'s `screens` variable is `1`. */
@@ -52,11 +59,22 @@ function hiddenHeight(page: Page): Promise<number> {
  * Animations are finished and disabled and the caret hidden; the rest (data,
  * clock, motion) is as deterministic as the spec makes it.
  */
-export async function saveScreen(
+export function saveScreen(
 	page: Page,
 	testInfo: TestInfo,
 	name: string,
-	{ dir, maxGrowth = 5, screenshot }: SaveScreenOptions = {},
+	options: SaveScreenOptions = {},
+): Promise<string> {
+	return withViewport(page, options.viewport, () =>
+		saveCurrentScreen(page, testInfo, name, options),
+	);
+}
+
+async function saveCurrentScreen(
+	page: Page,
+	testInfo: TestInfo,
+	name: string,
+	{ dir, maxGrowth = 5, screenshot }: SaveScreenOptions,
 ): Promise<string> {
 	const path = join(
 		screensDir(testInfo.config, dir),

@@ -37,6 +37,7 @@ type SaveScreenOptions = {
 	dir?: string;
 	maxGrowth?: number; // default 5
 	screenshot?: Omit<PageScreenshotOptions, 'path'>;
+	viewport?: { width: number; height: number };
 };
 
 function saveScreen(page: Page, testInfo: TestInfo, name: string, options?: SaveScreenOptions): Promise<string>;
@@ -51,6 +52,7 @@ hold folders (`'auth/sign-in'`); a project without a name saves under
 | `dir` | `string` | the config's `screens` folder, else `./playwright/screenshots` | The screens folder, relative to the config file. |
 | `maxGrowth` | `number` | `5` | How many times the viewport may grow to show nested scrolling content. |
 | `screenshot` | `PageScreenshotOptions` without `path` | `{}` | Passed to `page.screenshot`, over the defaults below. |
+| `viewport` | `{ width, height }` | the page's own | Resizes the page for the save, then restores the previous viewport in a `finally`, so a save that throws restores it too. |
 
 A plain `fullPage` screenshot stops at the fold of an app shell: a box as
 tall as the viewport whose `main` scrolls inside it. `saveScreen` stretches
@@ -59,6 +61,23 @@ least 200px tall count, so a short list in a card is left alone), takes the
 shot with `fullPage: true`, `animations: 'disabled'` and the caret hidden,
 then puts the viewport back and waits for frames and [`settled`](helpers.md#nextframes-and-settled).
 Whatever else moves (data, the clock) is as deterministic as the spec makes it.
+
+### A phone screen inside a desktop pass
+
+Phone layouts are judged from phone-size screenshots taken during the desktop
+run. `viewport` replaces the hand-written resize, save, restore:
+
+```ts
+await saveScreen(page, testInfo, 'items-phone', {
+	viewport: { width: 390, height: 844 },
+});
+```
+
+`withViewport(page, viewport, run)` is the same resize-and-restore, exported
+for code of your own: it resizes, waits for frames, runs `run`, then restores
+the previous viewport in a `finally`. Without a `viewport` it only runs `run`.
+A page configured with `viewport: null` has no previous size to restore, so it
+stays at the size you asked for.
 
 ## `savingScreens`
 
@@ -138,6 +157,7 @@ test('students list', async ({ page }, testInfo) => {
 | `textOverflow` | `false` | `true` runs `expectNoTextOverflow` on the whole body, an options object (`include`, `exclude`, `max`) is its own, and a function of the `testInfo` returning either picks per project, as `tapTargets` does. Off by default: a design may clip a text on purpose, and a screen opts in. |
 | `tapTargets` | `false` | `true` runs `expectTapTargets` (44x44px) in every project, an options object (`size`, `spacing`, `hitArea`, `targets`, `include`, `exclude`, `max`) is its own, and a function of the `testInfo` returning either picks per project: `(info) => isMobileProject(info)` for phones only. Off by default: a desktop layout has small targets on purpose. WCAG 2.5.8's 24px is axe's `target-size`, already in the default `a11y` scan. Runs last. |
 | `max` | `5` | How many offending elements the sideways-scroll message lists (and the text-overflow and tap-target ones', unless `textOverflow` or `tapTargets` sets its own). |
+| `viewport` | the page's own | `{ width, height }`: the page is resized for the whole call, so the save and every check (sideways scroll, axe, text overflow, tap targets) judge that size, then the previous viewport is restored in a `finally`, also when a check throws. Wins over `save.viewport`. |
 | `save` | none | `saveScreen`'s options (`dir`, `maxGrowth`, `screenshot`), used when the run saves screens. |
 
 `@axe-core/playwright` is needed when the scan runs (the default, or an options
@@ -150,6 +170,15 @@ Phone-only tap targets:
 ```ts
 await checkScreen(page, testInfo, 'students-list', {
 	tapTargets: (info) => isMobileProject(info),
+});
+```
+
+A phone screen inside a desktop pass, with the phone checks:
+
+```ts
+await checkScreen(page, testInfo, 'students-list-phone', {
+	viewport: { width: 390, height: 844 },
+	tapTargets: true,
 });
 ```
 
