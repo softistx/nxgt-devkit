@@ -82,7 +82,8 @@ export type CheckScreenOptions = {
 	 * `hasTouch` cannot be changed after the context exists. Chromium only
 	 * (CDP `Emulation.setTouchEmulationEnabled`, disabled and detached
 	 * afterwards, also when a check throws); on Firefox or WebKit it throws
-	 * before anything runs. `'fine'` (the default) keeps the project's own pointer.
+	 * before anything runs. `'fine'` (the default) keeps the project's own
+	 * pointer; it does not force a mouse. A page that already has touch is left alone.
 	 */
 	pointer?: ScreenPointer;
 	/** `saveScreen`'s options, used when the run saves screens. */

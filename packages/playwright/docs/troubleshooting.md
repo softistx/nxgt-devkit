@@ -460,6 +460,12 @@ Skipping it silently would measure the fine-pointer sizes and mislead.
 **Fix:** run that check in a Chromium project, or give the Firefox or WebKit
 project `hasTouch: true` (a WebKit phone device already has it).
 
+### `` checkScreen: pointer must be 'fine' or 'coarse', got … ``
+
+**When:** `pointer` is anything else (a typo such as `'touch'`, or a boolean from plain JavaScript).
+**Why:** only the two pointers exist; guessing would measure the wrong sizes.
+**Fix:** pass `'coarse'`, or `'fine'` / nothing for the project's own pointer.
+
 ### A `mobile-firefox` project does not look like a phone
 
 No error: the page renders as a narrow desktop page, ignores

@@ -6,9 +6,11 @@ export type ScreenPointer = 'fine' | 'coarse';
 
 /**
  * Runs `run` with the page reporting a coarse pointer (`@media (pointer:
- * coarse)`, `hover: none`, `navigator.maxTouchPoints`), then puts the project's
+ * coarse)`, `navigator.maxTouchPoints`), then puts the project's
  * own pointer back, also when `run` throws. `'fine'` or no pointer only runs
- * `run`.
+ * `run`: it keeps the project's pointer and does not force a mouse. A page that
+ * already has touch (`navigator.maxTouchPoints > 0`, a `hasTouch` project) is
+ * left alone, with no emulation enabled or disabled.
  *
  * Chromium only: it is Chrome DevTools Protocol's
  * `Emulation.setTouchEmulationEnabled`, applied to the live page, because
@@ -35,6 +37,10 @@ export async function withPointer<T>(
 			`checkScreen: pointer: 'coarse' needs Chromium (it uses CDP touch emulation), but this page runs on ${engine}. Run the check in a chromium project, or set hasTouch on a ${engine} project instead.`,
 		);
 	}
+	// A page that already has touch (a hasTouch project) has a coarse pointer:
+	// nothing to enable, and nothing to disable afterwards.
+	const touchPoints = await page.evaluate(() => navigator.maxTouchPoints);
+	if (touchPoints > 0) return run();
 	const cdp = await context.newCDPSession(page);
 	try {
 		await cdp.send('Emulation.setTouchEmulationEnabled', {
@@ -46,7 +52,10 @@ export async function withPointer<T>(
 		return await run();
 	} finally {
 		try {
-			await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+			// A failing disable must not hide the check's own error.
+			await cdp
+				.send('Emulation.setTouchEmulationEnabled', { enabled: false })
+				.catch(() => undefined);
 		} finally {
 			await cdp.detach().catch(() => undefined);
 		}

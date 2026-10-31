@@ -4,11 +4,18 @@ import { checkScreen } from './check-screen';
 import { withPointer } from './with-pointer';
 
 /** A page whose context records the CDP calls and the order of events. */
-function fakePage(engine: string | null = 'chromium', failDetach = false) {
+function fakePage(
+	engine: string | null = 'chromium',
+	failDetach = false,
+	touchPoints = 0,
+	failDisable = false,
+) {
 	const log: string[] = [];
 	const cdp = {
 		send: async (method: string, params: unknown) => {
 			log.push(`${method} ${JSON.stringify(params)}`);
+			if (failDisable && JSON.stringify(params) === '{"enabled":false}')
+				throw new Error('target closed');
 		},
 		detach: async () => {
 			log.push('detach');
@@ -26,7 +33,7 @@ function fakePage(engine: string | null = 'chromium', failDetach = false) {
 				return cdp;
 			},
 		}),
-		evaluate: async () => 0,
+		evaluate: async () => touchPoints,
 	};
 	return { page: page as unknown as Page, log };
 }
@@ -59,6 +66,22 @@ describe('withPointer', () => {
 	test('a detach that fails does not hide the check result', async () => {
 		const { page } = fakePage('chromium', true);
 		expect(await withPointer(page, 'coarse', async () => 1)).toBe(1);
+	});
+
+	test('a page that already has touch is left alone', async () => {
+		const { page, log } = fakePage('chromium', false, 5);
+		expect(await withPointer(page, 'coarse', async () => 1)).toBe(1);
+		expect(log).toEqual([]);
+	});
+
+	test('a disable that rejects does not mask the run error', async () => {
+		const { page, log } = fakePage('chromium', false, 0, true);
+		await expect(
+			withPointer(page, 'coarse', async () => {
+				throw new Error('check failed');
+			}),
+		).rejects.toThrow('check failed');
+		expect(log.at(-1)).toBe('detach');
 	});
 
 	test('fine and no pointer only run', async () => {
@@ -100,10 +123,16 @@ describe('checkScreen pointer', () => {
 	test('wraps the checks, with touch emulation on while they run', async () => {
 		const { page, log } = fakePage();
 		(page as unknown as { viewportSize: () => null }).viewportSize = () => null;
-		(page as unknown as { evaluate: () => Promise<void> }).evaluate =
-			async () => {
+		(
+			page as unknown as { evaluate: () => Promise<number | undefined> }
+		).evaluate = (() => {
+			let calls = 0;
+			return async () => {
+				// The first call reads maxTouchPoints; the rest are the checks.
+				if (calls++ === 0) return 0;
 				log.push('check');
 			};
+		})();
 		await checkScreen(
 			page,
 			{ project: { name: 'x' }, config: { metadata: {} } } as never,

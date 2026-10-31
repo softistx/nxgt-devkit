@@ -293,8 +293,8 @@ const COARSE_BUTTON = doc(
 
 test.describe('pointer', () => {
 	test.skip(
-		({ browserName }) => browserName !== 'chromium',
-		'pointer: coarse is Chromium only',
+		({ browserName, hasTouch }) => browserName !== 'chromium' || hasTouch,
+		'pointer: coarse is Chromium only, and a hasTouch project already has it',
 	);
 
 	test('a coarse pointer measures the sizes a phone gets, then restores the mouse', async ({
@@ -314,6 +314,9 @@ test.describe('pointer', () => {
 		expect(
 			await page.evaluate(() => matchMedia('(pointer: coarse)').matches),
 		).toBe(false);
+		expect(await page.evaluate(() => matchMedia('(hover: none)').matches)).toBe(
+			false,
+		);
 	});
 
 	test('the mouse is restored when a check throws', async ({
