@@ -36,6 +36,7 @@ throws itself are quoted exactly.
   - [A config that branches on `--project` builds something else in the workers](#a-config-that-branches-on---project-builds-something-else-in-the-workers)
 - [Hydration](#hydration)
   - [`<url> was not hydrated after <timeout>ms (marker: …)`](#url-was-not-hydrated-after-timeoutms-marker-)
+  - [`warm-up: <url> did not hydrate within <timeout>ms (…)`](#warm-up-url-did-not-hydrate-within-timeoutms-)
   - [`React never attached its props to this element`](#react-never-attached-its-props-to-this-element)
 - [PWA](#pwa)
   - [`No service worker controls <url> after <timeout>ms`](#no-service-worker-controls-url-after-timeoutms)
@@ -552,6 +553,29 @@ export const test = withHydration(base, { marker: reactRouterHydrated });
 
 When the marker is right, open the page by hand and read the browser console.
 See [guide/hydration.md](guide/hydration.md).
+
+### `warm-up: <url> did not hydrate within <timeout>ms (…)`
+
+The message continues with the number of attempts, the marker, and
+`Last error: …`.
+
+**When:** in the global setup `defineAppConfig({ warmUp })` adds, or in a call
+to `warmUp()`, before the first spec.
+**Why:** the page never hydrated while the setup reloaded it. A cold Vite
+server is still optimizing dependencies (it answers 504 "Outdated Optimize
+Dep"), or the marker is wrong: the app never sets it, or a function marker
+throws in the page (a `ReferenceError` shows as the last error).
+**Fix:** read the last error, raise `timeout` when the server is just slow,
+and check `marker` against the one `withHydration` uses.
+
+```ts
+defineAppConfig({
+	port: 5174,
+	warmUp: { path: '/sign-in', timeout: 300_000, marker: reactRouterHydrated },
+});
+```
+
+See [guide/hydration.md](guide/hydration.md#warming-a-cold-dev-server-up).
 
 ### `React never attached its props to this element`
 

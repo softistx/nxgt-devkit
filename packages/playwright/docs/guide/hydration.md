@@ -197,6 +197,57 @@ It keeps console `error` and `warning` messages, and uncaught page errors,
 that match `/hydrat|did(n't| not) match|mismatch/i`. Call it before `goto`;
 the array fills as the page reports.
 
+## Warming a cold dev server up
+
+A cold Vite dev server answers `504 "Outdated Optimize Dep"` to the first page
+while it optimizes dependencies, and that page never hydrates: the first spec
+fails with `<url> was not hydrated after 45000ms`, and a rerun on the warm
+server passes. `defineAppConfig`'s `warmUp` option opens a page once before the
+specs and reloads it until it hydrates.
+
+```ts
+// playwright.config.ts
+import { defineAppConfig } from '@nxgt/playwright';
+import { reactRouterHydrated } from '@nxgt/playwright/react-router';
+
+export default defineAppConfig({
+	port: 5174,
+	warmUp: { path: '/sign-in', marker: reactRouterHydrated },
+});
+```
+
+| option | default | |
+| --- | --- | --- |
+| `path` | `/` | The page to open, against the base URL |
+| `marker` | `html[data-hydrated]` | The same marker `withHydration` takes |
+| `reloadEvery` | `15_000` | Reload a page that has not hydrated after this long |
+| `timeout` | `180_000` | Give up after this long in all |
+
+It runs in Chromium as a `globalSetup`, chained after the screens' one. The
+deadline is checked before each navigation; past it, the setup fails with
+`warm-up: <url> did not hydrate within <timeout>ms`, naming the URL and the last
+error. The browser is closed in every case. A slower server gets longer limits:
+
+```ts
+defineAppConfig({
+	port: 5174,
+	warmUp: { path: '/sign-in', timeout: 300_000, reloadEvery: 20_000 },
+});
+```
+
+For a `globalSetup` of your own,
+call the helper:
+
+```ts
+import type { FullConfig } from '@playwright/test';
+import { warmUp } from '@nxgt/playwright';
+
+export default (config: FullConfig) =>
+	warmUp(config.projects[0].use.baseURL!, { path: '/sign-in' });
+```
+
+`overrides.globalSetup` replaces the packaged one, as for `screens`.
+
 ## React Router
 
 `@nxgt/playwright/react-router` is an adapter for a React Router app (framework
