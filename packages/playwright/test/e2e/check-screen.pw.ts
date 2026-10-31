@@ -300,12 +300,9 @@ test.describe('pointer', () => {
 	test('a coarse pointer measures the sizes a phone gets, then switches touch off', async ({
 		page,
 	}, testInfo) => {
-		// A served page, as an app's: reloading about:blank does not apply the
-		// launch settings again on every Chromium.
-		await page.goto('/');
 		await page.setContent(COARSE_BUTTON);
-		const media = () =>
-			page.evaluate(() => [
+		const media = (p = page) =>
+			p.evaluate(() => [
 				matchMedia('(pointer: coarse)').matches,
 				matchMedia('(hover: none)').matches,
 			]);
@@ -320,17 +317,18 @@ test.describe('pointer', () => {
 			tapTargets: true,
 			a11y: false,
 		});
-		// Touch is off again. Headless Linux keeps `pointer: none` and
-		// `hover: none` (Chromium restores the machine's pointer, not the mouse
-		// Playwright fakes with --blink-settings) until the page navigates.
+		// Touch is off again. On headless Linux this page keeps `pointer: none`
+		// and `hover: none` (Chromium restores the machine's pointer, not the
+		// mouse Playwright fakes with --blink-settings); a new page has the mouse.
 		expect(
 			await page.evaluate(() => [
 				navigator.maxTouchPoints,
 				matchMedia('(pointer: coarse)').matches,
 			]),
 		).toEqual([0, false]);
-		await page.reload();
-		expect(await media()).toEqual(before);
+		const fresh = await page.context().newPage();
+		expect(await media(fresh)).toEqual(before);
+		await fresh.close();
 	});
 
 	test('touch is switched off when a check throws', async ({

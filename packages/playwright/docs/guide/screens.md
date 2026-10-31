@@ -199,12 +199,13 @@ await checkScreen(page, testInfo, 'students-list-phone', {
 On Firefox and WebKit this throws, so guard the spec with
 `test.skip(({ browserName }) => browserName !== 'chromium')`.
 
-Make it the last check on that page, or navigate after it. Touch emulation is
-switched off when the call ends, but in headless Chromium on a machine with no
-pointing device (a Linux CI runner) the page then reports `pointer: none` and
-`hover: none`, not the mouse it had, until its next `page.goto` or
-`page.reload`: Chromium restores the machine's pointer, not the one Playwright's
-headless launch fakes. `pointer: coarse` and `navigator.maxTouchPoints` are back
+Make it the last check on that page, or carry on in a new page. Touch emulation
+is switched off when the call ends, but in headless Chromium on a machine with
+no pointing device (a Linux CI runner) the page then reports `pointer: none`
+and `hover: none`, not the mouse it had: Chromium restores the machine's
+pointer, not the one Playwright's headless launch fakes. A new page has the
+mouse; a `page.reload()` brings it back on the Chromium of Playwright 1.64, not
+on the one of 1.61. `pointer: coarse` and `navigator.maxTouchPoints` are back
 to the page's own either way. See
 [troubleshooting](../troubleshooting.md#after-pointer-coarse-the-page-reports-hover-none-on-linux-ci).
 `withPointer(page, pointer, run)` (`pointer`: `'fine' | 'coarse'`) is the same

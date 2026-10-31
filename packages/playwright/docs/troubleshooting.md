@@ -464,18 +464,20 @@ matching on the same page, and a later check or screenshot judges it without
 them. It passes on a Mac and fails on CI.
 
 **When:** headless Chromium on a machine with no mouse (a Linux CI runner),
-on the page the coarse check ran on, until that page navigates.
+on the page the coarse check ran on. A new page is not affected.
 **Why:** Playwright fakes a mouse in headless Chromium with
 `--blink-settings=primaryPointerType=4,primaryHoverType=2,…`. Switching CDP
 touch emulation off restores the pointer Chromium read from the machine
-(none on the runner), not that faked one. No CDP call puts it back; a
-navigation does, since it applies the launch settings again. A Mac has a
-trackpad, so its machine pointer is already a mouse.
-**Fix:** make the coarse check the last one on that page, or navigate after it:
+(none on the runner), not that faked one. No CDP call puts it back. A
+navigation does on the Chromium of Playwright 1.64 (it applies the launch
+settings again), but not on the one of Playwright 1.61, even for a reload. A
+Mac has a trackpad, so its machine pointer is already a mouse.
+**Fix:** make the coarse check the last one on that page, or carry on in a new
+page:
 
 ```ts
 await checkScreen(page, testInfo, 'home-touch', { pointer: 'coarse', tapTargets: true });
-await page.reload(); // back to the mouse Playwright fakes, before more checks
+const next = await page.context().newPage(); // has the mouse Playwright fakes
 ```
 
 ### `` checkScreen: pointer: 'coarse' needs Chromium (it uses CDP touch emulation), but this page runs on <engine> ``
