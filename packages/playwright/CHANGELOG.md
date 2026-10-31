@@ -1,5 +1,11 @@
 # @nxgt/playwright
 
+## 0.15.1
+
+### Patch Changes
+
+- [#128](https://github.com/softistx/nxgt-devkit/pull/128) [`45a0b86`](https://github.com/softistx/nxgt-devkit/commit/45a0b864f869a5ac13469f5e86eb9c634d711ef6) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Fix `checkScreen` with `pointer: 'coarse'` judging tap targets with a fine pointer when the run saves screens (`SCREENS=1`) and the page is taller than the viewport: the full-page screenshot of `saveScreen` turned Chromium's touch emulation off, so `(pointer: coarse)` was false at tap-target time. `saveScreen` now puts the coarse pointer back after the screenshot.
+
 ## 0.15.0
 
 ### Minor Changes
