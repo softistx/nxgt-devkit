@@ -103,9 +103,6 @@ async function saveCurrentScreen(
 			...screenshot,
 			path,
 		});
-		// A page taller than the viewport is captured beyond it, which turns
-		// the coarse pointer of `checkScreen` off: put it back.
-		await reapplyPointer(page);
 	} finally {
 		if (viewport) {
 			await page.setViewportSize(viewport);
@@ -115,5 +112,8 @@ async function saveCurrentScreen(
 			await settled(page);
 		}
 	}
+	// A page taller than the viewport is captured beyond it, which turns the
+	// coarse pointer of `checkScreen` off: put it back, after the restore.
+	await reapplyPointer(page);
 	return path;
 }
